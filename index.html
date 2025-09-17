@@ -800,15 +800,15 @@
                                     <th>รหัสลูกค้า</th>
                                     <th>ชื่อลูกค้า</th>
                                     <th>เบอร์</th>
-                                    <th>สถานะปัจจุบัน</th>
-                                    <th>จัดการสถานะ</th>
+                                    <th>หัตถการ</th>
                                     <th>ยอดมัดจำ</th>
-                                    <th>ยอดขายเต็ม</th>
+                                    <th>สถานะ</th>
+                                    <th>หมายเหตุ</th>
                                     <th>วันนัดหมาย</th>
                                     <th>เซลล์</th>
                                     <th>จัดการ</th>
                                 </tr>
-                            </thead>
+                                </thead>
                             <tbody id="customerTableBody">
                             </tbody>
                         </table>
@@ -1195,14 +1195,28 @@
                 updated_by: currentUser.id
             };
             
-            // Auto-generate note if status is changed and note is empty
+            // ===== START: CODE EDITED =====
+            // Auto-generate note if status is changed
             const customer = customers.find(c => c.id === editingCustomerId);
-            if (editingField === 'status' && !customer.note) {
+            if (editingField === 'status') {
                 const currentDate = new Date().toLocaleDateString('th-TH');
+                
+                // Mapping for note text based on status ID
+                const statusNoteMapping = {
+                    1: `สถานะ 1/ ติดต่อเบื้องต้นแล้ว`,
+                    2: `สถานะ 2/ ติดต่อแล้ว`,
+                    3: `สถานะ 3/ สนใจ/นัดหมาย`,
+                    4: `สถานะ 4/ กำลังเจรจา`,
+                    5: `สถานะ 5/ ปิดการขาย`,
+                    6: `สถานะ 6/ ไม่สนใจ/ยกเลิก`
+                };
+
                 const statusDef = getStatusById(newValue);
-                let noteText = `${statusDef.name} / ${currentDate}`;
-                updateData.note = noteText;
+                const noteStatusText = statusNoteMapping[newValue] || statusDef.name;
+                
+                updateData.note = `${noteStatusText} / ${currentDate}`;
             }
+            // ===== END: CODE EDITED =====
 
             const { error } = await supabase
                 .from('customers')
@@ -1603,6 +1617,7 @@
                 if (userPermissions.canArchiveCustomers) manageButtons += ` <button onclick="archiveCustomer('${customer.id}')" class="btn-warning btn-small">เก็บ</button>`;
                 if (userPermissions.canDeleteCustomers) manageButtons += ` <button onclick="deleteCustomer('${customer.id}')" class="btn-danger btn-small">ลบ</button>`;
 
+                // The order of cells here now matches the new table headers
                 row.innerHTML = `
                     <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[1])">${escapeHtml(customer.customer_code || 'BC-XXXX')}</td>
                     <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[1])" style="font-weight: 600;">${escapeHtml(customer.name)}</td>
@@ -1610,7 +1625,7 @@
                     <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[3])">${escapeHtml(customer.procedure_type)}</td>
                     <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[6])">${(customer.deposit || 0).toLocaleString()}</td>
                     <td>
-                        <select class="form-select" style="padding: 5px; font-size: 12px;" data-customer-id="${customer.id}" onchange="saveEdit(event)">
+                        <select class="form-select" style="padding: 5px; font-size: 12px; width: 120px;" data-customer-id="${customer.id}" onchange="saveEdit(event)">
                             ${statusOptions}
                         </select>
                     </td>
