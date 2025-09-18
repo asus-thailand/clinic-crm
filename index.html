@@ -949,21 +949,6 @@
             }
         }
         
-        const EDITABLE_FIELDS = {
-            1: { field: 'name', type: 'text', label: 'ชื่อลูกค้า' },
-            2: { field: 'phone', type: 'tel', label: 'เบอร์โทร' },
-            3: { field: 'procedure_type', type: 'select', label: 'ประเภทหัตถการ', 
-                 options: ['ปลูกผม', 'ตาทีมแพทย์', 'จมูก', 'ยกคิ้ว', 'ฉีดผิว'] },
-            4: { field: 'sales_person', type: 'select', label: 'เซลล์',
-                 options: ['MAM', 'AU', 'GOLF', 'Online'] },
-            5: { field: 'status', type: 'select', label: 'สถานะ',
-                 options: 'status_list' },
-            6: { field: 'deposit', type: 'number', label: 'มัดจำ' },
-            7: { field: 'total_amount', type: 'number', label: 'ยอดขาย' },
-            8: { field: 'appointment_date', type: 'date', label: 'วันนัดหมาย' },
-            9: { field: 'note', type: 'textarea', label: 'หมายเหตุ'}
-        };
-
         const PERMISSIONS = {
             Administrator: {
                 canViewAll: true,
@@ -1095,69 +1080,104 @@
             return `BC${year}${month}${day}-${randomNum}`;
         }
 
-        function makeEditable(cell, customerId, fieldIndex) {
-            
-        }
+        // ==================================================================
+        // START: REVISED INLINE EDITING LOGIC
+        // ==================================================================
 
+        // แก้ไข: ปรับโครงสร้าง EDITABLE_FIELDS ให้ใช้งานง่ายและครอบคลุมทุกฟิลด์
+        const EDITABLE_FIELDS = {
+            'name': { type: 'text', label: 'ชื่อลูกค้า' },
+            'phone': { type: 'tel', label: 'เบอร์โทร' },
+            'procedure_type': { 
+                type: 'select', label: 'ประเภทหัตถการ', 
+                options: ['ปลูกผม', 'ตาทีมแพทย์', 'จมูก', 'ยกคิ้ว', 'ฉีดผิว'] 
+            },
+            'deposit': { type: 'number', label: 'มัดจำ' },
+            'note': { type: 'textarea', label: 'หมายเหตุ'},
+            'appointment_date': { type: 'date', label: 'วันนัดหมาย' },
+            'sales_person': { 
+                type: 'select', label: 'เซลล์',
+                options: ['MAM', 'AU', 'GOLF', 'Online'] 
+            },
+        };
+
+        // แก้ไข: เพิ่มการตรวจสอบสิทธิ์ให้สมบูรณ์
         function canEditField(field, permissions) {
+            // Administrator และ Admin (ที่ canViewAll=true) แก้ไขได้ทุกอย่าง
             if (permissions.canViewAll) return true;
-            return ['status', 'deposit', 'appointment_date', 'note'].includes(field);
+            // Sales แก้ไขได้เฉพาะฟิลด์ที่กำหนด
+            if (currentProfile.role === 'Sales') {
+                 return ['status', 'deposit', 'appointment_date', 'note'].includes(field);
+            }
+            return false;
         }
 
-        function startEdit(cell, customerId, fieldConfig, fieldIndex) {
+        // แก้ไข: ยกเครื่องฟังก์ชัน startEdit ให้รองรับ input หลากหลายประเภท
+        function startEdit(cell, customerId, fieldKey) {
             if (isEditingInProgress) {
-                saveEdit();
+                // ถ้าคลิกเซลล์อื่น ให้เซฟของเก่าก่อน
+                if(editingCell !== cell) saveEdit();
+                return;
+            }
+
+            const fieldConfig = EDITABLE_FIELDS[fieldKey];
+            if (!fieldConfig) return;
+            
+            if (!canEditField(fieldKey, PERMISSIONS[currentProfile.role])) {
+                showAlert('คุณไม่มีสิทธิ์แก้ไขข้อมูลส่วนนี้', 'warning');
                 return;
             }
 
             editingCell = cell;
             editingCustomerId = customerId;
-            editingField = fieldConfig.field;
+            editingField = fieldKey;
             isEditingInProgress = true;
             
-            if(fieldConfig.type === 'select'){
-                originalValue = cell.querySelector('select').value;
-                cell.querySelector('select').focus();
-            } else {
-                originalValue = cell.textContent.trim();
-                cell.classList.add('editing');
-                let inputElement;
+            const customer = customers.find(c => c.id === customerId);
+            originalValue = customer[fieldKey] || (fieldConfig.type === 'number' ? 0 : '');
+            
+            cell.classList.add('editing');
+            let inputElement;
 
-                if (fieldConfig.type === 'textarea') {
-                    inputElement = document.createElement('textarea');
-                    inputElement.style.height = '60px'; 
-                } else {
-                    inputElement = document.createElement('input');
-                    inputElement.type = fieldConfig.type;
-                }
-                
+            if (fieldConfig.type === 'select') {
+                inputElement = document.createElement('select');
+                inputElement.className = 'inline-edit-select';
+                fieldConfig.options.forEach(opt => {
+                    inputElement.innerHTML += `<option value="${opt}" ${opt === originalValue ? 'selected' : ''}>${opt}</option>`;
+                });
+            } else if (fieldConfig.type === 'textarea') {
+                inputElement = document.createElement('textarea');
+                inputElement.style.height = '80px';
                 inputElement.className = 'inline-edit-input';
                 inputElement.value = originalValue;
-                
-                inputElement.addEventListener('blur', saveEdit);
-                inputElement.addEventListener('keydown', (e) => {
-                    e.stopPropagation();
-                    if (e.key === 'Enter' && fieldConfig.type !== 'textarea') {
-                        e.preventDefault();
-                        saveEdit();
-                    } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        cancelEdit();
-                    }
-                });
-
-                cell.innerHTML = '';
-                cell.appendChild(inputElement);
-                inputElement.focus();
+            } else { // text, number, date, tel
+                inputElement = document.createElement('input');
+                inputElement.type = fieldConfig.type;
+                inputElement.className = 'inline-edit-input';
+                inputElement.value = originalValue;
             }
+            
+            inputElement.addEventListener('blur', saveEdit);
+            inputElement.addEventListener('keydown', (e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter' && fieldConfig.type !== 'textarea') { e.preventDefault(); saveEdit(); } 
+                else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+            });
+
+            cell.innerHTML = '';
+            cell.appendChild(inputElement);
+            inputElement.focus();
         }
 
+        // แก้ไข: ปรับปรุงฟังก์ชัน saveEdit ให้รองรับ Note อัตโนมัติ และ Visual Feedback
         async function saveEdit(event) {
-             if (!isEditingInProgress && event && event.target.tagName.toLowerCase() === 'select') {
+            let isStatusChange = false;
+            if (!isEditingInProgress && event && event.target.tagName.toLowerCase() === 'select') {
+                isStatusChange = true;
                 editingCell = event.target.parentElement;
                 editingCustomerId = event.target.dataset.customerId;
                 editingField = 'status';
-                originalValue = customers.find(c => c.id === editingCustomerId)?.status; 
+                originalValue = customers.find(c => c.id == editingCustomerId)?.status;
             } else if (!isEditingInProgress) {
                 return;
             }
@@ -1167,13 +1187,11 @@
 
             let newValue = inputElement.value.trim();
 
-            if (editingField === 'status') {
-                newValue = parseInt(newValue);
-            } else if (editingField === 'deposit' || editingField === 'total_amount') {
+            if (editingField === 'status' || editingField === 'deposit') {
                 newValue = parseInt(newValue) || 0;
             }
             
-            if (newValue.toString() === originalValue.toString()) {
+            if (newValue.toString() === originalValue.toString() && !isStatusChange) {
                 cancelEdit();
                 return;
             }
@@ -1184,26 +1202,14 @@
                 updated_by: currentUser.id
             };
             
-            // ===== START: LOGIC EDITED =====
-            const customer = customers.find(c => c.id === editingCustomerId);
+            // --- LOGIC สำคัญ: อัปเดต Note อัตโนมัติเมื่อสถานะเปลี่ยน ---
             if (editingField === 'status') {
                 const currentDate = new Date().toLocaleDateString('th-TH');
-                
-                const statusNoteMapping = {
-                    1: 'สถานะ 1/ ติดต่อเบื้องต้นแล้ว',
-                    2: 'สถานะ 2/ ติดต่อแล้ว',
-                    3: 'สถานะ 3/ สนใจ/นัดหมาย',
-                    4: 'สถานะ 4/ กำลังเจรจา',
-                    5: 'สถานะ 5/ ปิดการขาย',
-                    6: 'สถานะ 6/ ไม่สนใจ/ยกเลิก'
-                };
-
                 const statusDef = getStatusById(newValue);
-                const noteStatusText = statusNoteMapping[newValue] || statusDef.name;
-                
-                updateData.note = `${noteStatusText} / ${currentDate}`;
+                const statusName = statusDef ? statusDef.name : 'ไม่ระบุ';
+                updateData.note = `${statusName} / ${currentDate}`;
             }
-            // ===== END: LOGIC EDITED =====
+            // --------------------------------------------------------
 
             const { error } = await supabase
                 .from('customers')
@@ -1215,6 +1221,15 @@
                 cancelEdit(); 
             } else {
                 showAlert('บันทึกสำเร็จ!', 'success', 1500);
+                // Visual Feedback: Flash green on success
+                if(editingCell) {
+                    const row = editingCell.parentElement;
+                    row.style.transition = 'background-color 0.2s ease-in-out';
+                    row.style.backgroundColor = '#d1fae5'; // success green
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                    }, 1000);
+                }
                 loadCustomers();
                 updateDashboard();
             }
@@ -1223,8 +1238,9 @@
         }
 
         function cancelEdit() {
+            // ไม่ต้องทำอะไรมาก แค่ reset state แล้ว loadCustomers() จะวาดตารางที่ถูกต้องให้ใหม่
             resetEditState();
-            loadCustomers();
+            loadCustomers(); 
         }
 
         function resetEditState() {
@@ -1237,6 +1253,10 @@
             editingField = null;
             isEditingInProgress = false;
         }
+
+        // ==================================================================
+        // END: REVISED INLINE EDITING LOGIC
+        // ==================================================================
 
         async function signUp() {
             const email = document.getElementById('signupEmail').value.trim();
@@ -1578,7 +1598,10 @@
                 document.getElementById('customersLoading').style.display = 'none';
             }
         }
-
+        
+        // ==================================================================
+        // START: REVISED RENDER CUSTOMER TABLE FUNCTION
+        // ==================================================================
         function renderCustomerTable(data) {
             const tbody = document.getElementById('customerTableBody');
             tbody.innerHTML = '';
@@ -1592,6 +1615,8 @@
 
             data.forEach(customer => {
                 const row = document.createElement('tr');
+                // เก็บ customer.id ไว้ที่แถว เพื่อใช้ในการแสดง Visual Feedback ตอนบันทึก
+                row.dataset.customerId = customer.id;
                 
                 const statusOptions = customerStatuses.map(s => `<option value="${s.id}" ${s.id === customer.status ? 'selected' : ''}>${s.name}</option>`).join('');
                 
@@ -1600,25 +1625,30 @@
                 if (userPermissions.canArchiveCustomers) manageButtons += ` <button onclick="archiveCustomer('${customer.id}')" class="btn-warning btn-small">เก็บ</button>`;
                 if (userPermissions.canDeleteCustomers) manageButtons += ` <button onclick="deleteCustomer('${customer.id}')" class="btn-danger btn-small">ลบ</button>`;
 
+                // แก้ไข: เพิ่ม class="editable" และแก้พารามิเตอร์ใน ondblclick ให้ถูกต้อง
                 row.innerHTML = `
-                    <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[1])">${escapeHtml(customer.customer_code || 'BC-XXXX')}</td>
-                    <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[1])" style="font-weight: 600;">${escapeHtml(customer.name)}</td>
-                    <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[2])">${escapeHtml(customer.phone)}</td>
-                    <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[3])">${escapeHtml(customer.procedure_type)}</td>
-                    <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[6])">${(customer.deposit || 0).toLocaleString()}</td>
+                    <td>${escapeHtml(customer.customer_code || 'BC-XXXX')}</td>
+                    <td class="editable" ondblclick="startEdit(this, '${customer.id}', 'name')">${escapeHtml(customer.name)}</td>
+                    <td class="editable" ondblclick="startEdit(this, '${customer.id}', 'phone')">${escapeHtml(customer.phone)}</td>
+                    <td class="editable" ondblclick="startEdit(this, '${customer.id}', 'procedure_type')">${escapeHtml(customer.procedure_type)}</td>
+                    <td class="editable" ondblclick="startEdit(this, '${customer.id}', 'deposit')">${(customer.deposit || 0).toLocaleString()}</td>
                     <td>
                         <select class="form-select" style="padding: 5px; font-size: 12px; width: 120px;" data-customer-id="${customer.id}" onchange="saveEdit(event)">
                             ${statusOptions}
                         </select>
                     </td>
-                    <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[9])">${escapeHtml(customer.note || '')}</td>
-                    <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[8])">${escapeHtml(customer.appointment_date || '-')}</td>
-                    <td ondblclick="startEdit(this, '${customer.id}', EDITABLE_FIELDS[4])">${escapeHtml(customer.sales_person)}</td>
+                    <td class="editable" ondblclick="startEdit(this, '${customer.id}', 'note')">${escapeHtml(customer.note || '')}</td>
+                    <td class="editable" ondblclick="startEdit(this, '${customer.id}', 'appointment_date')">${escapeHtml(customer.appointment_date || '-')}</td>
+                    <td class="editable" ondblclick="startEdit(this, '${customer.id}', 'sales_person')">${escapeHtml(customer.sales_person)}</td>
                     <td>${manageButtons}</td>
                 `;
                 tbody.appendChild(row);
             });
         }
+        // ==================================================================
+        // END: REVISED RENDER CUSTOMER TABLE FUNCTION
+        // ==================================================================
+
 
         async function archiveCustomer(customerId) {
             if (!confirm('ยืนยันการเก็บข้อมูลลูกค้านี้? (สามารถกู้คืนได้)')) {
