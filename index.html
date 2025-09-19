@@ -165,18 +165,17 @@
         
         .styled-table tbody tr {
             border-bottom: 1px solid #f0f0f0;
-        }
-
-        .styled-table tbody tr:nth-of-type(even) {
-            background-color: #f8f9fa;
-        }
-
-        .styled-table tbody tr:last-of-type {
-            border-bottom: 2px solid #dc3545;
+            transition: background-color 0.2s;
         }
         
-        .styled-table tbody tr:hover {
+        .styled-table tbody tr.customer-row:hover {
             background-color: #fff3f4;
+            cursor: pointer;
+        }
+        
+        .styled-table tbody tr.active-row {
+             background-color: #ffe8e9;
+             font-weight: 600;
         }
         
         .editable {
@@ -752,7 +751,6 @@
                                     <th>หัตถการ</th>
                                     <th>มัดจำ</th>
                                     <th>สถานะ</th>
-                                    <th>หมายเหตุ</th>
                                     <th>วันนัด</th>
                                     <th>เซลล์</th>
                                     <th>จัดการ</th>
@@ -1518,7 +1516,7 @@
 
             if (data.length === 0) {
                 const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = `<td colspan="10" style="text-align: center; padding: 40px; color: #6c757d;">ยังไม่มีข้อมูลลูกค้า</td>`;
+                emptyRow.innerHTML = `<td colspan="9" style="text-align: center; padding: 40px; color: #6c757d;">ยังไม่มีข้อมูลลูกค้า</td>`;
                 tableBody.appendChild(emptyRow);
                 return;
             }
@@ -1528,6 +1526,13 @@
             data.forEach((customer, index) => {
                 const row = document.createElement('tr');
                 row.className = 'customer-row';
+                row.onclick = (event) => {
+                    // Prevent toggling when clicking on an editable cell or a button
+                    if (event.target.classList.contains('editable') || event.target.closest('.action-buttons')) {
+                        return;
+                    }
+                    toggleDetails(customer.id, row);
+                };
                 
                 const statusDef = getStatusById(customer.status);
                 
@@ -1545,7 +1550,6 @@
                     <td class="editable" ondblclick="startExcelEdit(this, '${customer.id}', 5)">
                         <span class="status-badge" style="background-color:${statusDef.color}; color: ${statusDef.color === '#ffc107' ? '#333' : 'white'}">${statusDef.name}</span>
                     </td>
-                    <td class="editable" ondblclick="startExcelEdit(this, '${customer.id}', 6)" style="max-width: 200px; white-space: normal; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(customer.note || '')}</td>
                     <td class="editable" ondblclick="startExcelEdit(this, '${customer.id}', 7)">${escapeHtml(customer.appointment_date || '-')}</td>
                     <td class="editable" ondblclick="startExcelEdit(this, '${customer.id}', 8)">${escapeHtml(customer.sales_person)}</td>
                     <td>
@@ -1554,6 +1558,56 @@
                 `;
                 tableBody.appendChild(row);
             });
+        }
+        
+        function toggleDetails(customerId, rowElement) {
+            // Remove any other open detail rows first
+            const allDetailRows = document.querySelectorAll('.detail-row');
+            allDetailRows.forEach(row => {
+                if(row.id !== 'detail-' + customerId) {
+                    row.remove();
+                }
+            });
+            const allActiveRows = document.querySelectorAll('.active-row');
+            allActiveRows.forEach(row => {
+                 if(row !== rowElement) {
+                    row.classList.remove('active-row');
+                 }
+            });
+
+
+            const existingDetail = document.getElementById('detail-' + customerId);
+            if (existingDetail) {
+                existingDetail.remove();
+                rowElement.classList.remove('active-row');
+                return;
+            }
+
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer) return;
+
+            const detailRow = document.createElement('tr');
+            detailRow.id = 'detail-' + customerId;
+            detailRow.className = 'detail-row';
+            
+            const detailCell = document.createElement('td');
+            detailCell.colSpan = "9"; // Adjusted to match the new column count
+            detailCell.style.cssText = `
+                background: #fdf5f6; 
+                padding: 15px 25px; 
+                white-space: normal;
+                border-left: 3px solid #dc3545;
+            `;
+            
+            detailCell.innerHTML = `
+                <strong style="color: #dc3545;">หมายเหตุทั้งหมด:</strong><br>
+                <pre style="font-family: inherit; margin: 0; white-space: pre-wrap; color: #495057;">${escapeHtml(customer.note || 'ไม่มีหมายเหตุ')}</pre>
+            `;
+            
+            detailRow.appendChild(detailCell);
+            
+            rowElement.after(detailRow);
+            rowElement.classList.add('active-row');
         }
 
 
@@ -2195,4 +2249,3 @@
     </script>
 </body>
 </html>
-}
