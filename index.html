@@ -1636,13 +1636,30 @@
                 updated_by: currentUser.id
             };
             
-            // Auto-note for status changes
-            if (editingField === 'status') {
-                const currentDate = new Date().toLocaleDateString('th-TH');
-                const statusDef = getStatusById(newValue);
-                const statusNote = `สถานะ: ${statusDef.name} / ${currentDate}`;
-                const customer = customers.find(c => c.id === editingCustomerId);
-                updateData.note = (customer.note || '') + `\n${statusNote}`;
+            // Auto-note for status changes with reason prompt
+if (editingField === 'status') {
+    const statusDef = getStatusById(newValue);
+
+    // --- ส่วนที่เพิ่มเข้ามา ---
+    // แสดงหน้าต่างให้กรอกเหตุผล
+    const reason = prompt(`เปลี่ยนสถานะเป็น: "${statusDef.name}"\nกรุณาใส่รายละเอียด/เหตุผล:`);
+
+    // ถ้าผู้ใช้ไม่กรอก หรือกดยกเลิก ให้ยกเลิกการแก้ไขทั้งหมด
+    if (!reason || reason.trim() === '') {
+        showAlert('ยกเลิกการเปลี่ยนแปลงสถานะเนื่องจากไม่ได้ใส่เหตุผล', 'warning');
+        editLock = false; // ปลดล็อค
+        cancelExcelEdit(); // ยกเลิกการแก้ไข
+        return; // ออกจากฟังก์ชัน ไม่ต้องทำต่อ
+    }
+    // --- จบส่วนที่เพิ่มเข้ามา ---
+
+    const currentDate = new Date().toLocaleDateString('th-TH');
+    // สร้าง Note รูปแบบใหม่ที่มีทั้งสถานะและเหตุผล
+    const statusNote = `สถานะ: ${statusDef.name} / ${currentDate}\n- เหตุผล: ${reason.trim()}`;
+
+    const customer = customers.find(c => c.id === editingCustomerId);
+    updateData.note = (customer.note || '') + `\n\n[${currentProfile.name}]\n${statusNote}`;
+}
             }
 
             try {
