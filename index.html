@@ -1896,10 +1896,14 @@
                     return;
                 }
 
-                await logAuditTrail('CREATE_USER', data.user.id, 'user_registration', null, email, `New user: ${name}, Role: ${role}`);
+                if (data && data.user) {
+                    await logAuditTrail('CREATE_USER', data.user.id, 'user_registration', null, email, `New user: ${name}, Role: ${role}`);
+                    showAlert('สร้างบัญชีสำเร็จ!', 'success');
+                    showSignIn();
+                } else {
+                    showAlert('สร้างบัญชีไม่สำเร็จ', 'error');
+                }
                 
-                showAlert('สร้างบัญชีสำเร็จ!', 'success');
-                showSignIn();
             } catch (error) {
                 console.error('Signup error:', error);
                 showAlert('เกิดข้อผิดพลาดในการสร้างบัญชี', 'error');
@@ -1926,10 +1930,18 @@
                     showAlert('อีเมลหรือรหัสผ่านไม่ถูกต้อง', 'error');
                     return;
                 }
-
-                await loadUserProfile();
-                await logAuditTrail('LOGIN', currentUser.id, 'user_login', null, email, 'User logged in');
-                showMainApp();
+                
+                // --- แก้ไขโค้ดส่วนนี้เพื่อป้องกัน Error ---
+                if (data && data.user) {
+                    currentUser = data.user;
+                    await loadUserProfile();
+                    await logAuditTrail('LOGIN', currentUser.id, 'user_login', null, email, 'User logged in');
+                    showMainApp();
+                } else {
+                    // กรณีที่การลงชื่อเข้าใช้ไม่สำเร็จ
+                    showAlert('การลงชื่อเข้าใช้ล้มเหลว', 'error');
+                }
+                // --- สิ้นสุดการแก้ไข ---
             } catch (error) {
                 console.error('Signin error:', error);
                 showAlert('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error');
@@ -1967,10 +1979,24 @@
                 currentUser = session.user;
                 await loadUserProfile();
                 showMainApp();
+            } else {
+                // --- แก้ไขโค้ดส่วนนี้เพื่อป้องกัน Error ---
+                document.getElementById('mainContainer').style.display = 'none';
+                document.getElementById('loginContainer').style.display = 'flex';
+                // --- สิ้นสุดการแก้ไข ---
             }
         }
 
         async function loadUserProfile() {
+            // --- แก้ไขโค้ดส่วนนี้เพื่อป้องกัน Error ---
+            if (!currentUser || !currentUser.id) {
+                console.error('Profile load error: No current user or user ID found.');
+                showAlert('ไม่สามารถโหลดโปรไฟล์ได้ กรุณาลองเข้าสู่ระบบใหม่', 'error');
+                signOut(); // ให้ผู้ใช้ล็อกเอาท์เพื่อเริ่มใหม่
+                return;
+            }
+            // --- สิ้นสุดการแก้ไข ---
+
             try {
                 const { data, error } = await supabase
                     .from('profiles')
@@ -1986,13 +2012,17 @@
 
                 currentProfile = data;
                 
-                await supabase
-                    .from('profiles')
-                    .update({ 
-                        last_login: getBangkokTime(),
-                        last_ip: await getClientIP()
-                    })
-                    .eq('id', currentUser.id);
+                // --- แก้ไขโค้ดส่วนนี้เพื่อป้องกัน Error ---
+                if (currentProfile) {
+                    await supabase
+                        .from('profiles')
+                        .update({ 
+                            last_login: getBangkokTime(),
+                            last_ip: await getClientIP()
+                        })
+                        .eq('id', currentUser.id);
+                }
+                // --- สิ้นสุดการแก้ไข ---
                     
             } catch (error) {
                 console.error('Profile load error:', error);
@@ -2641,31 +2671,21 @@
                 const { count: todayCount, error: todayErr } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('date', today);
                 const { count: overdueCount, error: overdueErr } = await supabase.from('customers').select('*', { count: 'exact', head: true }).lt('created_at', new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()).neq('status', 5).eq('is_archived', false);
                 
-                const { data: salesData, error: salesErr } = await supabase
-                    .from('sales_analytics')
-                    .select('*')
-                    .eq('sales_person', currentProfile.sales_code);
-                
+                const { data: salesAnalytics, error: salesErr } = await supabase.from('sales_analytics').select('*');
+                const { data: monthlyPerformance, error: monthlyErr } = await supabase.from('monthly_performance').select('*').order('month', { ascending: false });
+
                 if (totalErr || todayErr || overdueErr) {
                     console.error('Dashboard query errors:', { totalErr, todayErr, overdueErr });
                     return;
                 }
                 
-                // Fetch monthly data for the current month
-                const { data: monthlyData, error: monthlyErr } = await supabase
-                    .from('monthly_performance')
-                    .select('revenue, leads, sales')
-                    .eq('sales_person', currentProfile.sales_code)
-                    .eq('month', firstDayOfMonth);
-
                 let monthlyRevenue = 0;
                 let closedDealsThisMonth = 0;
                 let totalLeadsThisMonth = 0;
-
-                if (monthlyData && monthlyData.length > 0) {
-                    monthlyRevenue = monthlyData[0].revenue;
-                    closedDealsThisMonth = monthlyData[0].sales;
-                    totalLeadsThisMonth = monthlyData[0].leads;
+                if (monthlyPerformance && monthlyPerformance.length > 0) {
+                    monthlyRevenue = monthlyPerformance.reduce((sum, item) => sum + item.revenue, 0);
+                    closedDealsThisMonth = monthlyPerformance.reduce((sum, item) => sum + item.sales, 0);
+                    totalLeadsThisMonth = monthlyPerformance.reduce((sum, item) => sum + item.leads, 0);
                 }
 
                 const conversionRate = totalLeadsThisMonth > 0 ? Math.round((closedDealsThisMonth / totalLeadsThisMonth) * 100) : 0;
@@ -2708,9 +2728,8 @@
         }
 
         function formatCurrency(amount) {
-            if (amount === undefined || amount === null) return '0';
+            if (amount === undefined || amount === null || isNaN(amount)) return '0';
             const num = parseFloat(amount);
-            if (isNaN(num)) return amount;
             
             if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
             if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
@@ -2739,7 +2758,7 @@
                     </div>
                     <div style="flex: 1;">
                         <div style="font-weight: 600;">${escapeHtml(customer.name)} - ${escapeHtml(customer.procedure_type)}</div>
-                        <div style="font-size: 12px; color: #6c757d;">${escapeHtml(customer.phone)} | ${escapeHtml(customer.sales_person)}</div>
+                        <div style="font-size: 12px; color: #6c757d;">เบอร์: ${escapeHtml(customer.phone)} | เซลล์: ${escapeHtml(customer.sales_person)}</div>
                     </div>
                     <span style="font-size: 12px; color: ${statusDef.color}; font-weight: 600;">${statusDef.name}</span>
                 `;
@@ -2820,16 +2839,15 @@
         }
 
         async function loadReports() {
-            if (!currentProfile) return;
-            const reportEl = document.getElementById('reportContent');
-            const loadingEl = document.getElementById('reportContent');
-            loadingEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">กำลังโหลดรายงาน...</div>';
-            
-            if (!PERMISSIONS[currentProfile.role].canAccessReports) {
+            if (!currentProfile || !PERMISSIONS[currentProfile.role].canAccessReports) {
+                const reportEl = document.getElementById('reportContent');
                 reportEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">คุณไม่มีสิทธิ์เข้าถึงรายงาน</div>';
                 return;
             }
-            
+
+            const reportEl = document.getElementById('reportContent');
+            reportEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">กำลังโหลดรายงาน...</div>';
+
             try {
                 const { data: salesAnalytics, error: salesErr } = await supabase.from('sales_analytics').select('*');
                 const { data: monthlyPerformance, error: monthlyErr } = await supabase.from('monthly_performance').select('*').order('month', { ascending: false });
@@ -3092,7 +3110,9 @@
             
             const now = new Date();
             document.getElementById('leadDate').value = now.toISOString().split('T')[0];
-            document.getElementById('leadTime').value = now.toTimeString().slice(0, 5);
+            if (document.getElementById('leadTime')) {
+                document.getElementById('leadTime').value = now.toTimeString().slice(0, 5);
+            }
         }
 
         function showAlert(message, type = 'success', duration = 5000) {
@@ -3169,11 +3189,15 @@
             });
 
             // Handle modal clicks
-            document.getElementById('assignModal').addEventListener('click', (e) => {
-                if (e.target === document.getElementById('assignModal')) {
-                    closeAssignModal();
-                }
-            });
+            const assignModal = document.getElementById('assignModal');
+            if (assignModal) {
+                assignModal.addEventListener('click', (e) => {
+                    if (e.target === assignModal) {
+                        closeAssignModal();
+                    }
+                });
+            }
+            
 
             // Online/Offline detection
             window.addEventListener('online', showOfflineIndicator);
