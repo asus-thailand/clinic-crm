@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beauty Clinic CRM v3.0 - Modern Style</title>
+    <title>Beauty Clinic CRM v3.1 - Fixed Version</title>
     <style>
         * {
             margin: 0;
@@ -16,7 +16,7 @@
             background: #f8f9fa;
             min-height: 100vh;
             color: #333;
-            font-size: 14px; /* Increased base font size */
+            font-size: 14px;
         }
 
         .container {
@@ -143,29 +143,35 @@
         .table-responsive {
             width: 100%;
             overflow-x: auto;
+            position: relative;
         }
         
         .styled-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 14px;
+            position: relative;
         }
         
         .styled-table thead tr {
             background-color: #dc3545;
             color: #ffffff;
             text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .styled-table th,
         .styled-table td {
             padding: 12px 15px;
             white-space: nowrap;
+            border-right: 1px solid #e9ecef;
         }
         
         .styled-table tbody tr {
             border-bottom: 1px solid #f0f0f0;
-            /* transition: background-color 0.2s; */ /* REMOVED THIS LINE TO FIX HOVER LAG */
+            transition: background-color 0.2s;
         }
         
         .styled-table tbody tr.customer-row:hover {
@@ -174,17 +180,35 @@
         }
         
         .styled-table tbody tr.active-row {
-             background-color: #ffe8e9;
-             font-weight: 600;
+            background-color: #ffe8e9;
+            font-weight: 600;
         }
         
         .editable {
             cursor: cell;
+            position: relative;
         }
 
         .editable:hover::after {
             content: " ✏️";
             opacity: 0.7;
+        }
+
+        .editing {
+            background-color: #fff9c4 !important;
+            position: relative;
+        }
+
+        .editing input,
+        .editing select,
+        .editing textarea {
+            width: 100%;
+            min-width: 120px;
+            border: 2px solid #dc3545;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            font-family: inherit;
         }
 
         /* Status styling */
@@ -217,14 +241,15 @@
             font-weight: bold;
             transition: transform 0.2s;
         }
+
         .btn-action:hover {
             transform: scale(1.1);
         }
+
         .btn-view { background-color: #17a2b8; }
         .btn-assign { background-color: #28a745; }
         .btn-archive { background-color: #ffc107; }
         .btn-delete { background-color: #dc3545; }
-
 
         .stats-grid {
             display: grid;
@@ -306,6 +331,17 @@
             box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
         }
 
+        .form-input.error {
+            border-color: #dc3545;
+            background-color: #fff5f5;
+        }
+
+        .form-error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
         .btn-primary {
             background: #dc3545;
             color: white;
@@ -318,9 +354,15 @@
             font-size: 14px;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #c82333;
             border-color: #c82333;
+        }
+
+        .btn-primary:disabled {
+            background: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
         }
 
         .btn-secondary {
@@ -440,8 +482,13 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         }
         
-        .section { display: none; }
-        .section.active { display: block; }
+        .section { 
+            display: none; 
+        }
+        
+        .section.active { 
+            display: block; 
+        }
 
         .loading {
             display: none;
@@ -466,23 +513,250 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
+        /* Pagination styles */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 20px 0;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #e9ecef;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .pagination-info {
+            font-size: 14px;
+            color: #6c757d;
+            margin: 0 15px;
+        }
+
+        /* Advanced Search */
+        .search-filters {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .search-filters.collapsed {
+            padding: 10px 20px;
+        }
+
+        .search-toggle {
+            background: none;
+            border: none;
+            color: #dc3545;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        /* Audit Trail */
+        .audit-trail {
+            background: #f8f9fa;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 0 4px 4px 0;
+            font-size: 12px;
+        }
+
+        .audit-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .audit-entry:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .audit-timestamp {
+            color: #6c757d;
+            font-weight: 600;
+        }
+
+        .audit-user {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .audit-action {
+            color: #dc3545;
+        }
+
+        /* Offline indicator */
+        .offline-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #ffc107;
+            color: #856404;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-weight: 600;
+            display: none;
+            z-index: 1000;
+        }
+
+        /* Mobile responsive */
         @media (max-width: 768px) {
-            .main-content { padding: 15px; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .header-content { flex-direction: column; gap: 15px; }
-            .form-row { grid-template-columns: 1fr; }
+            .main-content { 
+                padding: 15px; 
+            }
+            
+            .stats-grid { 
+                grid-template-columns: 1fr; 
+            }
+            
+            .header-content { 
+                flex-direction: column; 
+                gap: 15px; 
+            }
+            
+            .form-row { 
+                grid-template-columns: 1fr; 
+            }
+
+            .styled-table {
+                font-size: 12px;
+            }
+
+            .styled-table th,
+            .styled-table td {
+                padding: 8px 5px;
+            }
+
+            /* Hide less important columns on mobile */
+            .styled-table th:nth-child(4),
+            .styled-table td:nth-child(4),
+            .styled-table th:nth-child(7),
+            .styled-table td:nth-child(7) {
+                display: none;
+            }
+
+            .nav-tabs {
+                overflow-x: auto;
+                padding: 0 10px;
+            }
+
+            .nav-tab {
+                padding: 12px 15px;
+                font-size: 12px;
+            }
+
+            .user-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .search-filters {
+                padding: 15px;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .pagination {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+
+            .pagination button {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+
+            .action-buttons {
+                gap: 3px;
+            }
+
+            .btn-action {
+                width: 25px;
+                height: 25px;
+                font-size: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 10px;
+            }
+
+            .styled-table th,
+            .styled-table td {
+                padding: 6px 3px;
+                font-size: 11px;
+            }
+
+            /* Show only essential columns on very small screens */
+            .styled-table th:nth-child(3),
+            .styled-table td:nth-child(3),
+            .styled-table th:nth-child(5),
+            .styled-table td:nth-child(5),
+            .styled-table th:nth-child(8),
+            .styled-table td:nth-child(8) {
+                display: none;
+            }
+
+            .pagination-info {
+                font-size: 12px;
+            }
+
+            .stat-value {
+                font-size: 22px;
+            }
         }
     </style>
 </head>
 <body>
     <div id="alertContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999; width: 300px;"></div>
+    
+    <div class="offline-indicator" id="offlineIndicator">
+        ⚠️ ออฟไลน์ - บางฟีเจอร์อาจไม่ทำงาน
+    </div>
 
     <div id="setupGuide" class="login-container" style="display: none;">
         <div class="setup-container">
             <div class="logo-icon" style="margin: 0 auto 20px; width: 60px; height: 60px; font-size: 24px;">BC</div>
-            <h1 style="color: #dc3545; margin-bottom: 10px;">Beauty Clinic CRM v3.0</h1>
-            <p style="color: #6c757d; margin-bottom: 30px;">Modern Style - ระบบพร้อมใช้งาน</p>
+            <h1 style="color: #dc3545; margin-bottom: 10px;">Beauty Clinic CRM v3.1</h1>
+            <p style="color: #6c757d; margin-bottom: 30px;">Fixed Version - ระบบพร้อมใช้งาน</p>
             
             <div class="step">
                 <h3>ขั้นตอนที่ 1: สร้าง Supabase Project</h3>
@@ -499,7 +773,7 @@
             <div class="step">
                 <h3>ขั้นตอนที่ 2: รัน SQL Schema</h3>
                 <p>ใน Supabase Dashboard ไปที่ SQL Editor และรันคำสั่ง SQL ที่ให้ไว้แยกต่างหาก</p>
-                <p><strong>สำคัญ:</strong> ต้องรัน SQL Schema ให้เสร็จก่อนถึงจะใช้งานระบบนี้ได้</p>
+                <p><strong>สำคัญ</strong>: ต้องรัน SQL Schema ให้เสร็จก่อนถึงจะใช้งานระบบนี้ได้</p>
             </div>
 
             <div class="step">
@@ -534,8 +808,8 @@
     <div class="login-container" id="loginContainer" style="display: none;">
         <div class="login-box">
             <div class="logo-icon" style="margin: 0 auto 20px; width: 60px; height: 60px; font-size: 24px;">BC</div>
-            <h2 style="color: #dc3545; margin-bottom: 30px;">Beauty Clinic CRM v3.0</h2>
-            <p style="color: #6c757d; margin-bottom: 20px;">Modern Style</p>
+            <h2 style="color: #dc3545; margin-bottom: 30px;">Beauty Clinic CRM v3.1</h2>
+            <p style="color: #6c757d; margin-bottom: 20px;">Fixed Version</p>
             
             <div id="loginForm">
                 <div class="form-group" style="margin-bottom: 20px;">
@@ -554,14 +828,17 @@
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label class="form-label">อีเมล</label>
                     <input type="email" class="form-input" id="signupEmail" required>
+                    <div class="form-error" id="emailError"></div>
                 </div>
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label class="form-label">ชื่อ-นามสกุล</label>
                     <input type="text" class="form-input" id="signupName" required>
+                    <div class="form-error" id="nameError"></div>
                 </div>
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label class="form-label">รหัสผ่าน</label>
                     <input type="password" class="form-input" id="signupPassword" required>
+                    <div class="form-error" id="passwordError"></div>
                 </div>
                 <div class="form-group" style="margin-bottom: 15px;">
                     <label class="form-label">ตำแหน่ง</label>
@@ -593,8 +870,8 @@
                 <div class="logo">
                     <div class="logo-icon">BC</div>
                     <div>
-                        <h1 style="font-size: 22px; font-weight: 700; color: #dc3545;">Beauty Clinic CRM v3.0</h1>
-                        <p style="font-size: 14px; color: #6c757d;" id="userDisplayText">Modern Style</p>
+                        <h1 style="font-size: 22px; font-weight: 700; color: #dc3545;">Beauty Clinic CRM v3.1</h1>
+                        <p style="font-size: 14px; color: #6c757d;" id="userDisplayText">Fixed Version</p>
                     </div>
                 </div>
                 <div class="user-info">
@@ -614,6 +891,7 @@
             <div class="nav-tab" onclick="showTab('reports')">📈 รายงาน</div>
             <div class="nav-tab" id="myWorkTab" onclick="showTab('my-work')" style="display: none;">📋 งานของฉัน</div>
             <div class="nav-tab" onclick="showTab('alerts')">🔔 แจ้งเตือน</div>
+            <div class="nav-tab" onclick="showTab('audit')">📜 ประวัติการเปลี่ยนแปลง</div>
         </nav>
 
         <main class="main-content">
@@ -640,6 +918,7 @@
                             <div class="form-group">
                                 <label class="form-label">วันที่ *</label>
                                 <input type="date" class="form-input" id="leadDate" required>
+                                <div class="form-error" id="dateError"></div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">เวลา *</label>
@@ -651,10 +930,12 @@
                             <div class="form-group">
                                 <label class="form-label">ชื่อลูกค้า *</label>
                                 <input type="text" class="form-input" id="customerName" placeholder="ชื่อ-สกุล" required>
+                                <div class="form-error" id="nameError"></div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">เบอร์ติดต่อ *</label>
                                 <input type="tel" class="form-input" id="customerPhone" placeholder="0xx-xxxxxxx" required>
+                                <div class="form-error" id="phoneError"></div>
                             </div>
                         </div>
 
@@ -706,7 +987,7 @@
                         </div>
 
                         <div style="text-align: center; margin-top: 30px;">
-                            <button type="submit" class="btn-primary">บันทึกข้อมูล</button>
+                            <button type="submit" class="btn-primary" id="submitBtn">บันทึกข้อมูล</button>
                             <button type="button" class="btn-secondary" onclick="resetForm()">ล้างข้อมูล</button>
                         </div>
                     </form>
@@ -717,25 +998,56 @@
                 <div class="content-card">
                     <h2 class="section-title">รายชื่อลูกค้า</h2>
                     
-                    <div class="form-row" style="margin-bottom: 25px;">
-                        <div class="form-group">
-                            <label class="form-label">ค้นหา</label>
-                            <input type="text" class="form-input" id="searchCustomer" placeholder="ค้นหาชื่อ, เบอร์, รหัส..." oninput="searchCustomers()">
+                    <div class="search-filters" id="searchFilters">
+                        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 15px;">
+                            <h4 style="margin: 0;">ค้นหาและกรอง</h4>
+                            <button class="search-toggle" onclick="toggleSearchFilters()">🔽 ซ่อน/แสดง</button>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">กรองตามเซลล์</label>
-                            <select class="form-select" id="filterSales" onchange="loadCustomers()">
-                                <option value="">ทั้งหมด</option>
-                                <option value="MAM">MAM</option>
-                                <option value="AU">AU</option>
-                                <option value="GOLF">GOLF</option>
-                                <option value="Online">Online</option>
-                            </select>
+                        
+                        <div class="filter-grid" id="filterGrid">
+                            <div class="form-group">
+                                <label class="form-label">ค้นหา</label>
+                                <input type="text" class="form-input" id="searchCustomer" placeholder="ค้นหาชื่อ, เบอร์, รหัส..." oninput="debounceSearch()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">กรองตามเซลล์</label>
+                                <select class="form-select" id="filterSales" onchange="loadCustomers()">
+                                    <option value="">ทั้งหมด</option>
+                                    <option value="MAM">MAM</option>
+                                    <option value="AU">AU</option>
+                                    <option value="GOLF">GOLF</option>
+                                    <option value="Online">Online</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">กรองตามสถานะ</label>
+                                <select class="form-select" id="filterStatus" onchange="loadCustomers()">
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">ช่วงวันที่</label>
+                                <input type="date" class="form-input" id="filterDateFrom" onchange="loadCustomers()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">ถึงวันที่</label>
+                                <input type="date" class="form-input" id="filterDateTo" onchange="loadCustomers()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">ช่องทาง</label>
+                                <select class="form-select" id="filterChannel" onchange="loadCustomers()">
+                                    <option value="">ทั้งหมด</option>
+                                    <option value="FBC-EYES">FBC-EYES</option>
+                                    <option value="FBH-Hair">FBH-Hair</option>
+                                    <option value="FBC By หมอธีร์">FBC By หมอธีร์</option>
+                                    <option value="Walk-in">Walk-in</option>
+                                    <option value="Referral">Referral</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">กรองตามสถานะ</label>
-                            <select class="form-select" id="filterStatus" onchange="loadCustomers()">
-                            </select>
+                        
+                        <div style="text-align: center; margin-top: 15px;">
+                            <button class="btn-secondary" onclick="clearFilters()">ล้างการกรอง</button>
+                            <button class="btn-primary" onclick="loadCustomers()">ค้นหา</button>
                         </div>
                     </div>
 
@@ -757,8 +1069,19 @@
                                 </tr>
                             </thead>
                             <tbody id="customerTableBody">
-                                </tbody>
+                            </tbody>
                         </table>
+                    </div>
+
+                    <div class="pagination" id="pagination">
+                        <button onclick="goToPage(1)" id="firstPage">⏮️</button>
+                        <button onclick="goToPage(currentPage - 1)" id="prevPage">⬅️</button>
+                        <div class="pagination-info">
+                            หน้า <span id="currentPageSpan">1</span> จาก <span id="totalPagesSpan">1</span>
+                            (ทั้งหมด <span id="totalRecordsSpan">0</span> รายการ)
+                        </div>
+                        <button onclick="goToPage(currentPage + 1)" id="nextPage">➡️</button>
+                        <button onclick="goToPage(totalPages)" id="lastPage">⏭️</button>
                     </div>
                 </div>
             </div>
@@ -803,6 +1126,33 @@
                     </div>
                 </div>
             </div>
+
+            <div id="audit" class="section">
+                <div class="content-card">
+                    <h2 class="section-title">ประวัติการเปลี่ยนแปลงข้อมูล</h2>
+                    
+                    <div class="form-row" style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">กรองตามผู้ใช้</label>
+                            <select class="form-select" id="auditUserFilter" onchange="loadAuditTrail()">
+                                <option value="">ทั้งหมด</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ช่วงวันที่</label>
+                            <input type="date" class="form-input" id="auditDateFrom" onchange="loadAuditTrail()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ถึงวันที่</label>
+                            <input type="date" class="form-input" id="auditDateTo" onchange="loadAuditTrail()">
+                        </div>
+                    </div>
+
+                    <div id="auditTrailContent">
+                        <div style="text-align: center; padding: 40px; color: #6c757d;">กำลังโหลดประวัติการเปลี่ยนแปลง...</div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -840,13 +1190,22 @@
         let customers = [];
         let customerStatuses = [];
         let currentAssignCustomerId = null;
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalRecords = 0;
+        let pageSize = 50;
+        let lastSubmitTime = 0;
+        let searchTimeout = null;
+        let auditTrail = [];
 
-        // Excel editing variables
+        // Excel editing variables with improved conflict resolution
         let editingCell = null;
         let originalValue = null;
         let editingCustomerId = null;
         let editingField = null;
         let isEditingInProgress = false;
+        let editingTimeout = null;
+        let editingSessionId = null;
 
         const STATUS_WORKFLOW = {
             1: 2, 
@@ -877,6 +1236,7 @@
                 canAccessReports: true,
                 canArchiveCustomers: true,
                 canDeleteCustomers: true,
+                canViewAuditTrail: true,
                 displayName: 'ผู้ดูแลระบบ'
             },
             Admin: {
@@ -886,6 +1246,7 @@
                 canAccessReports: true,
                 canArchiveCustomers: true,
                 canDeleteCustomers: false,
+                canViewAuditTrail: true,
                 displayName: 'ผู้จัดการ'
             },
             Sales: {
@@ -895,9 +1256,495 @@
                 canAccessReports: false,
                 canArchiveCustomers: false,
                 canDeleteCustomers: false,
+                canViewAuditTrail: false,
                 displayName: 'เซลล์'
             }
         };
+
+        // Utility Functions
+        function getBangkokTime() {
+            const now = new Date();
+            const bangkokTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+            return bangkokTime.toISOString().slice(0, 19) + '+07:00';
+        }
+
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return input;
+            return input.trim().replace(/[<>\"'&]/g, function(match) {
+                const map = {
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#x27;',
+                    '&': '&amp;'
+                };
+                return map[match];
+            });
+        }
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchCustomers();
+            }, 300);
+        }
+
+        function isOnline() {
+            return navigator.onLine;
+        }
+
+        function showOfflineIndicator() {
+            document.getElementById('offlineIndicator').style.display = isOnline() ? 'none' : 'block';
+        }
+
+        // Enhanced generateCustomerCode with uniqueness check
+        async function generateCustomerCode() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            
+            let code;
+            let isUnique = false;
+            let attempts = 0;
+            
+            while (!isUnique && attempts < 10) {
+                const randomNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+                code = `BC${year}${month}${day}-${randomNum}`;
+                
+                try {
+                    const { data } = await supabase
+                        .from('customers')
+                        .select('id')
+                        .eq('customer_code', code)
+                        .single();
+                        
+                    if (!data) {
+                        isUnique = true;
+                    }
+                } catch (error) {
+                    // If no matching record found, code is unique
+                    isUnique = true;
+                }
+                
+                attempts++;
+            }
+            
+            // Fallback to timestamp if all attempts failed
+            if (!isUnique) {
+                code = `BC${year}${month}${day}-${Date.now().toString().slice(-4)}`;
+            }
+            
+            return code;
+        }
+
+        // Enhanced Excel Editing with Race Condition Protection
+        function startExcelEdit(cell, customerId, fieldIndex) {
+            // Cancel any existing edit first
+            if (isEditingInProgress) {
+                if (editingCell === cell) {
+                    return; // Already editing this cell
+                }
+                cancelExcelEdit();
+            }
+
+            const fieldConfig = EDITABLE_FIELDS[fieldIndex];
+            if (!fieldConfig) return;
+
+            // Set up new editing session
+            editingSessionId = Date.now() + Math.random();
+            editingCell = cell;
+            editingCustomerId = customerId;
+            editingField = fieldConfig.field;
+            isEditingInProgress = true;
+            
+            originalValue = cell.textContent.trim();
+            
+            if (fieldConfig.field === 'status') {
+                const customer = customers.find(c => c.id === customerId);
+                originalValue = customer ? customer.status : '';
+            }
+            if (fieldConfig.field === 'deposit') {
+                originalValue = originalValue.replace(/,/g, '');
+            }
+
+            cell.classList.add('editing');
+            
+            let inputElement;
+            
+            if (fieldConfig.type === 'select') {
+                inputElement = document.createElement('select');
+                inputElement.className = 'form-select';
+                
+                if (fieldConfig.options === 'status_list') {
+                    customerStatuses.forEach(status => {
+                        const option = document.createElement('option');
+                        option.value = status.id;
+                        option.textContent = status.name;
+                        option.selected = status.id == originalValue;
+                        inputElement.appendChild(option);
+                    });
+                } else {
+                    fieldConfig.options.forEach(optText => {
+                        const option = document.createElement('option');
+                        option.value = optText;
+                        option.textContent = optText;
+                        option.selected = optText === originalValue;
+                        inputElement.appendChild(option);
+                    });
+                }
+            } else if (fieldConfig.type === 'textarea') {
+                inputElement = document.createElement('textarea');
+                inputElement.className = 'form-input';
+                inputElement.style.height = '60px';
+                inputElement.style.resize = 'vertical';
+                inputElement.value = originalValue;
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = fieldConfig.type;
+                inputElement.className = 'form-input';
+                inputElement.value = originalValue;
+            }
+            
+            // Enhanced event listeners
+            inputElement.addEventListener('blur', handleBlurEvent);
+            inputElement.addEventListener('keydown', handleKeydownEvent);
+            
+            // Clear timeout on new input
+            clearTimeout(editingTimeout);
+            editingTimeout = setTimeout(() => {
+                if (isEditingInProgress && editingCell) {
+                    saveExcelEdit();
+                }
+            }, 30000); // Auto-save after 30 seconds
+
+            cell.innerHTML = '';
+            cell.appendChild(inputElement);
+            inputElement.focus();
+            
+            if (inputElement.select) {
+                inputElement.select();
+            }
+        }
+
+        function handleBlurEvent(e) {
+            // Delay to allow click events to process
+            setTimeout(() => {
+                if (isEditingInProgress && editingCell && !editingCell.contains(document.activeElement)) {
+                    saveExcelEdit();
+                }
+            }, 100);
+        }
+
+        function handleKeydownEvent(e) {
+            e.stopPropagation();
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                saveExcelEdit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelExcelEdit();
+            }
+        }
+
+        async function saveExcelEdit() {
+            if (!isEditingInProgress || !editingCell) return;
+
+            const currentSessionId = editingSessionId;
+            const inputElement = editingCell.querySelector('input, select, textarea');
+            if (!inputElement) return;
+
+            let newValue = inputElement.value.trim();
+
+            if (editingField === 'status') {
+                newValue = parseInt(newValue);
+            } else if (editingField === 'deposit') {
+                newValue = parseInt(newValue) || 0;
+            } else if (editingField === 'phone') {
+                // Validate phone number
+                const phonePattern = /^[0-9\-\s\+\(\)]{9,15}$/;
+                if (!phonePattern.test(newValue)) {
+                    showAlert('รูปแบบเบอร์โทรไม่ถูกต้อง', 'error');
+                    cancelExcelEdit();
+                    return;
+                }
+            }
+            
+            if (newValue.toString() === originalValue.toString()) {
+                cancelExcelEdit();
+                return;
+            }
+
+            // Check for duplicate phone numbers
+            if (editingField === 'phone') {
+                const duplicate = await checkPhoneExists(newValue, editingCustomerId);
+                if (duplicate) {
+                    const confirmed = confirm('เบอร์โทรนี้มีในระบบแล้ว ต้องการดำเนินการต่อหรือไม่?');
+                    if (!confirmed) {
+                        cancelExcelEdit();
+                        return;
+                    }
+                }
+            }
+            
+            const updateData = {
+                [editingField]: newValue,
+                updated_at: getBangkokTime(),
+                updated_by: currentUser.id
+            };
+            
+            // Auto-note for status changes
+            if (editingField === 'status') {
+                const currentDate = new Date().toLocaleDateString('th-TH');
+                const statusDef = getStatusById(newValue);
+                const statusNote = `สถานะ: ${statusDef.name} / ${currentDate}`;
+                const customer = customers.find(c => c.id === editingCustomerId);
+                updateData.note = (customer.note || '') + `\n${statusNote}`;
+            }
+
+            try {
+                // Verify session is still active
+                if (currentSessionId !== editingSessionId) {
+                    showAlert('การแก้ไขถูกยกเลิกเนื่องจากมีการแก้ไขใหม่', 'warning');
+                    return;
+                }
+
+                const { error } = await supabase
+                    .from('customers')
+                    .update(updateData)
+                    .eq('id', editingCustomerId);
+
+                if (error) {
+                    console.error('Save error:', error);
+                    showAlert(`เกิดข้อผิดพลาด: ${error.message}`, 'error');
+                    cancelExcelEdit(); 
+                } else {
+                    // Log the change
+                    await logAuditTrail('UPDATE', editingCustomerId, editingField, originalValue, newValue);
+                    
+                    showAlert('บันทึกสำเร็จ!', 'success', 1500);
+                    loadCustomers();
+                    updateDashboard();
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showAlert('เกิดข้อผิดพลาดในการบันทึก', 'error');
+                cancelExcelEdit();
+            }
+            
+            resetExcelEditState();
+        }
+
+        function cancelExcelEdit() {
+            clearTimeout(editingTimeout);
+            resetExcelEditState();
+            loadCustomers();
+        }
+
+        function resetExcelEditState() {
+            if (editingCell) {
+                editingCell.classList.remove('editing');
+            }
+            editingCell = null;
+            originalValue = null;
+            editingCustomerId = null;
+            editingField = null;
+            isEditingInProgress = false;
+            editingSessionId = null;
+            clearTimeout(editingTimeout);
+        }
+
+        // Enhanced validation functions
+        async function checkPhoneExists(phone, excludeId = null) {
+            try {
+                let query = supabase
+                    .from('customers')
+                    .select('id, name')
+                    .eq('phone', phone)
+                    .eq('is_archived', false);
+                
+                if (excludeId) {
+                    query = query.neq('id', excludeId);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) {
+                    console.error('Phone check error:', error);
+                    return false;
+                }
+                
+                return data && data.length > 0 ? data[0] : false;
+            } catch (error) {
+                console.error('Phone check error:', error);
+                return false;
+            }
+        }
+
+        async function checkEmailExists(email, excludeId = null) {
+            try {
+                let query = supabase
+                    .from('profiles')
+                    .select('id, name')
+                    .eq('email', email);
+                
+                if (excludeId) {
+                    query = query.neq('id', excludeId);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) {
+                    console.error('Email check error:', error);
+                    return false;
+                }
+                
+                return data && data.length > 0;
+            } catch (error) {
+                console.error('Email check error:', error);
+                return false;
+            }
+        }
+
+        // Audit Trail Functions
+        async function logAuditTrail(action, recordId, field, oldValue, newValue, details = null) {
+            if (!currentUser || !currentProfile) return;
+            
+            try {
+                const auditData = {
+                    user_id: currentUser.id,
+                    user_name: currentProfile.name,
+                    action: action,
+                    table_name: 'customers',
+                    record_id: recordId,
+                    field_name: field,
+                    old_value: oldValue ? oldValue.toString() : null,
+                    new_value: newValue ? newValue.toString() : null,
+                    details: details,
+                    ip_address: await getClientIP()
+                };
+
+                const { error } = await supabase
+                    .from('audit_trail')
+                    .insert([auditData]);
+
+                if (error) {
+                    console.error('Audit trail error:', error);
+                }
+            } catch (error) {
+                console.error('Audit trail error:', error);
+            }
+        }
+
+        async function getClientIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                return 'unknown';
+            }
+        }
+
+        async function loadAuditTrail() {
+            if (!PERMISSIONS[currentProfile.role].canViewAuditTrail) {
+                document.getElementById('auditTrailContent').innerHTML = 
+                    '<div style="text-align: center; padding: 40px; color: #6c757d;">คุณไม่มีสิทธิ์เข้าถึงประวัติการเปลี่ยนแปลง</div>';
+                return;
+            }
+
+            const loadingEl = document.getElementById('auditTrailContent');
+            loadingEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">กำลังโหลดประวัติการเปลี่ยนแปลง...</div>';
+
+            const userFilter = document.getElementById('auditUserFilter').value;
+            const dateFrom = document.getElementById('auditDateFrom').value;
+            const dateTo = document.getElementById('auditDateTo').value;
+
+            try {
+                let query = supabase
+                    .from('audit_trail')
+                    .select('timestamp, user_name, action, table_name, field_name, old_value, new_value, details')
+                    .order('timestamp', { ascending: false })
+                    .limit(100);
+
+                if (userFilter) {
+                    query = query.eq('user_id', userFilter);
+                }
+                if (dateFrom) {
+                    query = query.gte('timestamp', dateFrom + 'T00:00:00Z');
+                }
+                if (dateTo) {
+                    query = query.lte('timestamp', dateTo + 'T23:59:59Z');
+                }
+
+                const { data, error } = await query;
+
+                if (error) {
+                    console.error('Load audit trail error:', error);
+                    loadingEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc3545;">เกิดข้อผิดพลาดในการโหลดประวัติการเปลี่ยนแปลง</div>';
+                    return;
+                }
+
+                renderAuditTrail(data || []);
+            } catch (error) {
+                console.error('Load audit trail error:', error);
+                loadingEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc3545;">เกิดข้อผิดพลาดในการโหลดประวัติการเปลี่ยนแปลง</div>';
+            }
+        }
+
+        function renderAuditTrail(data) {
+            const container = document.getElementById('auditTrailContent');
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">ไม่มีประวัติการเปลี่ยนแปลง</div>';
+                return;
+            }
+
+            let html = `
+                <div class="table-responsive">
+                <table class="styled-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>วันที่-เวลา</th>
+                            <th>ผู้ใช้</th>
+                            <th>การกระทำ</th>
+                            <th>ข้อมูลที่เปลี่ยน</th>
+                            <th>ค่าเดิม</th>
+                            <th>ค่าใหม่</th>
+                            <th>รายละเอียด</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            data.forEach(entry => {
+                const timestamp = new Date(entry.timestamp).toLocaleString('th-TH');
+                html += `
+                    <tr>
+                        <td>${timestamp}</td>
+                        <td>${escapeHtml(entry.user_name)}</td>
+                        <td><span style="color: ${entry.action === 'UPDATE' ? '#dc3545' : '#28a745'}; font-weight: 600;">${entry.action}</span></td>
+                        <td>${escapeHtml(entry.table_name)} - ${escapeHtml(entry.field_name || '-')}</td>
+                        <td>${escapeHtml(entry.old_value || '-')}</td>
+                        <td>${escapeHtml(entry.new_value || '-')}</td>
+                        <td>${escapeHtml(entry.details || '-')}</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
 
         // Supabase Initialization
         async function initializeSupabase() {
@@ -993,171 +1840,7 @@
             }
         }
 
-        function generateCustomerCode() {
-            const date = new Date();
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const randomNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-            return `BC${year}${month}${day}-${randomNum}`;
-        }
-
-        // Cell Editing Functions
-        function startExcelEdit(cell, customerId, fieldIndex) {
-            if (isEditingInProgress) {
-                saveExcelEdit();
-                return;
-            }
-
-            const fieldConfig = EDITABLE_FIELDS[fieldIndex];
-            if (!fieldConfig) return;
-
-            editingCell = cell;
-            editingCustomerId = customerId;
-            editingField = fieldConfig.field;
-            isEditingInProgress = true;
-            
-            originalValue = cell.textContent.trim();
-            
-            if (fieldConfig.field === 'status') {
-                const customer = customers.find(c => c.id === customerId);
-                originalValue = customer ? customer.status : '';
-            }
-            if(fieldConfig.field === 'deposit') {
-                 originalValue = originalValue.replace(/,/g, '');
-            }
-
-            cell.classList.add('editing');
-            
-            let inputElement;
-            
-            if (fieldConfig.type === 'select') {
-                inputElement = document.createElement('select');
-                inputElement.className = 'form-select';
-                
-                if (fieldConfig.options === 'status_list') {
-                    customerStatuses.forEach(status => {
-                        const option = document.createElement('option');
-                        option.value = status.id;
-                        option.textContent = status.name;
-                        option.selected = status.id == originalValue;
-                        inputElement.appendChild(option);
-                    });
-                } else {
-                    fieldConfig.options.forEach(optText => {
-                        const option = document.createElement('option');
-                        option.value = optText;
-                        option.textContent = optText;
-                        option.selected = optText === originalValue;
-                        inputElement.appendChild(option);
-                    });
-                }
-            } else if (fieldConfig.type === 'textarea') {
-                inputElement = document.createElement('textarea');
-                inputElement.className = 'form-input';
-                inputElement.style.height = '60px';
-                inputElement.style.resize = 'vertical';
-            } else {
-                inputElement = document.createElement('input');
-                inputElement.type = fieldConfig.type;
-                inputElement.className = 'form-input';
-            }
-            
-            if (fieldConfig.type !== 'select') {
-                inputElement.value = originalValue;
-            }
-            
-            inputElement.addEventListener('blur', saveExcelEdit);
-            inputElement.addEventListener('keydown', (e) => {
-                e.stopPropagation();
-                if (e.key === 'Enter' && fieldConfig.type !== 'textarea') {
-                    e.preventDefault();
-                    saveExcelEdit();
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    cancelExcelEdit();
-                }
-            });
-
-            cell.innerHTML = '';
-            cell.appendChild(inputElement);
-            inputElement.focus();
-        }
-
-        async function saveExcelEdit() {
-            if (!isEditingInProgress) return;
-
-            const inputElement = editingCell.querySelector('input, select, textarea');
-            if (!inputElement) return;
-
-            let newValue = inputElement.value.trim();
-
-            if (editingField === 'status') {
-                newValue = parseInt(newValue);
-            } else if (editingField === 'deposit') {
-                newValue = parseInt(newValue) || 0;
-            }
-            
-            if (newValue.toString() === originalValue.toString()) {
-                cancelExcelEdit();
-                return;
-            }
-            
-            const updateData = {
-                [editingField]: newValue,
-                updated_at: new Date().toISOString(),
-                updated_by: currentUser.id
-            };
-            
-            // Auto-note for status changes
-            if (editingField === 'status') {
-                const currentDate = new Date().toLocaleDateString('th-TH');
-                const statusDef = getStatusById(newValue);
-                const statusNote = `สถานะ: ${statusDef.name} / ${currentDate}`;
-                const customer = customers.find(c => c.id === editingCustomerId);
-                updateData.note = (customer.note || '') + `\n${statusNote}`;
-            }
-
-            try {
-                const { error } = await supabase
-                    .from('customers')
-                    .update(updateData)
-                    .eq('id', editingCustomerId);
-
-                if (error) {
-                    showAlert(`เกิดข้อผิดพลาด: ${error.message}`, 'error');
-                    cancelExcelEdit(); 
-                } else {
-                    showAlert('บันทึกสำเร็จ!', 'success', 1500);
-                    loadCustomers();
-                    updateDashboard();
-                }
-            } catch (error) {
-                console.error('Save error:', error);
-                showAlert('เกิดข้อผิดพลาดในการบันทึก', 'error');
-                cancelExcelEdit();
-            }
-            
-            resetExcelEditState();
-        }
-
-        function cancelExcelEdit() {
-            resetExcelEditState();
-            loadCustomers();
-        }
-
-        function resetExcelEditState() {
-            if (editingCell) {
-                editingCell.classList.remove('editing');
-            }
-            editingCell = null;
-            originalValue = null;
-            editingCustomerId = null;
-            editingField = null;
-            isEditingInProgress = false;
-        }
-
-        // Authentication Functions
+        // Enhanced Authentication Functions
         async function signUp() {
             const email = document.getElementById('signupEmail').value.trim();
             const name = document.getElementById('signupName').value.trim();
@@ -1165,13 +1848,32 @@
             const role = document.getElementById('signupRole').value;
             const salesCode = document.getElementById('signupSalesCode').value;
 
-            if (!email || !name || !password || !role) {
-                showAlert('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
-                return;
+            // Clear previous errors
+            clearFormErrors();
+
+            let hasErrors = false;
+
+            if (!email || !isValidEmail(email)) {
+                showFieldError('emailError', 'กรุณาใส่อีเมลที่ถูกต้อง');
+                hasErrors = true;
             }
 
-            if (password.length < 6) {
-                showAlert('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
+            if (!name || name.length < 2) {
+                showFieldError('nameError', 'กรุณาใส่ชื่อที่มีอย่างน้อย 2 ตัวอักษร');
+                hasErrors = true;
+            }
+
+            if (!password || password.length < 6) {
+                showFieldError('passwordError', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+                hasErrors = true;
+            }
+
+            if (hasErrors) return;
+
+            // Check for existing email
+            const emailExists = await checkEmailExists(email);
+            if (emailExists) {
+                showFieldError('emailError', 'อีเมลนี้มีในระบบแล้ว');
                 return;
             }
 
@@ -1194,6 +1896,8 @@
                     return;
                 }
 
+                await logAuditTrail('CREATE_USER', data.user.id, 'user_registration', null, email, `New user: ${name}, Role: ${role}`);
+                
                 showAlert('สร้างบัญชีสำเร็จ!', 'success');
                 showSignIn();
             } catch (error) {
@@ -1224,6 +1928,7 @@
                 }
 
                 await loadUserProfile();
+                await logAuditTrail('LOGIN', currentUser.id, 'user_login', null, email, 'User logged in');
                 showMainApp();
             } catch (error) {
                 console.error('Signin error:', error);
@@ -1233,6 +1938,10 @@
 
         async function signOut() {
             try {
+                if (currentUser) {
+                    await logAuditTrail('LOGOUT', currentUser.id, 'user_logout', null, currentUser.email, 'User logged out');
+                }
+                
                 await supabase.auth.signOut();
                 currentUser = null;
                 currentProfile = null;
@@ -1279,7 +1988,10 @@
                 
                 await supabase
                     .from('profiles')
-                    .update({ last_login: new Date().toISOString() })
+                    .update({ 
+                        last_login: getBangkokTime(),
+                        last_ip: await getClientIP()
+                    })
                     .eq('id', currentUser.id);
                     
             } catch (error) {
@@ -1291,6 +2003,7 @@
         function showSignUp() {
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('signupForm').style.display = 'block';
+            clearFormErrors();
         }
 
         function showSignIn() {
@@ -1309,6 +2022,7 @@
                 setupUserInterface();
                 loadCustomers();
                 updateDashboard();
+                loadAuditUsers();
             }
         }
 
@@ -1382,31 +2096,44 @@
             document.getElementById('quickActionButtons').appendChild(button);
         }
 
-        // Lead Submission
+        // Enhanced Lead Submission with Rate Limiting
         async function submitLead(event) {
             event.preventDefault();
 
+            // Rate limiting
+            const now = Date.now();
+            if (now - lastSubmitTime < 3000) {
+                showAlert('กรุณารอสักครู่ก่อนส่งข้อมูลใหม่', 'warning');
+                return;
+            }
+            lastSubmitTime = now;
+
+            // Clear previous errors
+            clearFormErrors();
+
             const formData = {
-                customer_code: generateCustomerCode(),
+                customer_code: await generateCustomerCode(),
                 date: document.getElementById('leadDate').value,
                 time: document.getElementById('leadTime').value,
-                name: document.getElementById('customerName').value.trim(),
-                phone: document.getElementById('customerPhone').value.trim(),
+                name: sanitizeInput(document.getElementById('customerName').value.trim()),
+                phone: sanitizeInput(document.getElementById('customerPhone').value.trim()),
                 channel: document.getElementById('leadChannel').value,
                 procedure_type: document.getElementById('procedureType').value,
                 sales_person: document.getElementById('salesPerson').value,
                 status: 1,
                 deposit: parseInt(document.getElementById('initialDeposit').value) || 0,
-                note: document.getElementById('leadNote').value.trim(),
+                note: sanitizeInput(document.getElementById('leadNote').value.trim()),
                 created_by: currentUser.id,
+                created_at: getBangkokTime(),
                 next_follow_up: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
             };
 
-            if (!validateForm(formData)) {
+            const validation = await validateLeadForm(formData);
+            if (!validation.isValid) {
                 return;
             }
 
-            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const submitBtn = document.getElementById('submitBtn');
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'กำลังบันทึก...';
@@ -1428,6 +2155,8 @@
                     return;
                 }
 
+                await logAuditTrail('CREATE', data[0].id, 'new_customer', null, formData.name, `New customer created: ${formData.name}`);
+
                 showAlert(`บันทึกข้อมูล "${formData.name}" สำเร็จ!`, 'success');
                 resetForm();
                 loadCustomers();
@@ -1443,37 +2172,87 @@
             }
         }
 
-        function validateForm(data) {
+        async function validateLeadForm(data) {
             let isValid = true;
 
             if (!data.name || data.name.length < 2) {
-                showAlert('กรุณาใส่ชื่อที่ถูกต้อง', 'error');
+                showFieldError('nameError', 'กรุณาใส่ชื่อที่ถูกต้อง');
                 isValid = false;
             }
 
             const phonePattern = /^[0-9\-\s\+\(\)]{9,15}$/;
             if (!phonePattern.test(data.phone)) {
-                showAlert('กรุณาใส่เบอร์ที่ถูกต้อง', 'error');
+                showFieldError('phoneError', 'กรุณาใส่เบอร์ที่ถูกต้อง');
                 isValid = false;
+            } else {
+                // Check for duplicate phone
+                const duplicate = await checkPhoneExists(data.phone);
+                if (duplicate) {
+                    showFieldError('phoneError', `เบอร์นี้ใช้โดย: ${duplicate.name}`);
+                    isValid = false;
+                }
             }
 
             if (!data.date || new Date(data.date) > new Date()) {
-                showAlert('วันที่ไม่ถูกต้องหรือเป็นอนาคต', 'error');
+                showFieldError('dateError', 'วันที่ไม่ถูกต้องหรือเป็นอนาคต');
                 isValid = false;
             }
 
-            return isValid;
+            return { isValid, data };
         }
 
-        // Customer Loading and Rendering
-        async function loadCustomers() {
+        function showFieldError(fieldId, message) {
+            const errorElement = document.getElementById(fieldId);
+            const inputElement = errorElement.previousElementSibling;
+            
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+            }
+            
+            if (inputElement) {
+                inputElement.classList.add('error');
+            }
+        }
+
+        function clearFormErrors() {
+            const errorElements = document.querySelectorAll('.form-error');
+            const inputElements = document.querySelectorAll('.form-input.error, .form-select.error');
+            
+            errorElements.forEach(el => {
+                el.textContent = '';
+                el.style.display = 'none';
+            });
+            
+            inputElements.forEach(el => {
+                el.classList.remove('error');
+            });
+        }
+
+        function isValidEmail(email) {
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailPattern.test(email);
+        }
+
+        // Enhanced Customer Loading with Pagination
+        async function loadCustomers(page = 1) {
             if (!currentProfile) return;
+            
+            currentPage = page;
+            const offset = (page - 1) * pageSize;
+            
             const loadingEl = document.getElementById('customersLoading');
             if(loadingEl) loadingEl.style.display = 'block';
             
             try {
-                let query = supabase.from('customers').select('*').eq('is_archived', false).order('created_at', { ascending: false });
+                let query = supabase
+                    .from('customers')
+                    .select('*', { count: 'exact' })
+                    .eq('is_archived', false)
+                    .order('created_at', { ascending: false })
+                    .range(offset, offset + pageSize - 1);
 
+                // Apply permissions filter
                 if (!PERMISSIONS[currentProfile.role].canViewAll) {
                     if (currentProfile.role === 'Admin') {
                         query = query.or(`status.eq.1,sales_person.eq.${currentProfile.sales_code || 'none'}`);
@@ -1482,6 +2261,13 @@
                     }
                 }
 
+                // Apply search filter
+                const searchTerm = document.getElementById('searchCustomer')?.value.trim();
+                if (searchTerm) {
+                    query = query.or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,customer_code.ilike.%${searchTerm}%`);
+                }
+
+                // Apply other filters
                 const salesFilter = document.getElementById('filterSales')?.value;
                 if (salesFilter) {
                     query = query.eq('sales_person', salesFilter);
@@ -1492,7 +2278,22 @@
                     query = query.eq('status', parseInt(statusFilter));
                 }
 
-                const { data, error } = await query;
+                const channelFilter = document.getElementById('filterChannel')?.value;
+                if (channelFilter) {
+                    query = query.eq('channel', channelFilter);
+                }
+
+                const dateFrom = document.getElementById('filterDateFrom')?.value;
+                if (dateFrom) {
+                    query = query.gte('date', dateFrom);
+                }
+
+                const dateTo = document.getElementById('filterDateTo')?.value;
+                if (dateTo) {
+                    query = query.lte('date', dateTo);
+                }
+
+                const { data, error, count } = await query;
 
                 if (error) {
                     console.error('Load customers error:', error);
@@ -1501,13 +2302,33 @@
                 }
 
                 customers = data || [];
+                totalRecords = count || 0;
+                totalPages = Math.ceil(totalRecords / pageSize);
+                
                 renderModernTable(customers);
+                updatePaginationControls();
             } catch (error) {
                 console.error('Load customers error:', error);
                 showAlert('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
             } finally {
                  if(loadingEl) loadingEl.style.display = 'none';
             }
+        }
+
+        function updatePaginationControls() {
+            document.getElementById('currentPageSpan').textContent = currentPage;
+            document.getElementById('totalPagesSpan').textContent = totalPages;
+            document.getElementById('totalRecordsSpan').textContent = totalRecords;
+
+            document.getElementById('firstPage').disabled = currentPage === 1;
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages;
+            document.getElementById('lastPage').disabled = currentPage === totalPages;
+        }
+
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            loadCustomers(page);
         }
 
         function renderModernTable(data) {
@@ -1559,7 +2380,7 @@
                 tableBody.appendChild(row);
             });
         }
-        
+
         function toggleDetails(customerId, rowElement) {
             // Remove any other open detail rows first
             const allDetailRows = document.querySelectorAll('.detail-row');
@@ -1574,7 +2395,6 @@
                     row.classList.remove('active-row');
                  }
             });
-
 
             const existingDetail = document.getElementById('detail-' + customerId);
             if (existingDetail) {
@@ -1591,7 +2411,7 @@
             detailRow.className = 'detail-row';
             
             const detailCell = document.createElement('td');
-            detailCell.colSpan = "9"; // Adjusted to match the new column count
+            detailCell.colSpan = "9";
             detailCell.style.cssText = `
                 background: #fdf5f6; 
                 padding: 15px 25px; 
@@ -1600,16 +2420,54 @@
             `;
             
             detailCell.innerHTML = `
-                <strong style="color: #dc3545;">หมายเหตุทั้งหมด:</strong><br>
-                <pre style="font-family: inherit; margin: 0; white-space: pre-wrap; color: #495057;">${escapeHtml(customer.note || 'ไม่มีหมายเหตุ')}</pre>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div>
+                        <strong style="color: #dc3545;">ข้อมูลเพิ่มเติม:</strong><br>
+                        <strong>ช่องทาง:</strong> ${escapeHtml(customer.channel || 'ไม่ระบุ')}<br>
+                        <strong>วันที่สร้าง:</strong> ${new Date(customer.created_at).toLocaleDateString('th-TH')}<br>
+                        <strong>อัปเดตล่าสุด:</strong> ${customer.updated_at ? new Date(customer.updated_at).toLocaleDateString('th-TH') : 'ไม่มี'}<br>
+                        <strong>ติดตามครั้งถัดไป:</strong> ${customer.next_follow_up || 'ไม่ได้กำหนด'}
+                    </div>
+                    <div>
+                        <strong style="color: #dc3545;">หมายเหตุทั้งหมด:</strong><br>
+                        <pre style="font-family: inherit; margin: 0; white-space: pre-wrap; color: #495057; max-height: 100px; overflow-y: auto;">${escapeHtml(customer.note || 'ไม่มีหมายเหตุ')}</pre>
+                    </div>
+                </div>
             `;
             
             detailRow.appendChild(detailCell);
-            
             rowElement.after(detailRow);
             rowElement.classList.add('active-row');
         }
 
+        // Enhanced Search Functions
+        function searchCustomers() {
+            loadCustomers(1); // Reset to first page when searching
+        }
+
+        function toggleSearchFilters() {
+            const filters = document.getElementById('searchFilters');
+            const filterGrid = document.getElementById('filterGrid');
+            const isCollapsed = filters.classList.contains('collapsed');
+            
+            if (isCollapsed) {
+                filters.classList.remove('collapsed');
+                filterGrid.style.display = 'grid';
+            } else {
+                filters.classList.add('collapsed');
+                filterGrid.style.display = 'none';
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('searchCustomer').value = '';
+            document.getElementById('filterSales').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterChannel').value = '';
+            document.getElementById('filterDateFrom').value = '';
+            document.getElementById('filterDateTo').value = '';
+            loadCustomers(1);
+        }
 
         // Customer Management Functions
         async function archiveCustomer(customerId) {
@@ -1621,11 +2479,13 @@
             if (!reason) return;
 
             try {
+                const customer = customers.find(c => c.id === customerId);
+                
                 const { error } = await supabase
                     .from('customers')
                     .update({
                         is_archived: true,
-                        archived_at: new Date().toISOString(),
+                        archived_at: getBangkokTime(),
                         archived_by: currentUser.id,
                         archive_reason: reason
                     })
@@ -1636,6 +2496,8 @@
                     showAlert('ไม่สามารถเก็บข้อมูลได้', 'error');
                     return;
                 }
+
+                await logAuditTrail('ARCHIVE', customerId, 'customer_archived', customer.name, 'archived', reason);
 
                 showAlert('เก็บข้อมูลสำเร็จ', 'success');
                 loadCustomers();
@@ -1651,7 +2513,15 @@
                 return;
             }
 
+            const finalConfirm = prompt('กรุณาพิมพ์ "DELETE" เพื่อยืนยันการลบ:');
+            if (finalConfirm !== 'DELETE') {
+                showAlert('การลบถูกยกเลิก', 'warning');
+                return;
+            }
+
             try {
+                const customer = customers.find(c => c.id === customerId);
+                
                 const { error } = await supabase
                     .from('customers')
                     .delete()
@@ -1662,6 +2532,8 @@
                     showAlert('ไม่สามารถลบข้อมูลได้', 'error');
                     return;
                 }
+
+                await logAuditTrail('DELETE', customerId, 'customer_deleted', customer.name, 'deleted', 'Customer permanently deleted');
 
                 showAlert('ลบข้อมูลสำเร็จ', 'success');
                 loadCustomers();
@@ -1727,7 +2599,7 @@
                 }
 
                 const oldSales = customer.sales_person;
-                const assignRecord = `\n[${new Date().toLocaleDateString()}] จ่ายงานจาก ${oldSales} ไปยัง ${newSales} โดย ${currentProfile.name}`;
+                const assignRecord = `\n[${new Date().toLocaleDateString('th-TH')}] จ่ายงานจาก ${oldSales} ไปยัง ${newSales} โดย ${currentProfile.name}`;
                 const updateNote = assignNote ? assignRecord + ` - หมายเหตุ: ${assignNote}` : assignRecord;
 
                 const { error } = await supabase
@@ -1735,7 +2607,7 @@
                     .update({
                         sales_person: newSales,
                         note: (customer.note || '') + updateNote,
-                        updated_at: new Date().toISOString(),
+                        updated_at: getBangkokTime(),
                         updated_by: currentUser.id
                     })
                     .eq('id', currentAssignCustomerId);
@@ -1745,6 +2617,8 @@
                     showAlert('เกิดข้อผิดพลาดในการจ่ายงาน', 'error');
                     return;
                 }
+
+                await logAuditTrail('ASSIGN', currentAssignCustomerId, 'sales_person', oldSales, newSales, assignNote);
 
                 showAlert(`จ่ายงาน "${customer.name}" จาก ${oldSales} ไปยัง ${newSales} สำเร็จ!`, 'success');
                 closeAssignModal();
@@ -1766,16 +2640,34 @@
                 const { count: totalCount, error: totalErr } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('is_archived', false);
                 const { count: todayCount, error: todayErr } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('date', today);
                 const { count: overdueCount, error: overdueErr } = await supabase.from('customers').select('*', { count: 'exact', head: true }).lt('created_at', new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()).neq('status', 5).eq('is_archived', false);
-                const { data: salesData, error: salesErr } = await supabase.from('customers').select('total_amount, status').gte('created_at', firstDayOfMonth).eq('is_archived', false);
-
-                if (totalErr || todayErr || overdueErr || salesErr) {
-                    console.error('Dashboard query errors:', { totalErr, todayErr, overdueErr, salesErr });
+                
+                const { data: salesData, error: salesErr } = await supabase
+                    .from('sales_analytics')
+                    .select('*')
+                    .eq('sales_person', currentProfile.sales_code);
+                
+                if (totalErr || todayErr || overdueErr) {
+                    console.error('Dashboard query errors:', { totalErr, todayErr, overdueErr });
                     return;
                 }
+                
+                // Fetch monthly data for the current month
+                const { data: monthlyData, error: monthlyErr } = await supabase
+                    .from('monthly_performance')
+                    .select('revenue, leads, sales')
+                    .eq('sales_person', currentProfile.sales_code)
+                    .eq('month', firstDayOfMonth);
 
-                const monthlyRevenue = salesData.reduce((sum, deal) => sum + (deal.status === 5 ? deal.total_amount : 0), 0);
-                const closedDealsThisMonth = salesData.filter(d => d.status === 5).length;
-                const totalLeadsThisMonth = salesData.length;
+                let monthlyRevenue = 0;
+                let closedDealsThisMonth = 0;
+                let totalLeadsThisMonth = 0;
+
+                if (monthlyData && monthlyData.length > 0) {
+                    monthlyRevenue = monthlyData[0].revenue;
+                    closedDealsThisMonth = monthlyData[0].sales;
+                    totalLeadsThisMonth = monthlyData[0].leads;
+                }
+
                 const conversionRate = totalLeadsThisMonth > 0 ? Math.round((closedDealsThisMonth / totalLeadsThisMonth) * 100) : 0;
 
                 const elements = {
@@ -1816,9 +2708,13 @@
         }
 
         function formatCurrency(amount) {
-            if (amount >= 1000000) return (amount / 1000000).toFixed(1) + 'M';
-            if (amount >= 1000) return (amount / 1000).toFixed(0) + 'K';
-            return amount.toLocaleString();
+            if (amount === undefined || amount === null) return '0';
+            const num = parseFloat(amount);
+            if (isNaN(num)) return amount;
+            
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
+            return num.toLocaleString();
         }
 
         function updateRecentActivity() {
@@ -1867,7 +2763,8 @@
                 'add-lead': 'เพิ่มลีด',
                 'reports': 'รายงาน',
                 'my-work': 'งานของฉัน',
-                'alerts': 'แจ้งเตือน'
+                'alerts': 'แจ้งเตือน',
+                'audit': 'ประวัติการเปลี่ยนแปลง'
             };
             
             const clickedTab = Array.from(tabs).find(tab => 
@@ -1880,17 +2777,7 @@
             if (tabName === 'my-work') loadMyWork();
             if (tabName === 'reports') loadReports();
             if (tabName === 'alerts') loadAlerts();
-        }
-
-        function searchCustomers() {
-            const searchTerm = document.getElementById('searchCustomer').value.toLowerCase().trim();
-            const rows = document.querySelectorAll('#customerTableBody tr.customer-row');
-            
-            rows.forEach(row => {
-                const searchableText = row.textContent.toLowerCase();
-                const isMatch = searchableText.includes(searchTerm);
-                row.style.display = isMatch ? '' : 'none';
-            });
+            if (tabName === 'audit') loadAuditTrail();
         }
 
         async function loadMyWork() {
@@ -1935,68 +2822,172 @@
         async function loadReports() {
             if (!currentProfile) return;
             const reportEl = document.getElementById('reportContent');
+            const loadingEl = document.getElementById('reportContent');
+            loadingEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">กำลังโหลดรายงาน...</div>';
             
             if (!PERMISSIONS[currentProfile.role].canAccessReports) {
                 reportEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">คุณไม่มีสิทธิ์เข้าถึงรายงาน</div>';
                 return;
             }
             
-            if (customers.length === 0) {
-                reportEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">ยังไม่มีข้อมูลสำหรับรายงาน</div>';
-                return;
+            try {
+                const { data: salesAnalytics, error: salesErr } = await supabase.from('sales_analytics').select('*');
+                const { data: monthlyPerformance, error: monthlyErr } = await supabase.from('monthly_performance').select('*').order('month', { ascending: false });
+
+                if (salesErr || monthlyErr) {
+                    console.error('Report query error:', salesErr || monthlyErr);
+                    reportEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc3545;">เกิดข้อผิดพลาดในการโหลดรายงาน</div>';
+                    return;
+                }
+
+                if (!salesAnalytics || salesAnalytics.length === 0) {
+                    reportEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">ยังไม่มีข้อมูลสำหรับรายงาน</div>';
+                    return;
+                }
+                
+                const totalLeads = salesAnalytics.reduce((sum, sp) => sum + sp.total_leads, 0);
+                const totalClosed = salesAnalytics.reduce((sum, sp) => sum + sp.closed_deals, 0);
+                const totalRevenue = salesAnalytics.reduce((sum, sp) => sum + sp.total_revenue, 0);
+                const overallConversionRate = totalLeads > 0 ? Math.round((totalClosed / totalLeads) * 100) : 0;
+                
+                let salesReportHTML = `
+                    <h3 class="section-title">รายงานรวมตามเซลล์</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                `;
+                salesAnalytics.forEach(data => {
+                    const rate = data.total_leads > 0 ? Math.round((data.closed_deals / data.total_leads) * 100) : 0;
+                    salesReportHTML += `
+                        <div class="stat-card">
+                            <div style="font-weight: 600; color: #dc3545;">${escapeHtml(data.sales_person)}</div>
+                            <div>ลีด: ${data.total_leads}</div>
+                            <div>ปิดการขาย: ${data.closed_deals}</div>
+                            <div>อัตรา: ${rate}%</div>
+                            <div>รายได้: ${formatCurrency(data.total_revenue)} บาท</div>
+                        </div>
+                    `;
+                });
+                salesReportHTML += '</div>';
+
+                let monthlyReportHTML = `
+                    <h3 class="section-title" style="margin-top: 30px;">ผลงานรายเดือน</h3>
+                    <div class="table-responsive">
+                    <table class="styled-table">
+                        <thead>
+                            <tr>
+                                <th>เดือน</th>
+                                <th>เซลล์</th>
+                                <th>ลีด</th>
+                                <th>ปิดการขาย</th>
+                                <th>ยอดขาย (บาท)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                monthlyPerformance.forEach(data => {
+                    monthlyReportHTML += `
+                        <tr>
+                            <td>${new Date(data.month).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' })}</td>
+                            <td>${escapeHtml(data.sales_person)}</td>
+                            <td>${data.leads}</td>
+                            <td>${data.sales}</td>
+                            <td>${data.revenue.toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+                monthlyReportHTML += '</tbody></table></div>';
+                
+                reportEl.innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div>ลีดรวมทั้งหมด</div>
+                            <div class="stat-value">${totalLeads}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div>ปิดการขายสำเร็จ</div>
+                            <div class="stat-value">${totalClosed}</div>
+                            <div style="color: #28a745;">อัตรา ${overallConversionRate}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div>ยอดขายรวมทั้งหมด</div>
+                            <div class="stat-value">${formatCurrency(totalRevenue)}</div>
+                            <div style="color: #dc3545;">บาท</div>
+                        </div>
+                    </div>
+                    ${salesReportHTML}
+                    ${monthlyReportHTML}
+                `;
+            } catch (error) {
+                console.error('Load reports error:', error);
+                reportEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc3545;">เกิดข้อผิดพลาดในการโหลดรายงาน</div>';
             }
-            
-            const totalLeads = customers.length;
-            const closedDeals = customers.filter(c => c.status === 5).length;
-            const totalRevenue = customers.reduce((sum, c) => sum + (c.total_amount || 0), 0);
-            const conversionRate = totalLeads > 0 ? Math.round((closedDeals / totalLeads) * 100) : 0;
-            
-            reportEl.innerHTML = `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div>ลีดรวม</div>
-                        <div class="stat-value">${totalLeads}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div>ปิดการขายสำเร็จ</div>
-                        <div class="stat-value">${closedDeals}</div>
-                        <div style="color: #28a745;">อัตรา ${conversionRate}%</div>
-                    </div>
-                    <div class="stat-card">
-                        <div>ยอดขายรวม</div>
-                        <div class="stat-value">${formatCurrency(totalRevenue)}</div>
-                        <div style="color: #dc3545;">บาท</div>
-                    </div>
-                </div>
-            `;
         }
 
         async function loadAlerts() {
             if (!currentProfile) return;
             const alertsEl = document.getElementById('alertsList');
-            
-            const overdueCustomers = customers.filter(customer => {
-                const daysOld = Math.floor((new Date() - new Date(customer.created_at)) / (1000 * 60 * 60 * 24));
-                return daysOld > 45 && customer.status !== 5 && !customer.is_archived;
-            });
-            
-            if (overdueCustomers.length === 0) {
-                alertsEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">ไม่มีการแจ้งเตือน - ทุกอย่างเป็นไปด้วยดี!</div>';
-                return;
+            const loadingEl = document.getElementById('alertsList');
+            loadingEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">กำลังโหลดการแจ้งเตือน...</div>';
+
+            try {
+                // Fetch overdue customers
+                const { data: overdueCustomers, error } = await supabase
+                    .from('customers')
+                    .select('*')
+                    .lt('created_at', new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString())
+                    .neq('status', 5)
+                    .eq('is_archived', false)
+                    .order('created_at', { ascending: true });
+
+                if (error) throw error;
+                
+                if (overdueCustomers.length === 0) {
+                    alertsEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">ไม่มีการแจ้งเตือน - ทุกอย่างเป็นไปด้วยดี!</div>';
+                    return;
+                }
+                
+                alertsEl.innerHTML = '<h3 style="color: #dc3545;">เกินกำหนดติดตาม (เกิน 45 วัน)</h3>' +
+                    overdueCustomers.map(customer => {
+                        const daysOld = Math.floor((new Date() - new Date(customer.created_at)) / (1000 * 60 * 60 * 24));
+                        return `
+                            <div style="background: #fff5f5; border-left: 4px solid #dc3545; padding: 15px; margin: 10px 0; border-radius: 4px;">
+                                <div style="font-weight: 600; color: #dc3545;">${escapeHtml(customer.name)} - ${escapeHtml(customer.procedure_type)}</div>
+                                <div style="font-size: 12px; color: #6c757d;">เบอร์: ${escapeHtml(customer.phone)} | เซลล์: ${escapeHtml(customer.sales_person)}</div>
+                                <div style="font-size: 12px; color: #dc3545; margin-top: 5px;">ค้าง ${daysOld} วัน</div>
+                                <button onclick="viewCustomer('${customer.id}')" class="btn-primary" style="margin-top: 10px; padding: 5px 10px; font-size: 12px;">ดูรายละเอียด</button>
+                            </div>
+                        `;
+                    }).join('');
+            } catch (error) {
+                console.error('Load alerts error:', error);
+                alertsEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc3545;">เกิดข้อผิดพลาดในการโหลดการแจ้งเตือน</div>';
             }
-            
-            alertsEl.innerHTML = '<h3 style="color: #dc3545;">เกินกำหนดติดตาม (เกิน 45 วัน)</h3>' +
-                overdueCustomers.map(customer => {
-                    const daysOld = Math.floor((new Date() - new Date(customer.created_at)) / (1000 * 60 * 60 * 24));
-                    return `
-                        <div style="background: #fff5f5; border-left: 4px solid #dc3545; padding: 15px; margin: 10px 0; border-radius: 4px;">
-                            <div style="font-weight: 600; color: #dc3545;">${escapeHtml(customer.name)} - ${escapeHtml(customer.procedure_type)}</div>
-                            <div style="font-size: 12px; color: #6c757d;">เบอร์: ${escapeHtml(customer.phone)} | เซลล์: ${escapeHtml(customer.sales_person)}</div>
-                            <div style="font-size: 12px; color: #dc3545; margin-top: 5px;">ค้าง ${daysOld} วัน</div>
-                            <button onclick="viewCustomer('${customer.id}')" class="btn-primary" style="margin-top: 10px; padding: 5px 10px; font-size: 12px;">ดูรายละเอียด</button>
-                        </div>
-                    `;
-                }).join('');
+        }
+
+        async function loadAuditUsers() {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('id, name')
+                    .order('name');
+
+                if (error) {
+                    console.error('Load audit users error:', error);
+                    return;
+                }
+
+                const userFilter = document.getElementById('auditUserFilter');
+                if (userFilter) {
+                    userFilter.innerHTML = '<option value="">ทั้งหมด</option>';
+                    data.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.name;
+                        userFilter.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Load audit users error:', error);
+            }
         }
 
         function viewCustomer(customerId) {
@@ -2032,11 +3023,13 @@
             if (!newDate) return;
             
             try {
+                const customer = customers.find(c => c.id === customerId);
+                
                 const { error } = await supabase
                     .from('customers')
                     .update({ 
                         next_follow_up: newDate,
-                        updated_at: new Date().toISOString(),
+                        updated_at: getBangkokTime(),
                         updated_by: currentUser.id
                     })
                     .eq('id', customerId);
@@ -2046,6 +3039,8 @@
                     showAlert('ไม่สามารถอัพเดทกำหนดการได้', 'error');
                     return;
                 }
+
+                await logAuditTrail('UPDATE', customerId, 'next_follow_up', customer.next_follow_up, newDate, 'Follow-up date updated');
 
                 showAlert('อัพเดทกำหนดการติดตามสำเร็จ', 'success');
                 loadMyWork();
@@ -2093,22 +3088,11 @@
 
         function resetForm() {
             document.getElementById('leadForm').reset();
+            clearFormErrors();
             
             const now = new Date();
             document.getElementById('leadDate').value = now.toISOString().split('T')[0];
             document.getElementById('leadTime').value = now.toTimeString().slice(0, 5);
-        }
-
-        function escapeHtml(text) {
-            if (text === null || text === undefined) return '';
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return String(text).replace(/[&<>"']/g, m => map[m]);
         }
 
         function showAlert(message, type = 'success', duration = 5000) {
@@ -2190,6 +3174,11 @@
                     closeAssignModal();
                 }
             });
+
+            // Online/Offline detection
+            window.addEventListener('online', showOfflineIndicator);
+            window.addEventListener('offline', showOfflineIndicator);
+            showOfflineIndicator();
         };
 
         // Advance status function for quick actions
@@ -2207,16 +3196,22 @@
             }
 
             try {
+                const customer = customers.find(c => c.id === customerId);
+                const oldStatus = getStatusById(currentStatusId);
+                const newStatus = getStatusById(nextStatusId);
+
                 const { error } = await supabase
                     .from('customers')
                     .update({ 
                         status: nextStatusId,
-                        updated_at: new Date().toISOString(),
+                        updated_at: getBangkokTime(),
                         updated_by: currentUser.id
                      })
                     .eq('id', customerId);
                 
                 if (error) throw error;
+
+                await logAuditTrail('UPDATE', customerId, 'status', oldStatus.name, newStatus.name, 'Status advanced');
 
                 showAlert('อัปเดตสถานะสำเร็จ!', 'success', 2000);
                 
