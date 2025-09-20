@@ -1800,24 +1800,35 @@
                     .select('*')
                     .order('display_order');
                 
-                if (error) {
-                    console.error('Load statuses error:', error);
+                if (error || !data || data.length === 0) {
+                    console.warn('Could not load statuses from Supabase. Using default fallback values.');
+                    // Fallback to default statuses if there's an error
                     customerStatuses = [
-                        { id: 1, name: 'สถานะ 1', color: '#007bff' },
-                        { id: 2, name: 'สถานะ 2', color: '#ffc107' },
-                        { id: 3, name: 'สถานะ 3', color: '#fd7e14' },
-                        { id: 4, name: 'สถานะ 4', color: '#fd7e14' },
-                        { id: 5, name: 'สถานะ 5', color: '#28a745' },
-                        { id: 6, name: 'สถานะ 6', color: '#dc3545' }
+                        { id: 1, name: 'ลีดใหม่', color: '#007bff' },
+                        { id: 2, name: 'ติดต่อแล้ว', color: '#ffc107' },
+                        { id: 3, name: 'สนใจ/นัดหมาย', color: '#fd7e14' },
+                        { id: 4, name: 'กำลังเจรจา', color: '#fd7e14' },
+                        { id: 5, name: 'ปิดการขาย', color: '#28a745' },
+                        { id: 6, name: 'ไม่สนใจ/ยกเลิก', color: '#dc3545' }
                     ];
                 } else {
-                    customerStatuses = data || [];
+                    customerStatuses = data;
                 }
                 
                 updateStatusFilter();
                 console.log('Loaded customer statuses:', customerStatuses);
             } catch (error) {
                 console.error('Error loading customer statuses:', error);
+                // Fallback to default statuses if there's an error
+                customerStatuses = [
+                    { id: 1, name: 'ลีดใหม่', color: '#007bff' },
+                    { id: 2, name: 'ติดต่อแล้ว', color: '#ffc107' },
+                    { id: 3, name: 'สนใจ/นัดหมาย', color: '#fd7e14' },
+                    { id: 4, name: 'กำลังเจรจา', color: '#fd7e14' },
+                    { id: 5, name: 'ปิดการขาย', color: '#28a745' },
+                    { id: 6, name: 'ไม่สนใจ/ยกเลิก', color: '#dc3545' }
+                ];
+                updateStatusFilter();
             }
         }
 
@@ -1931,17 +1942,14 @@
                     return;
                 }
                 
-                // --- แก้ไขโค้ดส่วนนี้เพื่อป้องกัน Error ---
                 if (data && data.user) {
                     currentUser = data.user;
                     await loadUserProfile();
                     await logAuditTrail('LOGIN', currentUser.id, 'user_login', null, email, 'User logged in');
                     showMainApp();
                 } else {
-                    // กรณีที่การลงชื่อเข้าใช้ไม่สำเร็จ
                     showAlert('การลงชื่อเข้าใช้ล้มเหลว', 'error');
                 }
-                // --- สิ้นสุดการแก้ไข ---
             } catch (error) {
                 console.error('Signin error:', error);
                 showAlert('เกิดข้อผิดพลาดในการเข้าสู่ระบบ', 'error');
@@ -1980,22 +1988,18 @@
                 await loadUserProfile();
                 showMainApp();
             } else {
-                // --- แก้ไขโค้ดส่วนนี้เพื่อป้องกัน Error ---
                 document.getElementById('mainContainer').style.display = 'none';
                 document.getElementById('loginContainer').style.display = 'flex';
-                // --- สิ้นสุดการแก้ไข ---
             }
         }
 
         async function loadUserProfile() {
-            // --- แก้ไขโค้ดส่วนนี้เพื่อป้องกัน Error ---
             if (!currentUser || !currentUser.id) {
                 console.error('Profile load error: No current user or user ID found.');
                 showAlert('ไม่สามารถโหลดโปรไฟล์ได้ กรุณาลองเข้าสู่ระบบใหม่', 'error');
-                signOut(); // ให้ผู้ใช้ล็อกเอาท์เพื่อเริ่มใหม่
+                signOut();
                 return;
             }
-            // --- สิ้นสุดการแก้ไข ---
 
             try {
                 const { data, error } = await supabase
@@ -2012,7 +2016,6 @@
 
                 currentProfile = data;
                 
-                // --- แก้ไขโค้ดส่วนนี้เพื่อป้องกัน Error ---
                 if (currentProfile) {
                     await supabase
                         .from('profiles')
@@ -2022,7 +2025,6 @@
                         })
                         .eq('id', currentUser.id);
                 }
-                // --- สิ้นสุดการแก้ไข ---
                     
             } catch (error) {
                 console.error('Profile load error:', error);
@@ -3268,5 +3270,3 @@
     </script>
 </body>
 </html>
-
-
