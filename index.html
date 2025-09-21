@@ -167,82 +167,12 @@
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 
     <script>
-        // --- การตั้งค่า SUPABASE ---
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // <-- ใส่ URL ของคุณ
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // <-- ใส่ Key ของคุณ
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // --- การตั้งค่า AG GRID ---
-
-        // (เหมือนเดิม) กำหนดคอลัมน์เหมือนใน Excel
-        const columnDefs = [
-            // Part 1: Admin Columns (A-K)
-            { headerName: "วัน/เดือน/ปี", field: "lead_date", editable: true, cellEditor: 'agDateCellEditor', width: 120 },
-            { headerName: "ชื่อลูกค้า", field: "customer_name", editable: true, width: 180 },
-            { headerName: "เบอร์ติดต่อ", field: "contact_info", editable: true, width: 150 },
-            { headerName: "ช่องทาง", field: "channel", editable: true, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['Facebook', 'Line', 'Website', 'Fbc By หมอธีร์'] }, width: 150 },
-            { headerName: "ประเภทหัตถการ", field: "procedure_type", editable: true, width: 150},
-            
-            // ... เพิ่มคอลัมน์ A-K ที่เหลือตามต้องการ ...
-
-            // Part 2: Sales Columns (L-V)
-            { headerName: "Last Status", field: "last_status_update", editable: true, width: 120 },
-            { headerName: "Status 1 ADMIN", field: "admin_status_note", editable: true, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: ['สเตตัส 1', 'สเตตัส 2', 'สเตตัส 3', 'ปิดการขาย', 'สอบถามข้อมูล'] }, width: 180 },
-            { headerName: "ยอดที่ปิดได้", field: "closed_deal_amount", editable: true, width: 150, valueFormatter: params => params.value ? `฿${Number(params.value).toLocaleString()}` : '' },
-            
-            // ... เพิ่มคอลัมน์ L-V ที่เหลือตามต้องการ ...
-        ];
-
-        // Grid Options: ตั้งค่าหลักของ Grid
-        const gridOptions = {
-            columnDefs: columnDefs,
-            rowData: [],
-            defaultColDef: {
-                sortable: true,
-                filter: true,
-                resizable: true,
-                editable: false, // ปิดการแก้ไขเป็น default (เราเปิดเป็นรายคอลัมน์)
-                floatingFilter: true, // เปิด Filter ใต้ Header
-            },
-            onCellValueChanged: onCellValueChanged,
-        };
-
-        // --- การเชื่อมต่อกับ SUPABASE ---
-        
-        // โหลดข้อมูลจาก Supabase
-        async function loadLeads() {
-            const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-            if (error) {
-                console.error('Error loading leads:', error);
-            } else {
-                gridOptions.api.setRowData(data);
-                // (Optional) คำนวณค่าใน Dashboard Header ที่นี่
-            }
-        }
-
-        // อัปเดตข้อมูลกลับไปที่ Supabase
-        async function onCellValueChanged(event) {
-            const { data, colDef, newValue } = event;
-            const updatedField = colDef.field;
-            const { error } = await supabase.from('leads').update({ [updatedField]: newValue }).eq('id', data.id);
-            if (error) console.error('Error updating cell:', error);
-        }
-
-        // --- เริ่มต้นการทำงาน ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const gridDiv = document.querySelector('#myGrid');
-            new agGrid.Grid(gridDiv, gridOptions);
-
-            // ทำให้ช่องค้นหาทำงาน
-            const quickFilterInput = document.getElementById('quickFilter');
-            quickFilterInput.addEventListener('input', () => {
-                gridOptions.api.setQuickFilter(quickFilterInput.value);
-            });
-
-            // โหลดข้อมูลครั้งแรก
-            loadLeads();
-        });
-
-    </script>
+    // --- การตั้งค่า SUPABASE ---
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // ... (โค้ดส่วนที่เหลือทั้งหมด) ...
+</script>
 </body>
 </html>
+
