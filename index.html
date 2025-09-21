@@ -59,113 +59,115 @@
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 
     <script>
-        // --- 1. CONFIGURATION (ส่วนที่ต้องแก้ไข) ---
-        const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co'; // <-- ใส่ URL ของคุณที่นี่
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM'; // <-- ใส่ Key ของคุณที่นี่
+    // --- 1. CONFIGURATION (ส่วนที่ต้องแก้ไข) ---
+    const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co'; // <-- ใส่ URL ของคุณที่นี่
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM'; // <-- ใส่ Key ของคุณที่นี่
 
-        // --- 2. INITIALIZATION (ห้ามแก้ไขส่วนนี้) ---
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // --- 2. INITIALIZATION (แก้ไขแล้ว) ---
+    // ใช้ global 'supabase' จาก library เพื่อสร้าง client ของเราในชื่อใหม่ 'supabaseClient'
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // DOM Elements
+    const loginContainer = document.getElementById('loginContainer');
+    const mainContainer = document.getElementById('mainContainer');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const loginError = document.getElementById('loginError');
+    const quickFilterInput = document.getElementById('quickFilter');
+    
+    // App State
+    let currentUserRole = null;
+    let gridApi = null;
+
+    // --- 3. AG-GRID SETUP ---
+    const isEditableByRole = (params) => {
+        if (currentUserRole === 'Admin') return true;
+        const salesEditableFields = [ 'last_status', 'lead_priority', 'call_time', 'status_note', 'reason', 'etc', 'customer_hn', 'consult_visit_date', 'doctor_name', 'closed_deal_amount', 'procedure_date' ];
+        return salesEditableFields.includes(params.colDef.field);
+    };
+
+    const columnDefs = [
+        { headerName: "วัน/เดือน/ปี", field: "lead_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 120 },
+        { headerName: "ชื่อลูกค้า", field: "customer_name", editable: isEditableByRole, width: 180 },
+        { headerName: "เบอร์ติดต่อ", field: "contact_info", editable: isEditableByRole, width: 150 },
+        { headerName: "เซลล์", field: "assigned_sales", editable: isEditableByRole, width: 120 },
+        { headerName: "Last Status", field: "last_status", editable: isEditableByRole, width: 120 },
+        { headerName: "ยอดที่ปิดได้", field: "closed_deal_amount", editable: isEditableByRole, width: 150, valueFormatter: params => params.value ? `฿${Number(params.value).toLocaleString()}` : '' },
+    ];
+
+    const gridOptions = {
+        columnDefs,
+        rowData: [],
+        defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
+        onGridReady: (params) => { gridApi = params.api; },
+        onCellValueChanged: async (event) => {
+            const { data, colDef, newValue } = event;
+            const { error } = await supabaseClient.from('leads').update({ [colDef.field]: newValue }).eq('id', data.id); // <--- แก้ไขแล้ว
+            if (error) console.error('Error updating cell:', error.message);
+        }
+    };
+
+    // --- 4. CORE FUNCTIONS ---
+    const getUserProfile = async () => {
+        const { data: { user } } = await supabaseClient.auth.getUser(); // <--- แก้ไขแล้ว
+        if (!user) return null;
+        const { data, error } = await supabaseClient.from('profiles').select('role').eq('id', user.id).single(); // <--- แก้ไขแล้ว
+        if (error) { console.error('Error fetching user profile:', error); return null; }
+        return data;
+    };
+
+    const loadLeads = async () => {
+        const { data, error } = await supabaseClient.from('leads').select('*').order('created_at', { ascending: false }); // <--- แก้ไขแล้ว
+        if (error) console.error('Error loading leads:', error);
+        else if (gridApi) gridApi.setRowData(data);
+    };
+
+    const initializeDashboard = async () => {
+        const profile = await getUserProfile();
+        if (profile) {
+            currentUserRole = profile.role;
+            await loadLeads();
+            mainContainer.style.display = 'block';
+            loginContainer.style.display = 'none';
+        } else {
+            await handleLogout();
+        }
+    };
+
+    const handleLogin = async () => {
+        loginError.textContent = '';
+        const { error } = await supabaseClient.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value }); // <--- แก้ไขแล้ว
+        if (error) loginError.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+        else await initializeDashboard();
+    };
+
+    const handleLogout = async () => {
+        await supabaseClient.auth.signOut(); // <--- แก้ไขแล้ว
+        mainContainer.style.display = 'none';
+        loginContainer.style.display = 'flex';
+        emailInput.value = '';
+        passwordInput.value = '';
+    };
+
+    // --- 5. APP START ---
+    document.addEventListener('DOMContentLoaded', async () => {
+        new agGrid.Grid(document.querySelector('#myGrid'), gridOptions);
         
-        // DOM Elements
-        const loginContainer = document.getElementById('loginContainer');
-        const mainContainer = document.getElementById('mainContainer');
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-        const loginError = document.getElementById('loginError');
-        const quickFilterInput = document.getElementById('quickFilter');
-        
-        // App State
-        let currentUserRole = null;
-        let gridApi = null;
+        loginBtn.addEventListener('click', handleLogin);
+        logoutBtn.addEventListener('click', handleLogout);
+        quickFilterInput.addEventListener('input', () => { if(gridApi) gridApi.setQuickFilter(quickFilterInput.value); });
 
-        // --- 3. AG-GRID SETUP ---
-        const isEditableByRole = (params) => {
-            if (currentUserRole === 'Admin') return true;
-            const salesEditableFields = [ 'last_status', 'lead_priority', 'call_time', 'status_note', 'reason', 'etc', 'customer_hn', 'consult_visit_date', 'doctor_name', 'closed_deal_amount', 'procedure_date' ];
-            return salesEditableFields.includes(params.colDef.field);
-        };
-
-        const columnDefs = [
-            { headerName: "วัน/เดือน/ปี", field: "lead_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 120 },
-            { headerName: "ชื่อลูกค้า", field: "customer_name", editable: isEditableByRole, width: 180 },
-            { headerName: "เบอร์ติดต่อ", field: "contact_info", editable: isEditableByRole, width: 150 },
-            { headerName: "เซลล์", field: "assigned_sales", editable: isEditableByRole, width: 120 },
-            { headerName: "Last Status", field: "last_status", editable: isEditableByRole, width: 120 },
-            { headerName: "ยอดที่ปิดได้", field: "closed_deal_amount", editable: isEditableByRole, width: 150, valueFormatter: params => params.value ? `฿${Number(params.value).toLocaleString()}` : '' },
-        ];
-
-        const gridOptions = {
-            columnDefs,
-            rowData: [],
-            defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
-            onGridReady: (params) => { gridApi = params.api; },
-            onCellValueChanged: async (event) => {
-                const { data, colDef, newValue } = event;
-                const { error } = await supabase.from('leads').update({ [colDef.field]: newValue }).eq('id', data.id);
-                if (error) console.error('Error updating cell:', error.message);
-            }
-        };
-
-        // --- 4. CORE FUNCTIONS ---
-        const getUserProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return null;
-            const { data, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-            if (error) { console.error('Error fetching user profile:', error); return null; }
-            return data;
-        };
-
-        const loadLeads = async () => {
-            const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-            if (error) console.error('Error loading leads:', error);
-            else if (gridApi) gridApi.setRowData(data);
-        };
-
-        const initializeDashboard = async () => {
-            const profile = await getUserProfile();
-            if (profile) {
-                currentUserRole = profile.role;
-                await loadLeads();
-                mainContainer.style.display = 'block';
-                loginContainer.style.display = 'none';
-            } else {
-                await handleLogout();
-            }
-        };
-
-        const handleLogin = async () => {
-            loginError.textContent = '';
-            const { error } = await supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
-            if (error) loginError.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-            else await initializeDashboard();
-        };
-
-        const handleLogout = async () => {
-            await supabase.auth.signOut();
+        const { data: { session } } = await supabaseClient.auth.getSession(); // <--- แก้ไขแล้ว
+        if (session) await initializeDashboard();
+        else {
             mainContainer.style.display = 'none';
             loginContainer.style.display = 'flex';
-            emailInput.value = '';
-            passwordInput.value = '';
-        };
-
-        // --- 5. APP START ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            new agGrid.Grid(document.querySelector('#myGrid'), gridOptions);
-            
-            loginBtn.addEventListener('click', handleLogin);
-            logoutBtn.addEventListener('click', handleLogout);
-            quickFilterInput.addEventListener('input', () => { if(gridApi) gridApi.setQuickFilter(quickFilterInput.value); });
-
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) await initializeDashboard();
-            else {
-                mainContainer.style.display = 'none';
-                loginContainer.style.display = 'flex';
-            }
-        });
-    </script>
+        }
+    });
+</script>
 </body>
 </html>
+
 
