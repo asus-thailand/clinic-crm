@@ -7,105 +7,25 @@
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-alpine.css">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <style>
-        /* --- ดีไซน์โดยรวม --- */
-        body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: #f8f9fa;
-            margin: 0;
-            color: #333;
-        }
-
-        /* --- ส่วน Login --- */
-        #loginContainer {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .login-box {
-            padding: 40px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            width: 360px;
-            text-align: center;
-        }
-        .login-box h2 {
-            margin-bottom: 24px;
-        }
-        .login-box input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 16px;
-            border-radius: 8px;
-            border: 1px solid #ced4da;
-            font-size: 16px;
-            font-family: 'Sarabun', sans-serif;
-        }
-        .login-box button {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            background-color: #007bff;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            font-family: 'Sarabun', sans-serif;
-        }
-        #loginError {
-            color: #dc3545;
-            margin-top: 10px;
-            height: 20px;
-        }
-
-        /* --- ส่วน Dashboard หลัก --- */
-        #mainContainer {
-            display: none; /* ซ่อนไว้ก่อนจนกว่าจะล็อกอินสำเร็จ */
-        }
-        .container {
-            padding: 24px;
-        }
-        .dashboard-header {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            margin-bottom: 24px;
-        }
-        .stat-card {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .control-panel {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            background-color: #ffffff;
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .search-box input {
-            width: 300px; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;
-        }
-        .action-buttons {
-            display: flex; gap: 10px;
-        }
-        .action-buttons button {
-            background-color: #007bff; color: white; border: none; padding: 10px 20px;
-            border-radius: 8px; font-size: 16px; cursor: pointer; display: flex;
-            align-items: center; gap: 8px; font-family: 'Sarabun', sans-serif;
-        }
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; margin: 0; color: #333; }
+        #loginContainer { display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .login-box { padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 360px; text-align: center; }
+        .login-box h2 { margin-bottom: 24px; }
+        .login-box input { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; font-family: 'Sarabun', sans-serif; }
+        .login-box button { width: 100%; padding: 12px; border: none; border-radius: 8px; background-color: #007bff; color: white; font-size: 16px; cursor: pointer; font-family: 'Sarabun', sans-serif; }
+        #loginError { color: #dc3545; margin-top: 10px; height: 20px; }
+        #mainContainer { display: none; }
+        .container { padding: 24px; }
+        .dashboard-header { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .stat-card { background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .control-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background-color: #ffffff; padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .search-box input { width: 300px; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; }
+        .action-buttons { display: flex; gap: 10px; }
+        .action-buttons button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: 'Sarabun', sans-serif; }
         #logoutBtn { background-color: #6c757d; }
         #myGrid { width: 100%; height: 65vh; }
     </style>
@@ -142,12 +62,10 @@
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 
     <script>
-        // --- การตั้งค่า SUPABASE ---
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // <-- ใส่ URL ของคุณ
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // <-- ใส่ Key ของคุณ
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- DOM Elements ---
         const loginContainer = document.getElementById('loginContainer');
         const mainContainer = document.getElementById('mainContainer');
         const loginBtn = document.getElementById('loginBtn');
@@ -156,33 +74,78 @@
         const passwordInput = document.getElementById('password');
         const loginError = document.getElementById('loginError');
 
-        // --- ตัวแปรและ Grid Options ---
         let currentUserRole = null;
-        let gridOptions = {}; // กำหนดค่า gridOptions ที่นี่
+        let gridOptions = {};
 
-        const isEditableByRole = (params) => { /* ... ฟังก์ชันเดิม ... */ };
-        
-        // ... (ใส่ columnDefs ของคุณที่นี่) ...
+        const isEditableByRole = (params) => {
+            if (currentUserRole === 'Admin') return true;
+            const salesEditableFields = [
+                'last_status', 'lead_priority', 'call_time', 'status_note', 
+                'reason', 'etc', 'customer_hn', 'consult_visit_date', 
+                'doctor_name', 'closed_deal_amount', 'procedure_date'
+            ];
+            return salesEditableFields.includes(params.colDef.field);
+        };
+
+        // --- Column Definitions (ฉบับสมบูรณ์) ---
         const columnDefs = [
-            { headerName: "ชื่อลูกค้า", field: "customer_name", editable: isEditableByRole },
-             // ... เพิ่มคอลัมน์อื่นๆ ทั้งหมดของคุณที่นี่ ...
+            // Admin Columns
+            { headerName: "วัน/เดือน/ปี", field: "lead_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 120 },
+            { headerName: "ลำดับที่", field: "sequence_number", editable: isEditableByRole, width: 90 },
+            { headerName: "ชื่อลูกค้า", field: "customer_name", editable: isEditableByRole, width: 180 },
+            { headerName: "เบอร์ติดต่อ", field: "contact_info", editable: isEditableByRole, width: 150 },
+            { headerName: "ช่องทาง", field: "channel", editable: isEditableByRole, width: 150 },
+            { headerName: "ประเภทหัตถการ", field: "procedure_type", editable: isEditableByRole, width: 150 },
+            { headerName: "ลงนัดปรึกษา", field: "consult_request_date", editable: isEditableByRole, width: 120 },
+            { headerName: "ขอเบอร์ Y/N", field: "contact_permission", editable: isEditableByRole, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: [true, false] }, width: 110 },
+            { headerName: "มัดจำออนไลน์ Y/N", field: "online_deposit", editable: isEditableByRole, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: [true, false] }, width: 140 },
+            { headerName: "CS ผู้ส่ง Lead", field: "cs_sender", editable: isEditableByRole, width: 120 },
+            { headerName: "เซลล์", field: "assigned_sales", editable: isEditableByRole, width: 120 },
+            
+            // Sales Columns
+            { headerName: "Last Status", field: "last_status", editable: isEditableByRole, width: 120 },
+            { headerName: "ลำดับการรับลีด", field: "lead_priority", editable: isEditableByRole, width: 120 },
+            { headerName: "เวลาโทร", field: "call_time", editable: isEditableByRole, width: 100 },
+            { headerName: "Status 1 ADMIN", field: "status_note", editable: isEditableByRole, width: 180 },
+            { headerName: "เหตุผล", field: "reason", editable: isEditableByRole, width: 150 },
+            { headerName: "ETC", field: "etc", editable: isEditableByRole, width: 150 },
+            { headerName: "HN ลูกค้า", field: "customer_hn", editable: isEditableByRole, width: 120 },
+            { headerName: "วันที่เข้ามาปรึกษา", field: "consult_visit_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 150 },
+            { headerName: "DR.", field: "doctor_name", editable: isEditableByRole, width: 100 },
+            { headerName: "ยอดที่ปิดได้", field: "closed_deal_amount", editable: isEditableByRole, width: 120, valueFormatter: params => params.value ? `฿${Number(params.value).toLocaleString()}` : '' },
+            { headerName: "วันนัดทำหัตถการ", field: "procedure_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 150 }
         ];
 
-        async function onCellValueChanged(event) { /* ... ฟังก์ชันเดิม ... */ }
-        async function loadLeads() { /* ... ฟังก์ชันเดิม ... */ }
-        async function getUserProfile() { /* ... ฟังก์ชันเดิม ... */ }
+        async function onCellValueChanged(event) {
+            const { data, colDef, newValue } = event;
+            const { error } = await supabase.from('leads').update({ [colDef.field]: newValue }).eq('id', data.id);
+            if (error) console.error('Error updating cell:', error.message);
+        }
 
-        // --- ฟังก์ชันจัดการ Authentication ---
+        async function loadLeads() {
+            const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+            if (error) console.error('Error loading leads:', error);
+            else gridOptions.api.setRowData(data);
+        }
+
+        async function getUserProfile() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return null;
+            const { data, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+            if (error) {
+                console.error('Error fetching user profile:', error);
+                return null;
+            }
+            return data;
+        }
+
         const handleLogin = async () => {
             const email = emailInput.value;
             const password = passwordInput.value;
             loginError.textContent = '';
-
             const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-            if (error) {
-                loginError.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-            } else {
+            if (error) loginError.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+            else {
                 loginContainer.style.display = 'none';
                 mainContainer.style.display = 'block';
                 await initializeDashboard();
@@ -191,27 +154,20 @@
 
         const handleLogout = async () => {
             await supabase.auth.signOut();
-            mainContainer.style.display = 'none';
-            loginContainer.style.display = 'flex';
-            currentUserRole = null;
-            location.reload(); // รีเฟรชหน้าเพื่อเคลียร์ค่าทั้งหมด
+            location.reload();
         };
 
-        // --- ฟังก์ชันเริ่มต้น Dashboard ---
         const initializeDashboard = async () => {
             const profile = await getUserProfile();
             if (profile) {
                 currentUserRole = profile.role;
-                console.log(`User role set to: ${currentUserRole}`);
                 await loadLeads();
             } else {
-                console.log("Profile not found.");
+                console.log("Profile not found for current user.");
             }
         };
 
-        // --- เริ่มต้นการทำงานทั้งหมด ---
         document.addEventListener('DOMContentLoaded', async () => {
-            // Setup Grid
             const gridDiv = document.querySelector('#myGrid');
             gridOptions = {
                 columnDefs,
@@ -221,14 +177,12 @@
             };
             new agGrid.Grid(gridDiv, gridOptions);
 
-            // Add Event Listeners
             loginBtn.addEventListener('click', handleLogin);
             logoutBtn.addEventListener('click', handleLogout);
             document.getElementById('quickFilter').addEventListener('input', (e) => {
-                gridOptions.api.setQuickFilter(e.target.value);
+                if(gridOptions.api) gridOptions.api.setQuickFilter(e.target.value);
             });
 
-            // Check initial session
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 loginContainer.style.display = 'none';
