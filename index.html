@@ -15,19 +15,17 @@
         #loginContainer { display: flex; justify-content: center; align-items: center; height: 100vh; }
         .login-box { padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 360px; text-align: center; }
         .login-box h2 { margin-bottom: 24px; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; font-family: 'Sarabun', sans-serif; }
-        .login-box button { width: 100%; padding: 12px; border: none; border-radius: 8px; background-color: #007bff; color: white; font-size: 16px; cursor: pointer; font-family: 'Sarabun', sans-serif; }
+        .login-box input { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; box-sizing: border-box; }
+        .login-box button { width: 100%; padding: 12px; border: none; border-radius: 8px; background-color: #007bff; color: white; font-size: 16px; cursor: pointer; }
         #loginError { color: #dc3545; margin-top: 10px; height: 20px; }
         #mainContainer { display: none; }
         .container { padding: 24px; }
-        .dashboard-header { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 24px; }
-        .stat-card { background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .control-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background-color: #ffffff; padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .search-box input { width: 300px; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; }
         .action-buttons { display: flex; gap: 10px; }
-        .action-buttons button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: 'Sarabun', sans-serif; }
+        .action-buttons button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         #logoutBtn { background-color: #6c757d; }
-        #myGrid { width: 100%; height: 65vh; }
+        #myGrid { width: 100%; height: 75vh; }
     </style>
 </head>
 <body>
@@ -44,7 +42,6 @@
 
     <div id="mainContainer">
         <div class="container">
-            <div class="dashboard-header"></div>
             <div class="control-panel">
                 <div class="search-box">
                     <input type="text" id="quickFilter" placeholder="ค้นหาทุกอย่างในตาราง...">
@@ -62,10 +59,14 @@
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 
     <script>
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // --- 1. CONFIGURATION (ส่วนที่ต้องแก้ไข) ---
+        const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co'; // <-- ใส่ URL ของคุณที่นี่
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM'; // <-- ใส่ Key ของคุณที่นี่
 
+        // --- 2. INITIALIZATION (ห้ามแก้ไขส่วนนี้) ---
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // DOM Elements
         const loginContainer = document.getElementById('loginContainer');
         const mainContainer = document.getElementById('mainContainer');
         const loginBtn = document.getElementById('loginBtn');
@@ -73,88 +74,53 @@
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
         const loginError = document.getElementById('loginError');
-
+        const quickFilterInput = document.getElementById('quickFilter');
+        
+        // App State
         let currentUserRole = null;
-        let gridOptions = {};
+        let gridApi = null;
 
+        // --- 3. AG-GRID SETUP ---
         const isEditableByRole = (params) => {
             if (currentUserRole === 'Admin') return true;
-            const salesEditableFields = [
-                'last_status', 'lead_priority', 'call_time', 'status_note', 
-                'reason', 'etc', 'customer_hn', 'consult_visit_date', 
-                'doctor_name', 'closed_deal_amount', 'procedure_date'
-            ];
+            const salesEditableFields = [ 'last_status', 'lead_priority', 'call_time', 'status_note', 'reason', 'etc', 'customer_hn', 'consult_visit_date', 'doctor_name', 'closed_deal_amount', 'procedure_date' ];
             return salesEditableFields.includes(params.colDef.field);
         };
 
-        // --- Column Definitions (ฉบับสมบูรณ์) ---
         const columnDefs = [
-            // Admin Columns
             { headerName: "วัน/เดือน/ปี", field: "lead_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 120 },
-            { headerName: "ลำดับที่", field: "sequence_number", editable: isEditableByRole, width: 90 },
             { headerName: "ชื่อลูกค้า", field: "customer_name", editable: isEditableByRole, width: 180 },
             { headerName: "เบอร์ติดต่อ", field: "contact_info", editable: isEditableByRole, width: 150 },
-            { headerName: "ช่องทาง", field: "channel", editable: isEditableByRole, width: 150 },
-            { headerName: "ประเภทหัตถการ", field: "procedure_type", editable: isEditableByRole, width: 150 },
-            { headerName: "ลงนัดปรึกษา", field: "consult_request_date", editable: isEditableByRole, width: 120 },
-            { headerName: "ขอเบอร์ Y/N", field: "contact_permission", editable: isEditableByRole, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: [true, false] }, width: 110 },
-            { headerName: "มัดจำออนไลน์ Y/N", field: "online_deposit", editable: isEditableByRole, cellEditor: 'agSelectCellEditor', cellEditorParams: { values: [true, false] }, width: 140 },
-            { headerName: "CS ผู้ส่ง Lead", field: "cs_sender", editable: isEditableByRole, width: 120 },
             { headerName: "เซลล์", field: "assigned_sales", editable: isEditableByRole, width: 120 },
-            
-            // Sales Columns
             { headerName: "Last Status", field: "last_status", editable: isEditableByRole, width: 120 },
-            { headerName: "ลำดับการรับลีด", field: "lead_priority", editable: isEditableByRole, width: 120 },
-            { headerName: "เวลาโทร", field: "call_time", editable: isEditableByRole, width: 100 },
-            { headerName: "Status 1 ADMIN", field: "status_note", editable: isEditableByRole, width: 180 },
-            { headerName: "เหตุผล", field: "reason", editable: isEditableByRole, width: 150 },
-            { headerName: "ETC", field: "etc", editable: isEditableByRole, width: 150 },
-            { headerName: "HN ลูกค้า", field: "customer_hn", editable: isEditableByRole, width: 120 },
-            { headerName: "วันที่เข้ามาปรึกษา", field: "consult_visit_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 150 },
-            { headerName: "DR.", field: "doctor_name", editable: isEditableByRole, width: 100 },
-            { headerName: "ยอดที่ปิดได้", field: "closed_deal_amount", editable: isEditableByRole, width: 120, valueFormatter: params => params.value ? `฿${Number(params.value).toLocaleString()}` : '' },
-            { headerName: "วันนัดทำหัตถการ", field: "procedure_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 150 }
+            { headerName: "ยอดที่ปิดได้", field: "closed_deal_amount", editable: isEditableByRole, width: 150, valueFormatter: params => params.value ? `฿${Number(params.value).toLocaleString()}` : '' },
         ];
 
-        async function onCellValueChanged(event) {
-            const { data, colDef, newValue } = event;
-            const { error } = await supabase.from('leads').update({ [colDef.field]: newValue }).eq('id', data.id);
-            if (error) console.error('Error updating cell:', error.message);
-        }
-
-        async function loadLeads() {
-            const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-            if (error) console.error('Error loading leads:', error);
-            else gridOptions.api.setRowData(data);
-        }
-
-        async function getUserProfile() {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return null;
-            const { data, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-            if (error) {
-                console.error('Error fetching user profile:', error);
-                return null;
-            }
-            return data;
-        }
-
-        const handleLogin = async () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            loginError.textContent = '';
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) loginError.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-            else {
-                loginContainer.style.display = 'none';
-                mainContainer.style.display = 'block';
-                await initializeDashboard();
+        const gridOptions = {
+            columnDefs,
+            rowData: [],
+            defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
+            onGridReady: (params) => { gridApi = params.api; },
+            onCellValueChanged: async (event) => {
+                const { data, colDef, newValue } = event;
+                const { error } = await supabase.from('leads').update({ [colDef.field]: newValue }).eq('id', data.id);
+                if (error) console.error('Error updating cell:', error.message);
             }
         };
 
-        const handleLogout = async () => {
-            await supabase.auth.signOut();
-            location.reload();
+        // --- 4. CORE FUNCTIONS ---
+        const getUserProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return null;
+            const { data, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+            if (error) { console.error('Error fetching user profile:', error); return null; }
+            return data;
+        };
+
+        const loadLeads = async () => {
+            const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+            if (error) console.error('Error loading leads:', error);
+            else if (gridApi) gridApi.setRowData(data);
         };
 
         const initializeDashboard = async () => {
@@ -162,35 +128,41 @@
             if (profile) {
                 currentUserRole = profile.role;
                 await loadLeads();
+                mainContainer.style.display = 'block';
+                loginContainer.style.display = 'none';
             } else {
-                console.log("Profile not found for current user.");
+                await handleLogout();
             }
         };
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            const gridDiv = document.querySelector('#myGrid');
-            gridOptions = {
-                columnDefs,
-                rowData: [],
-                defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
-                onCellValueChanged
-            };
-            new agGrid.Grid(gridDiv, gridOptions);
+        const handleLogin = async () => {
+            loginError.textContent = '';
+            const { error } = await supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
+            if (error) loginError.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+            else await initializeDashboard();
+        };
 
+        const handleLogout = async () => {
+            await supabase.auth.signOut();
+            mainContainer.style.display = 'none';
+            loginContainer.style.display = 'flex';
+            emailInput.value = '';
+            passwordInput.value = '';
+        };
+
+        // --- 5. APP START ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            new agGrid.Grid(document.querySelector('#myGrid'), gridOptions);
+            
             loginBtn.addEventListener('click', handleLogin);
             logoutBtn.addEventListener('click', handleLogout);
-            document.getElementById('quickFilter').addEventListener('input', (e) => {
-                if(gridOptions.api) gridOptions.api.setQuickFilter(e.target.value);
-            });
+            quickFilterInput.addEventListener('input', () => { if(gridApi) gridApi.setQuickFilter(quickFilterInput.value); });
 
             const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                loginContainer.style.display = 'none';
-                mainContainer.style.display = 'block';
-                await initializeDashboard();
-            } else {
-                loginContainer.style.display = 'flex';
+            if (session) await initializeDashboard();
+            else {
                 mainContainer.style.display = 'none';
+                loginContainer.style.display = 'flex';
             }
         });
     </script>
