@@ -22,11 +22,57 @@
             color: #333;
         }
 
+        /* --- ส่วน Login --- */
+        #loginContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .login-box {
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 360px;
+            text-align: center;
+        }
+        .login-box h2 {
+            margin-bottom: 24px;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            font-size: 16px;
+            font-family: 'Sarabun', sans-serif;
+        }
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            font-family: 'Sarabun', sans-serif;
+        }
+        #loginError {
+            color: #dc3545;
+            margin-top: 10px;
+            height: 20px;
+        }
+
+        /* --- ส่วน Dashboard หลัก --- */
+        #mainContainer {
+            display: none; /* ซ่อนไว้ก่อนจนกว่าจะล็อกอินสำเร็จ */
+        }
         .container {
             padding: 24px;
         }
-
-        /* --- 1. ส่วน Dashboard Header --- */
         .dashboard-header {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -38,31 +84,7 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            display: flex;
-            align-items: center;
         }
-        .stat-card .icon {
-            font-size: 40px;
-            margin-right: 16px;
-            padding: 10px;
-            border-radius: 50%;
-            color: #fff;
-        }
-        .stat-card .icon.new-leads { background-color: #007bff; }
-        .stat-card .icon.sales-closed { background-color: #28a745; }
-        .stat-card .icon.follow-up { background-color: #ffc107; }
-        .stat-card .info h3 {
-            margin: 0;
-            font-size: 16px;
-            color: #6c757d;
-        }
-        .stat-card .info p {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-        }
-
-        /* --- 2. ส่วน Control Panel --- */
         .control-panel {
             display: flex;
             justify-content: space-between;
@@ -73,106 +95,150 @@
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
-        .search-box {
-            position: relative;
-        }
         .search-box input {
-            width: 300px;
-            padding: 10px 10px 10px 40px; /* เพิ่ม padding ซ้ายสำหรับไอคอน */
-            border-radius: 8px;
-            border: 1px solid #ced4da;
-            font-size: 16px;
-            font-family: 'Sarabun', sans-serif;
+            width: 300px; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;
         }
-        .search-box .icon {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #6c757d;
+        .action-buttons {
+            display: flex; gap: 10px;
         }
         .action-buttons button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-family: 'Sarabun', sans-serif;
+            background-color: #007bff; color: white; border: none; padding: 10px 20px;
+            border-radius: 8px; font-size: 16px; cursor: pointer; display: flex;
+            align-items: center; gap: 8px; font-family: 'Sarabun', sans-serif;
         }
-
-        /* --- 3. ส่วน Grid --- */
-        #myGrid {
-            width: 100%;
-            height: 65vh; /* ปรับความสูงให้เหมาะสม */
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .control-panel {
-                flex-direction: column;
-                gap: 16px;
-            }
-            .search-box input {
-                width: 100%;
-            }
-        }
+        #logoutBtn { background-color: #6c757d; }
+        #myGrid { width: 100%; height: 65vh; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="dashboard-header">
-            <div class="stat-card">
-                <span class="material-icons icon new-leads">person_add</span>
-                <div class="info">
-                    <h3>ลีดใหม่วันนี้</h3>
-                    <p id="stat-new-leads">12</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <span class="material-icons icon sales-closed">paid</span>
-                <div class="info">
-                    <h3>ยอดขายเดือนนี้</h3>
-                    <p id="stat-sales-closed">฿1.2M</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <span class="material-icons icon follow-up">watch_later</span>
-                <div class="info">
-                    <h3>ต้องติดตาม</h3>
-                    <p id="stat-follow-up">8</p>
-                </div>
-            </div>
+    <div id="loginContainer">
+        <div class="login-box">
+            <h2>CRM Login</h2>
+            <input type="email" id="email" placeholder="อีเมล" required>
+            <input type="password" id="password" placeholder="รหัสผ่าน" required>
+            <button id="loginBtn">เข้าสู่ระบบ</button>
+            <p id="loginError"></p>
         </div>
+    </div>
 
-        <div class="control-panel">
-            <div class="search-box">
-                <span class="material-icons icon">search</span>
-                <input type="text" id="quickFilter" placeholder="ค้นหาทุกอย่างในตาราง...">
+    <div id="mainContainer">
+        <div class="container">
+            <div class="dashboard-header"></div>
+            <div class="control-panel">
+                <div class="search-box">
+                    <input type="text" id="quickFilter" placeholder="ค้นหาทุกอย่างในตาราง...">
+                </div>
+                <div class="action-buttons">
+                    <button id="addNewLeadBtn"><span class="material-icons">add</span>เพิ่มลีดใหม่</button>
+                    <button id="logoutBtn"><span class="material-icons">logout</span>ออกจากระบบ</button>
+                </div>
             </div>
-            <div class="action-buttons">
-                <button id="addNewLeadBtn"><span class="material-icons">add</span>เพิ่มลีดใหม่</button>
-            </div>
+            <div id="myGrid" class="ag-theme-alpine"></div>
         </div>
-
-        <div id="myGrid" class="ag-theme-alpine"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
 
     <script>
-    // --- การตั้งค่า SUPABASE ---
-    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    // ... (โค้ดส่วนที่เหลือทั้งหมด) ...
-</script>
+        // --- การตั้งค่า SUPABASE ---
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // <-- ใส่ URL ของคุณ
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // <-- ใส่ Key ของคุณ
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- DOM Elements ---
+        const loginContainer = document.getElementById('loginContainer');
+        const mainContainer = document.getElementById('mainContainer');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginError = document.getElementById('loginError');
+
+        // --- ตัวแปรและ Grid Options ---
+        let currentUserRole = null;
+        let gridOptions = {}; // กำหนดค่า gridOptions ที่นี่
+
+        const isEditableByRole = (params) => { /* ... ฟังก์ชันเดิม ... */ };
+        
+        // ... (ใส่ columnDefs ของคุณที่นี่) ...
+        const columnDefs = [
+            { headerName: "ชื่อลูกค้า", field: "customer_name", editable: isEditableByRole },
+             // ... เพิ่มคอลัมน์อื่นๆ ทั้งหมดของคุณที่นี่ ...
+        ];
+
+        async function onCellValueChanged(event) { /* ... ฟังก์ชันเดิม ... */ }
+        async function loadLeads() { /* ... ฟังก์ชันเดิม ... */ }
+        async function getUserProfile() { /* ... ฟังก์ชันเดิม ... */ }
+
+        // --- ฟังก์ชันจัดการ Authentication ---
+        const handleLogin = async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            loginError.textContent = '';
+
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                loginError.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+            } else {
+                loginContainer.style.display = 'none';
+                mainContainer.style.display = 'block';
+                await initializeDashboard();
+            }
+        };
+
+        const handleLogout = async () => {
+            await supabase.auth.signOut();
+            mainContainer.style.display = 'none';
+            loginContainer.style.display = 'flex';
+            currentUserRole = null;
+            location.reload(); // รีเฟรชหน้าเพื่อเคลียร์ค่าทั้งหมด
+        };
+
+        // --- ฟังก์ชันเริ่มต้น Dashboard ---
+        const initializeDashboard = async () => {
+            const profile = await getUserProfile();
+            if (profile) {
+                currentUserRole = profile.role;
+                console.log(`User role set to: ${currentUserRole}`);
+                await loadLeads();
+            } else {
+                console.log("Profile not found.");
+            }
+        };
+
+        // --- เริ่มต้นการทำงานทั้งหมด ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Setup Grid
+            const gridDiv = document.querySelector('#myGrid');
+            gridOptions = {
+                columnDefs,
+                rowData: [],
+                defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
+                onCellValueChanged
+            };
+            new agGrid.Grid(gridDiv, gridOptions);
+
+            // Add Event Listeners
+            loginBtn.addEventListener('click', handleLogin);
+            logoutBtn.addEventListener('click', handleLogout);
+            document.getElementById('quickFilter').addEventListener('input', (e) => {
+                gridOptions.api.setQuickFilter(e.target.value);
+            });
+
+            // Check initial session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                loginContainer.style.display = 'none';
+                mainContainer.style.display = 'block';
+                await initializeDashboard();
+            } else {
+                loginContainer.style.display = 'flex';
+                mainContainer.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 </html>
-
