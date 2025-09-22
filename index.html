@@ -3,171 +3,1121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern CRM Dashboard</title>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-alpine.css">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-
+    <title>Beauty Clinic CRM - Excel Edition</title>
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; margin: 0; color: #333; }
-        #loginContainer { display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-box { padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 360px; text-align: center; }
-        .login-box h2 { margin-bottom: 24px; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; box-sizing: border-box; }
-        .login-box button { width: 100%; padding: 12px; border: none; border-radius: 8px; background-color: #007bff; color: white; font-size: 16px; cursor: pointer; }
-        #loginError { color: #dc3545; margin-top: 10px; height: 20px; }
-        #mainContainer { display: none; }
-        .container { padding: 24px; }
-        .control-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background-color: #ffffff; padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .search-box input { width: 300px; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; }
-        .action-buttons { display: flex; gap: 10px; }
-        .action-buttons button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        #logoutBtn { background-color: #6c757d; }
-        #myGrid { width: 100%; height: 75vh; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .logo-text h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-badge {
+            background: #dc3545;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+
+        /* Stats Dashboard */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px auto;
+            max-width: 1400px;
+            padding: 0 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-left: 4px solid #007bff;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #212529;
+            margin-bottom: 5px;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .stat-up { color: #28a745; }
+        .stat-down { color: #dc3545; }
+
+        /* Toolbar */
+        .toolbar {
+            background: white;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .search-container {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 40px 10px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+
+        .filter-select {
+            padding: 10px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            font-size: 13px;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        /* Excel Table Container */
+        .excel-container {
+            background: white;
+            margin: 20px auto;
+            max-width: 1400px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .table-wrapper {
+            overflow: auto;
+            max-height: calc(100vh - 350px);
+            position: relative;
+        }
+
+        /* Excel Table Styles */
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            font-family: 'Calibri', Arial, sans-serif;
+            min-width: 2200px;
+        }
+
+        /* Headers with Excel colors */
+        .excel-table thead th {
+            font-weight: bold;
+            text-align: center;
+            border: 1px solid #b7b7b7;
+            padding: 8px 6px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 45px;
+            vertical-align: middle;
+            user-select: none;
+            color: white;
+        }
+
+        /* Row number column */
+        .row-number {
+            background: #e7e6e6 !important;
+            color: #000 !important;
+            font-weight: normal;
+            text-align: center;
+            border: 1px solid #b7b7b7;
+            width: 40px;
+            min-width: 40px;
+            position: sticky;
+            left: 0;
+            z-index: 50;
+        }
+
+        /* Green headers - ADMIN section */
+        .admin-header {
+            background: #70ad47 !important;
+            color: white !important;
+        }
+
+        /* Pink headers - Status section */
+        .status-header {
+            background: #ff00ff !important;
+            color: white !important;
+        }
+
+        .status1-header {
+            background: #92d050 !important;
+            color: white !important;
+        }
+
+        /* Yellow headers - ETC section */
+        .etc-header {
+            background: #ffc000 !important;
+            color: black !important;
+        }
+
+        /* Cell styles */
+        .excel-table td {
+            border: 1px solid #d0d0d0;
+            padding: 3px 6px;
+            height: 22px;
+            background: white;
+            position: relative;
+            vertical-align: middle;
+            font-size: 11px;
+        }
+
+        /* Cell backgrounds by section */
+        .admin-cell {
+            background: #e2efda;
+        }
+
+        .status-cell {
+            background: #fce4ec;
+        }
+
+        .etc-cell {
+            background: #fff2cc;
+        }
+
+        /* Excel-like hover and selection */
+        .excel-table td:not(.row-number):hover {
+            border: 2px solid #217346;
+            cursor: cell;
+        }
+
+        .excel-table td.editing {
+            padding: 0;
+            background: white !important;
+            border: 2px solid #0066cc;
+        }
+
+        .excel-table td.selected {
+            background: #cce5ff !important;
+            border: 2px solid #0066cc;
+        }
+
+        /* Input styles */
+        .cell-input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 2px 4px;
+            font-family: inherit;
+            font-size: inherit;
+            background: white;
+            outline: none;
+        }
+
+        .cell-select {
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 1px;
+            font-family: inherit;
+            font-size: inherit;
+            background: white;
+            outline: none;
+        }
+
+        /* Dropdown arrow indicator */
+        .has-dropdown::after {
+            content: '▼';
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 8px;
+            color: #666;
+        }
+
+        /* Y/N cells */
+        .yn-cell {
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .yn-cell.yes {
+            color: #008000;
+        }
+
+        .yn-cell.no {
+            color: #ff0000;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+            min-width: 150px;
+        }
+
+        .context-menu-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .context-menu-item:hover {
+            background: #e8f4f8;
+        }
+
+        .context-menu-separator {
+            border-top: 1px solid #e0e0e0;
+            margin: 2px 0;
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: #4caf50;
+            color: white;
+            border-radius: 3px;
+            font-size: 11px;
+            display: none;
+        }
+
+        .status-indicator.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
-
-    <div id="loginContainer">
-        <div class="login-box">
-            <h2>CRM Login</h2>
-            <input type="email" id="email" placeholder="อีเมล" required>
-            <input type="password" id="password" placeholder="รหัสผ่าน" required>
-            <button id="loginBtn">เข้าสู่ระบบ</button>
-            <p id="loginError"></p>
-        </div>
-    </div>
-
-    <div id="mainContainer">
-        <div class="container">
-            <div class="control-panel">
-                <div class="search-box">
-                    <input type="text" id="quickFilter" placeholder="ค้นหาทุกอย่างในตาราง...">
-                </div>
-                <div class="action-buttons">
-                    <button id="addNewLeadBtn"><span class="material-icons">add</span>เพิ่มลีดใหม่</button>
-                    <button id="logoutBtn"><span class="material-icons">logout</span>ออกจากระบบ</button>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">BC</div>
+                <div class="logo-text">
+                    <h1>Beauty Clinic CRM</h1>
+                    <p>Excel Edition - Advanced Management System</p>
                 </div>
             </div>
-            <div id="myGrid" class="ag-theme-alpine"></div>
+            <div class="user-info">
+                <div class="user-badge">Administrator</div>
+                <span style="font-size: 11px; opacity: 0.9;">Edit All Delete Manage Users Export</span>
+                <button class="btn" onclick="switchRole()">🔄 Switch Role</button>
+                <button class="btn" onclick="exportData()">📊 Export</button>
+                <button class="btn" onclick="showSettings()">⚙️ ตั้งค่า</button>
+                <button class="btn" onclick="signOut()">ออกจากระบบ</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats Dashboard -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-title">ลูกค้าทั้งหมด</div>
+            <div class="stat-value" id="totalCustomers">3</div>
+            <div class="stat-change stat-up">📈 Active Records</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">ลูกค้าใหม่วันนี้</div>
+            <div class="stat-value" id="todayCustomers">0</div>
+            <div class="stat-change" style="color: #007bff;">📅 Today</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">รอติดตาม</div>
+            <div class="stat-value" id="pendingCustomers">2</div>
+            <div class="stat-change stat-down">⏰ Pending</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">ปิดการขาย</div>
+            <div class="stat-value" id="closedDeals">1</div>
+            <div class="stat-change stat-up">✅ Closed</div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <div class="search-container">
+            <input type="text" class="search-input" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า..." onkeyup="searchTable(this.value)">
+            <span class="search-icon">🔍</span>
+        </div>
+        
+        <select class="filter-select" id="statusFilter" onchange="filterTable()">
+            <option value="">ทุกสถานะ</option>
+            <option value="ธงเขียว 1">ธงเขียว 1</option>
+            <option value="ธงเขียว 2">ธงเขียว 2</option>
+            <option value="ธงเขียว 3">ธงเขียว 3</option>
+            <option value="ธีคบราม">ธีคบราม</option>
+        </select>
+        
+        <select class="filter-select" id="salesFilter" onchange="filterTable()">
+            <option value="">ทุกเซลล์</option>
+            <option value="MAM">MAM</option>
+            <option value="AU">AU</option>
+            <option value="GOLF">GOLF</option>
+            <option value="Online">Online</option>
+        </select>
+        
+        <button class="btn btn-primary" onclick="addNewRow()">+ เพิ่มลูกค้า</button>
+        <button class="btn" style="background: #6c757d;" onclick="location.reload()">🔄</button>
+    </div>
+
+    <!-- Excel Table Container -->
+    <div class="excel-container">
+        <div class="table-wrapper">
+            <table class="excel-table" id="excelTable">
+                <thead>
+                    <tr>
+                        <th class="row-number">#</th>
+                        <th class="admin-header">วัน/เดือน/ปี</th>
+                        <th class="admin-header">รหัสลีด</th>
+                        <th class="admin-header">ชื่อ-สกุล / ศจย.</th>
+                        <th class="admin-header">เบอร์โทรจริง</th>
+                        <th class="admin-header">ช่องทาง</th>
+                        <th class="admin-header">ประเภทหัตถการ</th>
+                        <th class="admin-header">มัดจำตอนแรก</th>
+                        <th class="admin-header">ยืนยันจาก Y/N</th>
+                        <th class="admin-header">โอนร้อยเปอร์เซ็นต์ Y/N</th>
+                        <th class="admin-header">CS ยัน Lead</th>
+                        <th class="admin-header">เซลล์</th>
+                        <th class="status-header">Last Status</th>
+                        <th class="status-header">อัพเดทการเข้าถึง</th>
+                        <th class="status-header">เวลาโทร</th>
+                        <th class="status1-header">Status 1 ADMIN</th>
+                        <th class="etc-header">เหตุผล</th>
+                        <th class="etc-header">ETC</th>
+                        <th class="etc-header">HN ลูกค้า</th>
+                        <th class="etc-header">วันที่นัดผ่าเก่าแล้ว</th>
+                        <th class="etc-header">DR.</th>
+                        <th class="etc-header">ยอดที่ปิดได้</th>
+                        <th class="etc-header">วันที่นัดทำหัตถการ</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Rows will be generated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="editCell()">✏️ แก้ไข</div>
+        <div class="context-menu-item" onclick="copyCell()">📋 คัดลอก</div>
+        <div class="context-menu-item" onclick="pasteCell()">📄 วาง</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="insertRowAbove()">↑ แทรกแถวด้านบน</div>
+        <div class="context-menu-item" onclick="insertRowBelow()">↓ แทรกแถวด้านล่าง</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="deleteRow()">🗑️ ลบแถว</div>
+        <div class="context-menu-item" onclick="clearCell()">🧹 ล้างเซลล์</div>
+    </div>
+
+    <!-- Status Indicator -->
+    <div class="status-indicator" id="statusIndicator"></div>
 
     <script>
-    // --- 1. CONFIGURATION (ส่วนที่ต้องแก้ไข) ---
-    const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co'; // <-- ใส่ URL ของคุณที่นี่
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM'; // <-- ใส่ Key ของคุณที่นี่
+        // Initial data from Excel
+        const initialData = [
+            {
+                date: '1-9-25',
+                leadCode: '1146',
+                name: 'บุษศะ สะพเขระขัน',
+                phone: '0959750848',
+                channel: 'Fbc By หมอธีร์',
+                procedure: 'ปลูกผม',
+                deposit: '3-9-25',
+                confirmY: 'Y',
+                transfer100: 'N',
+                csConfirm: 'CSX',
+                sales: 'MAM',
+                lastStatus: '75%',
+                updateAccess: '1',
+                callTime: '17.00น',
+                status1: 'ธงเขียว 1',
+                reason: 'โอนเงายมาแล้ว',
+                etc: '',
+                hnCustomer: '',
+                oldAppointment: '',
+                dr: '',
+                closedAmount: '',
+                appointmentDate: ''
+            },
+            {
+                date: '1-9-25',
+                leadCode: '1147',
+                name: 'สเชอ',
+                phone: '091-4651453',
+                channel: 'Fbc By หมอธีร์',
+                procedure: 'ปลูกผม',
+                deposit: 'N',
+                confirmY: 'Y',
+                transfer100: 'N',
+                csConfirm: 'CSY',
+                sales: 'AU',
+                lastStatus: '0%',
+                updateAccess: '1',
+                callTime: '11.37น',
+                status1: 'ธงเขียว 1',
+                reason: 'โอนเงายมาแล้ว โอนไปเป็นธงเขียว',
+                etc: '',
+                hnCustomer: '',
+                oldAppointment: '',
+                dr: '',
+                closedAmount: '',
+                appointmentDate: ''
+            },
+            {
+                date: '2-9-25',
+                leadCode: '1148',
+                name: 'โมก',
+                phone: '089-2266838',
+                channel: 'Fbc By หมอธีร์',
+                procedure: 'ปลูกผม',
+                deposit: 'N',
+                confirmY: 'Y',
+                transfer100: 'N',
+                csConfirm: 'CSY',
+                sales: 'GOLF',
+                lastStatus: '',
+                updateAccess: '',
+                callTime: '',
+                status1: 'ธีคบราม',
+                reason: '',
+                etc: '',
+                hnCustomer: '',
+                oldAppointment: '',
+                dr: '',
+                closedAmount: '',
+                appointmentDate: ''
+            },
+            {
+                date: '2-9-25',
+                leadCode: '1149',
+                name: 'สมพน อุรุวาณ',
+                phone: '097-2036277',
+                channel: 'Fbc By หมอธีร์',
+                procedure: 'ปลูกผม',
+                deposit: '4-9-25',
+                confirmY: 'Y',
+                transfer100: 'N',
+                csConfirm: 'CSY',
+                sales: 'GOLF',
+                lastStatus: '',
+                updateAccess: '',
+                callTime: '',
+                status1: 'ธงเขียว 1',
+                reason: '',
+                etc: '',
+                hnCustomer: '',
+                oldAppointment: '',
+                dr: '',
+                closedAmount: '',
+                appointmentDate: ''
+            },
+            {
+                date: '2-9-25',
+                leadCode: '1150',
+                name: 'ผู้',
+                phone: '090-6961515',
+                channel: 'Fbc By หมอธีร์',
+                procedure: 'ปลูกผม',
+                deposit: 'N',
+                confirmY: 'Y',
+                transfer100: 'N',
+                csConfirm: 'CSY',
+                sales: 'MAM',
+                lastStatus: '',
+                updateAccess: '',
+                callTime: '',
+                status1: 'ธงเขียว 1',
+                reason: '',
+                etc: '',
+                hnCustomer: '',
+                oldAppointment: '',
+                dr: '',
+                closedAmount: '',
+                appointmentDate: ''
+            },
+            {
+                date: '2-9-25',
+                leadCode: '1151',
+                name: 'มูเดีย ซำนันเจอร์',
+                phone: '086-2209485',
+                channel: 'Fbc By หมอธีร์',
+                procedure: 'ปลูกผม',
+                deposit: '5-9-25',
+                confirmY: 'Y',
+                transfer100: 'N',
+                csConfirm: 'CSX',
+                sales: 'MAM',
+                lastStatus: '',
+                updateAccess: '',
+                callTime: '',
+                status1: 'ธงเขียว 2',
+                reason: '',
+                etc: '',
+                hnCustomer: '',
+                oldAppointment: '',
+                dr: '',
+                closedAmount: '',
+                appointmentDate: ''
+            }
+        ];
 
-    // --- 2. INITIALIZATION (แก้ไขแล้ว) ---
-    // ใช้ global 'supabase' จาก library เพื่อสร้าง client ของเราในชื่อใหม่ 'supabaseClient'
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    // DOM Elements
-    const loginContainer = document.getElementById('loginContainer');
-    const mainContainer = document.getElementById('mainContainer');
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const loginError = document.getElementById('loginError');
-    const quickFilterInput = document.getElementById('quickFilter');
-    
-    // App State
-    let currentUserRole = null;
-    let gridApi = null;
+        let tableData = [...initialData];
+        let editingCell = null;
+        let copiedCell = null;
+        let copiedRow = null;
+        let selectedCell = null;
+        let contextCell = null;
 
-    // --- 3. AG-GRID SETUP ---
-    const isEditableByRole = (params) => {
-        if (currentUserRole === 'Admin') return true;
-        const salesEditableFields = [ 'last_status', 'lead_priority', 'call_time', 'status_note', 'reason', 'etc', 'customer_hn', 'consult_visit_date', 'doctor_name', 'closed_deal_amount', 'procedure_date' ];
-        return salesEditableFields.includes(params.colDef.field);
-    };
+        // Dropdown options
+        const dropdownOptions = {
+            channel: ['Fbc By หมอธีร์', 'FBC-EYES', 'FBC-Hair', 'Walk-in', 'Online', 'Facebook', 'Instagram', 'Line'],
+            procedure: ['ปลูกผม', 'ยกคิ้ว', 'จมูก', 'ตา', 'ฉีดฟิลเลอร์', 'โบท็อกซ์', 'เลเซอร์'],
+            sales: ['MAM', 'AU', 'GOLF', 'Online', 'JANE', 'TOM', 'LISA'],
+            csConfirm: ['CSX', 'CSY', 'CSZ'],
+            confirmY: ['Y', 'N'],
+            transfer100: ['Y', 'N'],
+            status1: ['ธงเขียว 1', 'ธงเขียว 2', 'ธงเขียว 3', 'ธงเขียว 4', 'ธีคบราม', 'โยคทราม', 'นัดนงไว้']
+        };
 
-    const columnDefs = [
-        { headerName: "วัน/เดือน/ปี", field: "lead_date", editable: isEditableByRole, cellEditor: 'agDateCellEditor', width: 120 },
-        { headerName: "ชื่อลูกค้า", field: "customer_name", editable: isEditableByRole, width: 180 },
-        { headerName: "เบอร์ติดต่อ", field: "contact_info", editable: isEditableByRole, width: 150 },
-        { headerName: "เซลล์", field: "assigned_sales", editable: isEditableByRole, width: 120 },
-        { headerName: "Last Status", field: "last_status", editable: isEditableByRole, width: 120 },
-        { headerName: "ยอดที่ปิดได้", field: "closed_deal_amount", editable: isEditableByRole, width: 150, valueFormatter: params => params.value ? `฿${Number(params.value).toLocaleString()}` : '' },
-    ];
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            updateStats();
 
-    const gridOptions = {
-        columnDefs,
-        rowData: [],
-        defaultColDef: { sortable: true, filter: true, resizable: true, floatingFilter: true },
-        onGridReady: (params) => { gridApi = params.api; },
-        onCellValueChanged: async (event) => {
-            const { data, colDef, newValue } = event;
-            const { error } = await supabaseClient.from('leads').update({ [colDef.field]: newValue }).eq('id', data.id); // <--- แก้ไขแล้ว
-            if (error) console.error('Error updating cell:', error.message);
+            tableData.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="row-number">${index + 100}</td>
+                    <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'date')" onclick="selectCell(this)">${row.date || ''}</td>
+                    <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'leadCode')" onclick="selectCell(this)">${row.leadCode || ''}</td>
+                    <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'name')" onclick="selectCell(this)">${row.name || ''}</td>
+                    <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'phone')" onclick="selectCell(this)">${row.phone || ''}</td>
+                    <td class="admin-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'channel')" onclick="selectCell(this)">${row.channel || ''}</td>
+                    <td class="admin-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'procedure')" onclick="selectCell(this)">${row.procedure || ''}</td>
+                    <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'deposit')" onclick="selectCell(this)">${row.deposit || ''}</td>
+                    <td class="admin-cell yn-cell ${row.confirmY === 'Y' ? 'yes' : row.confirmY === 'N' ? 'no' : ''} has-dropdown" ondblclick="startEdit(this, ${index}, 'confirmY')" onclick="selectCell(this)">${row.confirmY || ''}</td>
+                    <td class="admin-cell yn-cell ${row.transfer100 === 'Y' ? 'yes' : row.transfer100 === 'N' ? 'no' : ''} has-dropdown" ondblclick="startEdit(this, ${index}, 'transfer100')" onclick="selectCell(this)">${row.transfer100 || ''}</td>
+                    <td class="admin-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'csConfirm')" onclick="selectCell(this)">${row.csConfirm || ''}</td>
+                    <td class="admin-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'sales')" onclick="selectCell(this)">${row.sales || ''}</td>
+                    <td class="status-cell" ondblclick="startEdit(this, ${index}, 'lastStatus')" onclick="selectCell(this)">${row.lastStatus || ''}</td>
+                    <td class="status-cell" ondblclick="startEdit(this, ${index}, 'updateAccess')" onclick="selectCell(this)">${row.updateAccess || ''}</td>
+                    <td class="status-cell" ondblclick="startEdit(this, ${index}, 'callTime')" onclick="selectCell(this)">${row.callTime || ''}</td>
+                    <td class="status-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'status1')" onclick="selectCell(this)">${row.status1 || ''}</td>
+                    <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'reason')" onclick="selectCell(this)">${row.reason || ''}</td>
+                    <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'etc')" onclick="selectCell(this)">${row.etc || ''}</td>
+                    <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'hnCustomer')" onclick="selectCell(this)">${row.hnCustomer || ''}</td>
+                    <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'oldAppointment')" onclick="selectCell(this)">${row.oldAppointment || ''}</td>
+                    <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'dr')" onclick="selectCell(this)">${row.dr || ''}</td>
+                    <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'closedAmount')" onclick="selectCell(this)">${row.closedAmount || ''}</td>
+                    <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'appointmentDate')" onclick="selectCell(this)">${row.appointmentDate || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
-    };
 
-    // --- 4. CORE FUNCTIONS ---
-    const getUserProfile = async () => {
-        const { data: { user } } = await supabaseClient.auth.getUser(); // <--- แก้ไขแล้ว
-        if (!user) return null;
-        const { data, error } = await supabaseClient.from('profiles').select('role').eq('id', user.id).single(); // <--- แก้ไขแล้ว
-        if (error) { console.error('Error fetching user profile:', error); return null; }
-        return data;
-    };
-
-    const loadLeads = async () => {
-        const { data, error } = await supabaseClient.from('leads').select('*').order('created_at', { ascending: false }); // <--- แก้ไขแล้ว
-        if (error) console.error('Error loading leads:', error);
-        else if (gridApi) gridApi.setRowData(data);
-    };
-
-    const initializeDashboard = async () => {
-        const profile = await getUserProfile();
-        if (profile) {
-            currentUserRole = profile.role;
-            await loadLeads();
-            mainContainer.style.display = 'block';
-            loginContainer.style.display = 'none';
-        } else {
-            await handleLogout();
+        function selectCell(cell) {
+            // Clear previous selection
+            document.querySelectorAll('.selected').forEach(c => c.classList.remove('selected'));
+            
+            // Select new cell
+            cell.classList.add('selected');
+            selectedCell = cell;
         }
-    };
 
-    const handleLogin = async () => {
-        loginError.textContent = '';
-        const { error } = await supabaseClient.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value }); // <--- แก้ไขแล้ว
-        if (error) loginError.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-        else await initializeDashboard();
-    };
-
-    const handleLogout = async () => {
-        await supabaseClient.auth.signOut(); // <--- แก้ไขแล้ว
-        mainContainer.style.display = 'none';
-        loginContainer.style.display = 'flex';
-        emailInput.value = '';
-        passwordInput.value = '';
-    };
-
-    // --- 5. APP START ---
-    document.addEventListener('DOMContentLoaded', async () => {
-        new agGrid.Grid(document.querySelector('#myGrid'), gridOptions);
-        
-        loginBtn.addEventListener('click', handleLogin);
-        logoutBtn.addEventListener('click', handleLogout);
-        quickFilterInput.addEventListener('input', () => { if(gridApi) gridApi.setQuickFilter(quickFilterInput.value); });
-
-        const { data: { session } } = await supabaseClient.auth.getSession(); // <--- แก้ไขแล้ว
-        if (session) await initializeDashboard();
-        else {
-            mainContainer.style.display = 'none';
-            loginContainer.style.display = 'flex';
+        function startEdit(cell, rowIndex, field) {
+            if (editingCell) finishEdit();
+            
+            editingCell = cell;
+            const value = tableData[rowIndex][field] || '';
+            cell.classList.add('editing');
+            
+            if (dropdownOptions[field]) {
+                const select = document.createElement('select');
+                select.className = 'cell-select';
+                
+                // Add empty option
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = '';
+                select.appendChild(emptyOption);
+                
+                dropdownOptions[field].forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt;
+                    if (opt === value) option.selected = true;
+                    select.appendChild(option);
+                });
+                
+                select.addEventListener('change', () => {
+                    tableData[rowIndex][field] = select.value;
+                    finishEdit();
+                });
+                
+                select.addEventListener('blur', finishEdit);
+                cell.innerHTML = '';
+                cell.appendChild(select);
+                select.focus();
+            } else {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'cell-input';
+                input.value = value;
+                
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        tableData[rowIndex][field] = input.value;
+                        finishEdit();
+                    } else if (e.key === 'Escape') {
+                        finishEdit();
+                    }
+                });
+                
+                input.addEventListener('blur', () => {
+                    tableData[rowIndex][field] = input.value;
+                    finishEdit();
+                });
+                
+                cell.innerHTML = '';
+                cell.appendChild(input);
+                input.focus();
+                input.select();
+            }
         }
-    });
-</script>
+
+        function finishEdit() {
+            if (!editingCell) return;
+            
+            editingCell.classList.remove('editing');
+            editingCell = null;
+            renderTable();
+            saveToLocalStorage();
+            showStatus('บันทึกแล้ว');
+        }
+
+        function updateStats() {
+            document.getElementById('totalCustomers').textContent = tableData.length;
+            
+            // Count today's customers
+            const today = new Date();
+            const todayStr = `${today.getDate()}-${today.getMonth() + 1}-${(today.getFullYear() + 543) % 100}`;
+            const todayCount = tableData.filter(row => row.date === todayStr).length;
+            document.getElementById('todayCustomers').textContent = todayCount;
+            
+            // Count pending (not closed)
+            const pending = tableData.filter(row => !row.closedAmount || row.closedAmount === '').length;
+            document.getElementById('pendingCustomers').textContent = pending;
+            
+            // Count closed
+            const closed = tableData.filter(row => row.closedAmount && row.closedAmount !== '').length;
+            document.getElementById('closedDeals').textContent = closed;
+        }
+
+        function addNewRow() {
+            const newRow = {
+                date: '',
+                leadCode: (parseInt(tableData[tableData.length - 1]?.leadCode || '1151') + 1).toString(),
+                name: '',
+                phone: '',
+                channel: '',
+                procedure: '',
+                deposit: '',
+                confirmY: '',
+                transfer100: '',
+                csConfirm: '',
+                sales: '',
+                lastStatus: '',
+                updateAccess: '',
+                callTime: '',
+                status1: '',
+                reason: '',
+                etc: '',
+                hnCustomer: '',
+                oldAppointment: '',
+                dr: '',
+                closedAmount: '',
+                appointmentDate: ''
+            };
+            
+            tableData.push(newRow);
+            renderTable();
+            saveToLocalStorage();
+            showStatus('เพิ่มแถวใหม่แล้ว');
+        }
+
+        function searchTable(query) {
+            const rows = document.querySelectorAll('#tableBody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query.toLowerCase()) ? '' : 'none';
+            });
+        }
+
+        function filterTable() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const salesFilter = document.getElementById('salesFilter').value;
+            
+            const rows = document.querySelectorAll('#tableBody tr');
+            rows.forEach((row, index) => {
+                let show = true;
+                
+                if (statusFilter && tableData[index].status1 !== statusFilter) {
+                    show = false;
+                }
+                
+                if (salesFilter && tableData[index].sales !== salesFilter) {
+                    show = false;
+                }
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+
+        function showStatus(message) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.textContent = message;
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 2000);
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('beautyCRMData', JSON.stringify(tableData));
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('beautyCRMData');
+            if (saved) {
+                try {
+                    tableData = JSON.parse(saved);
+                } catch (e) {
+                    tableData = [...initialData];
+                }
+            }
+        }
+
+        function exportData() {
+            // Create header row
+            const headers = ['#', 'วัน/เดือน/ปี', 'รหัสลีด', 'ชื่อ-สกุล', 'เบอร์โทร', 'ช่องทาง', 'ประเภทหัตถการ', 
+                           'มัดจำ', 'ยืนยัน Y/N', 'โอน 100%', 'CS ยัน', 'เซลล์', 'Last Status', 
+                           'อัพเดท', 'เวลาโทร', 'Status 1', 'เหตุผล', 'ETC', 'HN', 'นัดผ่าเก่า', 
+                           'DR.', 'ยอดปิด', 'นัดทำ'];
+            
+            let csv = '\ufeff' + headers.join(',') + '\n';
+            
+            // Add data rows
+            tableData.forEach((row, index) => {
+                const rowData = [
+                    index + 100,
+                    row.date,
+                    row.leadCode,
+                    row.name,
+                    row.phone,
+                    row.channel,
+                    row.procedure,
+                    row.deposit,
+                    row.confirmY,
+                    row.transfer100,
+                    row.csConfirm,
+                    row.sales,
+                    row.lastStatus,
+                    row.updateAccess,
+                    row.callTime,
+                    row.status1,
+                    row.reason,
+                    row.etc,
+                    row.hnCustomer,
+                    row.oldAppointment,
+                    row.dr,
+                    row.closedAmount,
+                    row.appointmentDate
+                ].map(val => `"${String(val || '').replace(/"/g, '""')}"`);
+                csv += rowData.join(',') + '\n';
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `beauty_clinic_crm_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            
+            showStatus('Export สำเร็จ');
+        }
+
+        function switchRole() {
+            alert('กำลังพัฒนาฟีเจอร์ Switch Role');
+        }
+
+        function showSettings() {
+            alert('กำลังพัฒนาหน้าตั้งค่า');
+        }
+
+        function signOut() {
+            if (confirm('ต้องการออกจากระบบ?')) {
+                alert('ออกจากระบบแล้ว');
+            }
+        }
+
+        // Context menu
+        document.addEventListener('contextmenu', (e) => {
+            const cell = e.target.closest('td');
+            if (cell && !cell.classList.contains('row-number')) {
+                e.preventDefault();
+                contextCell = cell;
+                
+                const menu = document.getElementById('contextMenu');
+                menu.style.display = 'block';
+                menu.style.left = e.pageX + 'px';
+                menu.style.top = e.pageY + 'px';
+            }
+        });
+
+        document.addEventListener('click', () => {
+            document.getElementById('contextMenu').style.display = 'none';
+        });
+
+        function editCell() {
+            if (contextCell) {
+                contextCell.dispatchEvent(new Event('dblclick'));
+            }
+        }
+
+        function copyCell() {
+            if (contextCell) {
+                copiedCell = contextCell.textContent;
+                showStatus('คัดลอกเซลล์แล้ว');
+            }
+        }
+
+        function pasteCell() {
+            if (contextCell && copiedCell !== null) {
+                const rowIndex = contextCell.parentElement.rowIndex - 1;
+                const cellIndex = contextCell.cellIndex;
+                
+                const fields = ['date', 'leadCode', 'name', 'phone', 'channel', 'procedure', 'deposit', 
+                               'confirmY', 'transfer100', 'csConfirm', 'sales', 'lastStatus', 
+                               'updateAccess', 'callTime', 'status1', 'reason', 'etc', 'hnCustomer',
+                               'oldAppointment', 'dr', 'closedAmount', 'appointmentDate'];
+                
+                if (rowIndex >= 0 && fields[cellIndex - 1]) {
+                    tableData[rowIndex][fields[cellIndex - 1]] = copiedCell;
+                    renderTable();
+                    saveToLocalStorage();
+                    showStatus('วางเซลล์แล้ว');
+                }
+            }
+        }
+
+        function insertRowAbove() {
+            if (contextCell) {
+                const rowIndex = contextCell.parentElement.rowIndex - 1;
+                const newRow = {
+                    date: '', leadCode: '', name: '', phone: '', channel: '', procedure: '',
+                    deposit: '', confirmY: '', transfer100: '', csConfirm: '', sales: '',
+                    lastStatus: '', updateAccess: '', callTime: '', status1: '', reason: '',
+                    etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: ''
+                };
+                
+                tableData.splice(rowIndex, 0, newRow);
+                renderTable();
+                saveToLocalStorage();
+                showStatus('แทรกแถวด้านบนแล้ว');
+            }
+        }
+
+        function insertRowBelow() {
+            if (contextCell) {
+                const rowIndex = contextCell.parentElement.rowIndex - 1;
+                const newRow = {
+                    date: '', leadCode: '', name: '', phone: '', channel: '', procedure: '',
+                    deposit: '', confirmY: '', transfer100: '', csConfirm: '', sales: '',
+                    lastStatus: '', updateAccess: '', callTime: '', status1: '', reason: '',
+                    etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: ''
+                };
+                
+                tableData.splice(rowIndex + 1, 0, newRow);
+                renderTable();
+                saveToLocalStorage();
+                showStatus('แทรกแถวด้านล่างแล้ว');
+            }
+        }
+
+        function deleteRow() {
+            if (contextCell) {
+                const rowIndex = contextCell.parentElement.rowIndex - 1;
+                if (confirm('ต้องการลบแถวนี้?')) {
+                    tableData.splice(rowIndex, 1);
+                    renderTable();
+                    saveToLocalStorage();
+                    showStatus('ลบแถวแล้ว');
+                }
+            }
+        }
+
+        function clearCell() {
+            if (contextCell) {
+                const rowIndex = contextCell.parentElement.rowIndex - 1;
+                const cellIndex = contextCell.cellIndex;
+                
+                const fields = ['date', 'leadCode', 'name', 'phone', 'channel', 'procedure', 'deposit', 
+                               'confirmY', 'transfer100', 'csConfirm', 'sales', 'lastStatus', 
+                               'updateAccess', 'callTime', 'status1', 'reason', 'etc', 'hnCustomer',
+                               'oldAppointment', 'dr', 'closedAmount', 'appointmentDate'];
+                
+                if (rowIndex >= 0 && fields[cellIndex - 1]) {
+                    tableData[rowIndex][fields[cellIndex - 1]] = '';
+                    renderTable();
+                    saveToLocalStorage();
+                    showStatus('ล้างเซลล์แล้ว');
+                }
+            }
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(() => {
+            saveToLocalStorage();
+            showStatus('Auto-saved');
+        }, 30000);
+
+        // Initialize
+        loadFromLocalStorage();
+        renderTable();
+    </script>
 </body>
 </html>
-
-
