@@ -22,15 +22,17 @@ async function initializeApp() {
     const userId = session.user.id;
     const { data: userData, error: userError } = await supabaseClient
         .from('users')
-        .select('role')
+        .select('role, username') // ดึง username มาด้วย
         .eq('id', userId)
         .single();
 
     if (userError) {
-        console.error('Error fetching user role:', userError);
+        console.error('Error fetching user profile:', userError);
         currentUserRole = 'sales'; // fallback role
     } else {
         currentUserRole = userData.role;
+        // เก็บ username ของ người dùng ปัจจุบันไว้ใน session storage เพื่อให้ง่ายต่อการใช้งาน
+        sessionStorage.setItem('currentUsername', userData.username);
     }
 
     // 2. อัปเดต UI ตามสิทธิ์
@@ -42,6 +44,7 @@ async function initializeApp() {
 
 // --- ฟังก์ชันใหม่: ดึงข้อมูลลูกค้า ---
 async function fetchCustomerData() {
+    showStatus('กำลังดึงข้อมูล...');
     // RLS ของ Supabase จะกรองข้อมูลให้เราโดยอัตโนมัติตาม Role
     const { data, error } = await supabaseClient
         .from('customers')
@@ -54,6 +57,7 @@ async function fetchCustomerData() {
     } else {
         tableData = data;
         renderTable(); // แสดงผลข้อมูลที่ดึงมา
+        showStatus('ข้อมูลล่าสุดแล้ว');
     }
 }
 
@@ -71,7 +75,6 @@ function updateUIByRole() {
         'admin': { badge: 'Admin', canAdd: true, canDelete: false },
         'sales': { badge: 'Sales', canAdd: true, canDelete: false }
     };
-
     let currentPermission = permissions[currentUserRole];
     
     if (currentPermission) {
@@ -83,22 +86,44 @@ function updateUIByRole() {
 }
 
 function startEdit(cell, rowIndex, field) {
-    // กฎ: Sales ห้ามแก้ไขคอลัมน์ 'sales'
     if (currentUserRole === 'sales' && field === 'sales') {
         showStatus('คุณไม่มีสิทธิ์แก้ไขเซลล์นี้', true);
         return;
     }
-    // (โค้ดส่วนที่เหลือเหมือนเดิม)
-    // ...
+    if (editingCell) finishEdit();
+    editingCell = cell;
+    const value = tableData[rowIndex][field] || '';
+    cell.classList.add('editing');
+    if (dropdownOptions[field]) {
+        // ... (โค้ดส่วน dropdown เหมือนเดิม)
+    } else {
+        // ... (โค้ดส่วน input text เหมือนเดิม)
+    }
 }
 
-async function handleLogout() {
-    await supabaseClient.auth.signOut();
-    window.location.href = 'login.html';
+async function addNewRow() {
+    const currentUsername = sessionStorage.getItem('currentUsername');
+    const newRow = {
+        // ... (ข้อมูลอื่นๆ เป็นค่าว่าง)
+        sales: currentUsername // ❗ กำหนดให้เซลล์ที่สร้างเป็นของตัวเองโดยอัตโนมัติ
+    };
+
+    // ส่งข้อมูลแถวใหม่ไปที่ Supabase
+    const { data, error } = await supabaseClient
+        .from('customers')
+        .insert([newRow])
+        .select();
+
+    if (error) {
+        console.error('Error inserting new row:', error);
+        showStatus('เพิ่มข้อมูลไม่สำเร็จ', true);
+    } else {
+        showStatus('เพิ่มข้อมูลสำเร็จ');
+        await fetchCustomerData(); // ดึงข้อมูลทั้งหมดมาใหม่เพื่อให้เห็นแถวใหม่
+    }
 }
 
+// ... (ฟังก์ชันอื่นๆ ที่เหลือจะยังคงเหมือนเดิมเป็นส่วนใหญ่)
 
-// (ฟังก์ชันอื่นๆ ส่วนใหญ่ยังคงเหมือนเดิม แต่จะทำงานกับข้อมูลที่มาจาก Supabase)
-// ... renderTable, finishEdit, updateStats, addNewRow, searchTable, etc. ...
 // --- Initialize App ---
 initializeApp();
