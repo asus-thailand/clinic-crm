@@ -405,6 +405,10 @@ body {
     animation: fadeIn 0.3s;
 }
 
+.status-indicator.error {
+    background: #dc3545;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
