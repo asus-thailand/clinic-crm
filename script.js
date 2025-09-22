@@ -2,29 +2,29 @@
 const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co'; // ❗ วาง URL ของคุณที่นี่
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM'; // ❗ วาง Anon Key ของคุณที่นี่
 
-// ตรวจสอบว่าใส่ค่า URL และ Key แล้วหรือยัง
 if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
     alert('กรุณาตั้งค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในไฟล์ script.js ก่อน');
 }
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// แก้ไขจุดที่ผิด: เปลี่ยนชื่อตัวแปรเป็น supabaseClient เพื่อไม่ให้ซ้ำซ้อน
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ฟังก์ชัน "ยามเฝ้าประตู"
 async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
+    // ใช้ตัวแปรใหม่ supabaseClient
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) {
-        // ถ้าไม่มี session (ยังไม่ล็อกอิน) ให้เด้งกลับไปที่หน้า login.html
         window.location.href = 'login.html';
     }
 }
 
 // ฟังก์ชันออกจากระบบ
 async function handleLogout() {
-    const { error } = await supabase.auth.signOut();
+    // ใช้ตัวแปรใหม่ supabaseClient
+    const { error } = await supabaseClient.auth.signOut();
     if (error) {
         console.error('Error logging out:', error);
     } else {
-        // หลังจาก logout สำเร็จ ให้กลับไปหน้า login
         window.location.href = 'login.html';
     }
 }
@@ -33,9 +33,8 @@ async function handleLogout() {
 checkAuth();
 // ------------------------------------------
 
-// --- โค้ดเดิมของแอปพลิเคชัน ---
-// (ส่วนนี้เหมือนเดิมทุกอย่าง)
-let currentUserRole = 'sales'; // ค่านี้จะถูกแทนที่ด้วยข้อมูลจริงในอนาคต
+// --- โค้ดเดิมของแอปพลิเคชัน (เหมือนเดิม) ---
+let currentUserRole = 'sales';
 
 const initialData = [
     { date: '1-9-25', leadCode: '1146', name: 'บุษศะ สะพเขระขัน', phone: '0959750848', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: '3-9-25', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSX', sales: 'MAM', lastStatus: '75%', updateAccess: '1', callTime: '17.00น', status1: 'ธงเขียว 1', reason: 'โอนเงายมาแล้ว', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' },
@@ -45,7 +44,7 @@ const initialData = [
     { date: '2-9-25', leadCode: '1150', name: 'ผู้', phone: '090-6961515', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: 'N', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSY', sales: 'MAM', lastStatus: '', updateAccess: '', callTime: '', status1: 'ธงเขียว 1', reason: '', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' },
     { date: '2-9-25', leadCode: '1151', name: 'มูเดีย ซำนันเจอร์', phone: '086-2209485', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: '5-9-25', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSX', sales: 'MAM', lastStatus: '', updateAccess: '', callTime: '', status1: 'ธงเขียว 2', reason: '', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' }
 ];
-
+// (โค้ดส่วนที่เหลือเหมือนเดิมทุกประการ)
 let tableData = [...initialData];
 let editingCell = null;
 let copiedCell = null;
@@ -100,11 +99,10 @@ function insertRowBelow() { insertRowAction(1); }
 function deleteRow() { if (currentUserRole !== 'administrator') { showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true); return; } if (contextCell) { const rowIndex = contextCell.parentElement.rowIndex - 1; if (confirm('ต้องการลบแถวนี้?')) { tableData.splice(rowIndex, 1); renderTable(); saveToLocalStorage(); showStatus('ลบแถวแล้ว'); } } }
 function clearCell() { if (currentUserRole === 'viewer') { showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true); return; } if (contextCell) { const rowIndex = contextCell.parentElement.rowIndex - 1; const cellIndex = contextCell.cellIndex -1; const field = Object.keys(tableData[0])[cellIndex]; if (field) { tableData[rowIndex][field] = ''; renderTable(); saveToLocalStorage(); showStatus('ล้างเซลล์แล้ว'); } } }
 function initAutoSave() { if (autoSaveInterval) clearInterval(autoSaveInterval); autoSaveInterval = setInterval(() => { if (saveToLocalStorage()) { } }, 60000); }
-function updateUIByRole() { const userBadge = document.querySelector('.user-badge'); const addUserButton = document.getElementById('addUserButton'); const deleteRowMenuItem = document.getElementById('deleteRowMenuItem'); addUserButton.style.display = 'none'; deleteRowMenuItem.style.display = 'none'; let permissions = { 'administrator': { badge: 'Administrator', color: '#dc3545', canAdd: true, canDelete: true }, 'sales': { badge: 'Sales', color: '#007bff', canAdd: true, canDelete: false }, 'viewer': { badge: 'Viewer', color: '#6c757d', canAdd: false, canDelete: false } }; let currentPermission = permissions[currentUserRole]; if (currentPermission) { userBadge.textContent = currentPermission.badge; userBadge.style.backgroundColor = currentPermission.color; if (currentPermission.canAdd) addUserButton.style.display = 'inline-block'; if (currentPermission.canDelete) deleteRowMenuItem.style.display = 'block'; } }
+function updateUIByRole() { const userBadge = document.querySelector('.user-badge'); const addUserButton = document.getElementById('addUserButton'); const deleteRowMenuItem = document.getElementById('deleteRowMenuItem'); addUserButton.style.display = 'none'; deleteRowMenuItem.style.display = 'none'; let permissions = { 'administrator': { badge: 'Administrator', color: '#dc3545', canAdd: true, canDelete: true }, 'sales': { badge: 'Sales', color: '##007bff', canAdd: true, canDelete: false }, 'viewer': { badge: 'Viewer', color: '##6c757d', canAdd: false, canDelete: false } }; let currentPermission = permissions[currentUserRole]; if (currentPermission) { userBadge.textContent = currentPermission.badge; userBadge.style.backgroundColor = currentPermission.color; if (currentPermission.canAdd) addUserButton.style.display = 'inline-block'; if (currentPermission.canDelete) deleteRowMenuItem.style.display = 'block'; } }
 
 window.addEventListener('beforeunload', saveToLocalStorage);
 loadFromLocalStorage();
 renderTable();
 initAutoSave();
 updateUIByRole();
-
