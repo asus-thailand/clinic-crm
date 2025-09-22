@@ -23,7 +23,7 @@
                 <button class="btn" onclick="switchRole()">🔄 Switch Role</button>
                 <button class="btn" onclick="exportData()">📊 Export</button>
                 <button class="btn" onclick="showSettings()">⚙️ ตั้งค่า</button>
-                <button class="btn" onclick="signOut()">ออกจากระบบ</button>
+                <button class="btn" onclick="handleLogout()">ออกจากระบบ</button>
             </div>
         </div>
     </header>
@@ -73,7 +73,7 @@
             <option value="Online">Online</option>
         </select>
         
-        <button class="btn btn-primary" onclick="addNewRow()">+ เพิ่มลูกค้า</button>
+        <button class="btn btn-primary" id="addUserButton" onclick="addNewRow()">+ เพิ่มลูกค้า</button>
         <button class="btn" style="background: #6c757d;" onclick="location.reload()">🔄</button>
     </div>
 
@@ -121,7 +121,7 @@
         <div class="context-menu-item" onclick="insertRowAbove()">↑ แทรกแถวด้านบน</div>
         <div class="context-menu-item" onclick="insertRowBelow()">↓ แทรกแถวด้านล่าง</div>
         <div class="context-menu-separator"></div>
-        <div class="context-menu-item" onclick="deleteRow()">🗑️ ลบแถว</div>
+        <div class="context-menu-item" id="deleteRowMenuItem" onclick="deleteRow()">🗑️ ลบแถว</div>
         <div class="context-menu-item" onclick="clearCell()">🧹 ล้างเซลล์</div>
     </div>
 
