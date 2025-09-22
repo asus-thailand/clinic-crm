@@ -1,6 +1,6 @@
 // --- การเชื่อมต่อ Supabase และระบบป้องกัน ---
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // ❗ วาง URL ของคุณที่นี่
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // ❗ วาง Anon Key ของคุณที่นี่
+const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co'; // ❗ วาง URL ของคุณที่นี่
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM'; // ❗ วาง Anon Key ของคุณที่นี่
 
 // ตรวจสอบว่าใส่ค่า URL และ Key แล้วหรือยัง
 if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
@@ -107,3 +107,4 @@ loadFromLocalStorage();
 renderTable();
 initAutoSave();
 updateUIByRole();
+
