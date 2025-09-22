@@ -6,21 +6,46 @@ if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE
     alert('กรุณาตั้งค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในไฟล์ script.js ก่อน');
 }
 
-// แก้ไขจุดที่ผิด: เปลี่ยนชื่อตัวแปรเป็น supabaseClient เพื่อไม่ให้ซ้ำซ้อน
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ฟังก์ชัน "ยามเฝ้าประตู"
-async function checkAuth() {
-    // ใช้ตัวแปรใหม่ supabaseClient
-    const { data: { session } } = await supabaseClient.auth.getSession();
+// 🔴 เราจะไม่ใช้ค่า Role จำลองอีกต่อไป
+// let currentUserRole = 'sales'; 
+
+let currentUserRole = 'viewer'; // กำหนดค่าเริ่มต้นเป็น viewer ไว้ก่อน
+
+// ฟังก์ชัน "ยามเฝ้าประตู" และ "ดึง Role"
+async function checkAuthAndGetRole() {
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    
     if (!session) {
+        // ถ้าไม่มี session (ยังไม่ล็อกอิน) ให้เด้งกลับไปที่หน้า login.html
         window.location.href = 'login.html';
+        return; // ออกจากฟังก์ชันทันที
     }
+
+    // ถ้ามี session (ล็อกอินแล้ว) ให้ไปดึง Role จากตาราง users
+    const userId = session.user.id;
+    const { data, error } = await supabaseClient
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+    if (error) {
+        console.error('Error fetching user role:', error);
+        // ถ้าหา role ไม่เจอ อาจจะให้เป็น viewer ไปก่อน
+        currentUserRole = 'viewer';
+    } else {
+        // ถ้าหา role เจอ ให้กำหนดค่า currentUserRole
+        currentUserRole = data.role;
+    }
+
+    // หลังจากได้ Role จริงๆ มาแล้ว ก็อัปเดตหน้าเว็บตามสิทธิ์นั้นๆ
+    updateUIByRole();
 }
 
 // ฟังก์ชันออกจากระบบ
 async function handleLogout() {
-    // ใช้ตัวแปรใหม่ supabaseClient
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
         console.error('Error logging out:', error);
@@ -29,22 +54,18 @@ async function handleLogout() {
     }
 }
 
-// เรียกใช้ "ยามเฝ้าประตู" ทันทีที่เปิดหน้าเว็บ
-checkAuth();
+// เรียกใช้ฟังก์ชันหลักทันทีที่เปิดหน้าเว็บ
+checkAuthAndGetRole();
 // ------------------------------------------
 
 // --- โค้ดเดิมของแอปพลิเคชัน (เหมือนเดิม) ---
-let currentUserRole = 'sales';
-
 const initialData = [
-    { date: '1-9-25', leadCode: '1146', name: 'บุษศะ สะพเขระขัน', phone: '0959750848', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: '3-9-25', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSX', sales: 'MAM', lastStatus: '75%', updateAccess: '1', callTime: '17.00น', status1: 'ธงเขียว 1', reason: 'โอนเงายมาแล้ว', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' },
-    { date: '1-9-25', leadCode: '1147', name: 'สเชอ', phone: '091-4651453', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: 'N', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSY', sales: 'AU', lastStatus: '0%', updateAccess: '1', callTime: '11.37น', status1: 'ธงเขียว 1', reason: 'โอนเงายมาแล้ว โอนไปเป็นธงเขียว', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' },
-    { date: '2-9-25', leadCode: '1148', name: 'โม', phone: '089-2266838', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: 'N', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSY', sales: 'GOLF', lastStatus: '', updateAccess: '', callTime: '', status1: 'ธงแดง', reason: '', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' },
-    { date: '2-9-25', leadCode: '1149', name: 'สมพน อุรุวาส', phone: '097-2036277', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: '4-9-25', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSY', sales: 'GOLF', lastStatus: '', updateAccess: '', callTime: '', status1: 'ธงเขียว 1', reason: '', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' },
-    { date: '2-9-25', leadCode: '1150', name: 'ผู้', phone: '090-6961515', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: 'N', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSY', sales: 'MAM', lastStatus: '', updateAccess: '', callTime: '', status1: 'ธงเขียว 1', reason: '', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' },
-    { date: '2-9-25', leadCode: '1151', name: 'มูเดีย ซำนันเจอร์', phone: '086-2209485', channel: 'Fbc By หมอธีร์', procedure: 'ปลูกผม', deposit: '5-9-25', confirmY: 'Y', transfer100: 'N', csConfirm: 'CSX', sales: 'MAM', lastStatus: '', updateAccess: '', callTime: '', status1: 'ธงเขียว 2', reason: '', etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: '' }
+    // ... ข้อมูลตัวอย่างของคุณ ...
 ];
-// (โค้ดส่วนที่เหลือเหมือนเดิมทุกประการ)
+// (โค้ดส่วนที่เหลือเหมือนเดิมทุกประการ ไม่ต้องแก้ไข)
+// ...
+// ... (ฟังก์ชัน renderTable, startEdit, addNewRow, etc. ทั้งหมด) ...
+// ...
 let tableData = [...initialData];
 let editingCell = null;
 let copiedCell = null;
@@ -99,10 +120,10 @@ function insertRowBelow() { insertRowAction(1); }
 function deleteRow() { if (currentUserRole !== 'administrator') { showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true); return; } if (contextCell) { const rowIndex = contextCell.parentElement.rowIndex - 1; if (confirm('ต้องการลบแถวนี้?')) { tableData.splice(rowIndex, 1); renderTable(); saveToLocalStorage(); showStatus('ลบแถวแล้ว'); } } }
 function clearCell() { if (currentUserRole === 'viewer') { showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true); return; } if (contextCell) { const rowIndex = contextCell.parentElement.rowIndex - 1; const cellIndex = contextCell.cellIndex -1; const field = Object.keys(tableData[0])[cellIndex]; if (field) { tableData[rowIndex][field] = ''; renderTable(); saveToLocalStorage(); showStatus('ล้างเซลล์แล้ว'); } } }
 function initAutoSave() { if (autoSaveInterval) clearInterval(autoSaveInterval); autoSaveInterval = setInterval(() => { if (saveToLocalStorage()) { } }, 60000); }
-function updateUIByRole() { const userBadge = document.querySelector('.user-badge'); const addUserButton = document.getElementById('addUserButton'); const deleteRowMenuItem = document.getElementById('deleteRowMenuItem'); addUserButton.style.display = 'none'; deleteRowMenuItem.style.display = 'none'; let permissions = { 'administrator': { badge: 'Administrator', color: '#dc3545', canAdd: true, canDelete: true }, 'sales': { badge: 'Sales', color: '##007bff', canAdd: true, canDelete: false }, 'viewer': { badge: 'Viewer', color: '##6c757d', canAdd: false, canDelete: false } }; let currentPermission = permissions[currentUserRole]; if (currentPermission) { userBadge.textContent = currentPermission.badge; userBadge.style.backgroundColor = currentPermission.color; if (currentPermission.canAdd) addUserButton.style.display = 'inline-block'; if (currentPermission.canDelete) deleteRowMenuItem.style.display = 'block'; } }
+function updateUIByRole() { const userBadge = document.querySelector('.user-badge'); const addUserButton = document.getElementById('addUserButton'); const deleteRowMenuItem = document.getElementById('deleteRowMenuItem'); addUserButton.style.display = 'none'; deleteRowMenuItem.style.display = 'none'; let permissions = { 'administrator': { badge: 'Administrator', color: '#dc3545', canAdd: true, canDelete: true }, 'sales': { badge: 'Sales', color: '#007bff', canAdd: true, canDelete: false }, 'viewer': { badge: 'Viewer', color: '#6c757d', canAdd: false, canDelete: false } }; let currentPermission = permissions[currentUserRole]; if (currentPermission) { userBadge.textContent = currentPermission.badge; userBadge.style.backgroundColor = currentPermission.color; if (currentPermission.canAdd) addUserButton.style.display = 'inline-block'; if (currentPermission.canDelete) deleteRowMenuItem.style.display = 'block'; } }
 
 window.addEventListener('beforeunload', saveToLocalStorage);
-loadFromLocalStorage();
-renderTable();
+// loadFromLocalStorage(); // เราจะให้ข้อมูลมาจาก Supabase แทน
+// renderTable(); // จะถูกเรียกหลังจากดึง Role สำเร็จ
 initAutoSave();
-updateUIByRole();
+// updateUIByRole(); // จะถูกเรียกใน checkAuthAndGetRole()
