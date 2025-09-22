@@ -6,74 +6,16 @@
     <title>Login - Beauty Clinic CRM</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            background: #f5f7fa; 
-            font-family: 'Segoe UI', sans-serif;
-            margin: 0;
-        }
-        .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        .logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: #764ba2;
-            margin-bottom: 25px;
-        }
-        .input-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: #6c757d;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        .btn {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .secondary-action {
-            margin-top: 20px;
-            font-size: 14px;
-        }
-        .secondary-action a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        #errorMessage {
-            color: #dc3545;
-            margin-top: 15px;
-            font-size: 14px;
-            display: none; /* ซ่อนไว้ก่อน */
-        }
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f7fa; font-family: 'Segoe UI', sans-serif; margin: 0; }
+        .login-container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .logo { font-size: 24px; font-weight: 700; color: #764ba2; margin-bottom: 25px; }
+        .input-group { margin-bottom: 20px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: #6c757d; }
+        .input-group input { width: 100%; padding: 12px 15px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        .secondary-action { margin-top: 20px; font-size: 14px; }
+        .secondary-action a { color: #667eea; text-decoration: none; }
+        #errorMessage { color: #dc3545; margin-top: 15px; font-size: 14px; display: none; }
     </style>
 </head>
 <body>
@@ -100,35 +42,32 @@
     </div>
 
     <script>
-        // 2. ตั้งค่าการเชื่อมต่อกับ Supabase ของคุณ
-        const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co'; // ❗ วาง URL ของคุณที่นี่
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM'; // ❗ วาง Anon Key ของคุณที่นี่
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // ❗ วาง URL ของคุณที่นี่
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // ❗ วาง Anon Key ของคุณที่นี่
 
-        // ตรวจสอบว่าใส่ค่า URL และ Key แล้วหรือยัง
         if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
             alert('กรุณาตั้งค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในไฟล์ login.html ก่อน');
         }
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // แก้ไขจุดที่ผิด: เปลี่ยนชื่อตัวแปรเป็น supabaseClient เพื่อไม่ให้ซ้ำซ้อน
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
         const errorMessage = document.getElementById('errorMessage');
 
-        // 3. ฟังก์ชันสร้างบัญชีใหม่ (Sign Up)
         async function handleSignUp() {
             const email = emailInput.value;
             const password = passwordInput.value;
             
-            // ตรวจสอบความยาวรหัสผ่าน (Supabase กำหนดขั้นต่ำ 6 ตัวอักษร)
             if (password.length < 6) {
                 errorMessage.textContent = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
                 errorMessage.style.display = 'block';
                 return;
             }
 
-            // ส่งข้อมูลไปให้ Supabase สร้างบัญชี
-            const { data, error } = await supabase.auth.signUp({
+            // ใช้ตัวแปรใหม่ supabaseClient
+            const { data, error } = await supabaseClient.auth.signUp({
                 email: email,
                 password: password,
             });
@@ -139,17 +78,15 @@
             } else {
                 errorMessage.textContent = 'สร้างบัญชีสำเร็จแล้ว! กรุณาตรวจสอบอีเมลเพื่อยืนยัน (ถ้าเปิดใช้งาน)';
                 errorMessage.style.display = 'block';
-                // ถ้าไม่ต้องการให้ยืนยันอีเมล สามารถไปปิดได้ที่ Supabase > Authentication > Providers > Email
             }
         }
 
-        // 4. ฟังก์ชันเข้าสู่ระบบ (Login)
         async function handleLogin() {
             const email = emailInput.value;
             const password = passwordInput.value;
 
-            // ส่งข้อมูลไปให้ Supabase ตรวจสอบ
-            const { data, error } = await supabase.auth.signInWithPassword({
+            // ใช้ตัวแปรใหม่ supabaseClient
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password,
             });
@@ -158,15 +95,13 @@
                 errorMessage.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
                 errorMessage.style.display = 'block';
             } else {
-                // ถ้าสำเร็จ ให้ส่งผู้ใช้ไปที่หน้าหลัก
                 window.location.href = 'index.html';
             }
         }
 
-        // 5. ตรวจสอบว่าผู้ใช้เคยล็อกอินค้างไว้หรือไม่
-        // ถ้าเคย ให้ส่งไปหน้าหลักเลย
         document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            // ใช้ตัวแปรใหม่ supabaseClient
+            const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 window.location.href = 'index.html';
             }
@@ -174,5 +109,4 @@
 
     </script>
 </body>
-
 </html>
