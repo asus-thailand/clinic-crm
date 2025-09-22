@@ -1,3 +1,11 @@
+// --- User Role Simulation ---
+// ลองเปลี่ยนค่าตรงนี้เพื่อทดสอบสิทธิ์ต่างๆ ได้ครับ
+// 'administrator': ทำได้ทุกอย่าง
+// 'sales': เพิ่ม/แก้ไขได้ แต่ลบไม่ได้
+// 'viewer': ดูได้อย่างเดียว
+let currentUserRole = 'sales';
+// --------------------------
+
 // Initial data from Excel
 const initialData = [
     {
@@ -222,6 +230,11 @@ function selectCell(cell) {
 }
 
 function startEdit(cell, rowIndex, field) {
+    if (currentUserRole === 'viewer') {
+        showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
+        return;
+    }
+    
     if (editingCell) finishEdit();
     
     editingCell = cell;
@@ -232,7 +245,6 @@ function startEdit(cell, rowIndex, field) {
         const select = document.createElement('select');
         select.className = 'cell-select';
         
-        // Add empty option
         const emptyOption = document.createElement('option');
         emptyOption.value = '';
         emptyOption.textContent = '';
@@ -263,7 +275,6 @@ function startEdit(cell, rowIndex, field) {
         
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                // Validate phone if it's phone field
                 if (field === 'phone' && input.value && !validatePhone(input.value)) {
                     showStatus('เบอร์โทรไม่ถูกต้อง', true);
                     return;
@@ -271,7 +282,7 @@ function startEdit(cell, rowIndex, field) {
                 tableData[rowIndex][field] = input.value;
                 finishEdit();
             } else if (e.key === 'Escape') {
-                finishEdit();
+                finishEdit(true); // true to cancel edit
             }
         });
         
@@ -291,58 +302,48 @@ function startEdit(cell, rowIndex, field) {
     }
 }
 
-function finishEdit() {
+function finishEdit(cancel = false) {
     if (!editingCell) return;
     
     editingCell.classList.remove('editing');
     editingCell = null;
+    
+    if (!cancel) {
+      saveToLocalStorage();
+      showStatus('บันทึกแล้ว');
+    }
     renderTable();
-    saveToLocalStorage();
-    showStatus('บันทึกแล้ว');
 }
 
 function updateStats() {
     document.getElementById('totalCustomers').textContent = tableData.length;
     
-    // Count today's customers
     const today = new Date();
     const todayStr = `${today.getDate()}-${today.getMonth() + 1}-${(today.getFullYear() + 543) % 100}`;
     const todayCount = tableData.filter(row => row.date === todayStr).length;
     document.getElementById('todayCustomers').textContent = todayCount;
     
-    // Count pending (not closed)
     const pending = tableData.filter(row => !row.closedAmount || row.closedAmount === '').length;
     document.getElementById('pendingCustomers').textContent = pending;
     
-    // Count closed
     const closed = tableData.filter(row => row.closedAmount && row.closedAmount !== '').length;
     document.getElementById('closedDeals').textContent = closed;
 }
 
 function addNewRow() {
+    if (currentUserRole === 'viewer') {
+        showStatus('คุณไม่มีสิทธิ์เพิ่มข้อมูล', true);
+        return;
+    }
+
     const newRow = {
         date: '',
         leadCode: (parseInt(tableData[tableData.length - 1]?.leadCode || '1151') + 1).toString(),
-        name: '',
-        phone: '',
-        channel: '',
-        procedure: '',
-        deposit: '',
-        confirmY: '',
-        transfer100: '',
-        csConfirm: '',
-        sales: '',
-        lastStatus: '',
-        updateAccess: '',
-        callTime: '',
-        status1: '',
-        reason: '',
-        etc: '',
-        hnCustomer: '',
-        oldAppointment: '',
-        dr: '',
-        closedAmount: '',
-        appointmentDate: ''
+        name: '', phone: '', channel: '', procedure: '', deposit: '',
+        confirmY: '', transfer100: '', csConfirm: '', sales: '',
+        lastStatus: '', updateAccess: '', callTime: '', status1: '',
+        reason: '', etc: '', hnCustomer: '', oldAppointment: '',
+        dr: '', closedAmount: '', appointmentDate: ''
     };
     
     tableData.push(newRow);
@@ -367,15 +368,12 @@ function filterTable() {
     const rows = document.querySelectorAll('#tableBody tr');
     rows.forEach((row, index) => {
         let show = true;
-        
         if (statusFilter && tableData[index].status1 !== statusFilter) {
             show = false;
         }
-        
         if (salesFilter && tableData[index].sales !== salesFilter) {
             show = false;
         }
-        
         row.style.display = show ? '' : 'none';
     });
 }
@@ -384,11 +382,7 @@ function showStatus(message, isError = false) {
     const indicator = document.getElementById('statusIndicator');
     indicator.textContent = message;
     indicator.classList.add('show');
-    if (isError) {
-        indicator.classList.add('error');
-    } else {
-        indicator.classList.remove('error');
-    }
+    indicator.classList.toggle('error', isError);
     setTimeout(() => {
         indicator.classList.remove('show');
     }, 2000);
@@ -419,7 +413,6 @@ function loadFromLocalStorage() {
 }
 
 function exportData() {
-    // Create header row
     const headers = ['#', 'วัน/เดือน/ปี', 'รหัสลีด', 'ชื่อ-สกุล', 'เบอร์โทร', 'ช่องทาง', 'ประเภทหัตถการ', 
                    'มัดจำ', 'ยืนยัน Y/N', 'โอน 100%', 'CS ยัน', 'เซลล์', 'Last Status', 
                    'อัพเดท', 'เวลาโทร', 'Status 1', 'เหตุผล', 'ETC', 'HN', 'นัดผ่าเก่า', 
@@ -427,34 +420,9 @@ function exportData() {
     
     let csv = '\ufeff' + headers.join(',') + '\n';
     
-    // Add data rows
     tableData.forEach((row, index) => {
-        const rowData = [
-            index + 100,
-            row.date,
-            row.leadCode,
-            row.name,
-            row.phone,
-            row.channel,
-            row.procedure,
-            row.deposit,
-            row.confirmY,
-            row.transfer100,
-            row.csConfirm,
-            row.sales,
-            row.lastStatus,
-            row.updateAccess,
-            row.callTime,
-            row.status1,
-            row.reason,
-            row.etc,
-            row.hnCustomer,
-            row.oldAppointment,
-            row.dr,
-            row.closedAmount,
-            row.appointmentDate
-        ].map(val => `"${String(val || '').replace(/"/g, '""')}"`);
-        csv += rowData.join(',') + '\n';
+        const rowData = Object.values(row).map(val => `"${String(val || '').replace(/"/g, '""')}"`);
+        csv += `${index + 100},${rowData.join(',')}\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -463,25 +431,13 @@ function exportData() {
     a.href = url;
     a.download = `beauty_clinic_crm_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    
     showStatus('Export สำเร็จ');
 }
 
-function switchRole() {
-    alert('กำลังพัฒนาฟีเจอร์ Switch Role');
-}
+function switchRole() { alert('กำลังพัฒนาฟีเจอร์ Switch Role'); }
+function showSettings() { alert('กำลังพัฒนาหน้าตั้งค่า'); }
+function signOut() { if (confirm('ต้องการออกจากระบบ?')) alert('ออกจากระบบแล้ว'); }
 
-function showSettings() {
-    alert('กำลังพัฒนาหน้าตั้งค่า');
-}
-
-function signOut() {
-    if (confirm('ต้องการออกจากระบบ?')) {
-        alert('ออกจากระบบแล้ว');
-    }
-}
-
-// Context menu with improved positioning
 document.addEventListener('contextmenu', (e) => {
     const cell = e.target.closest('td');
     if (cell && !cell.classList.contains('row-number')) {
@@ -491,31 +447,24 @@ document.addEventListener('contextmenu', (e) => {
         const menu = document.getElementById('contextMenu');
         menu.style.display = 'block';
         
-        // Calculate position to prevent off-screen
-        const menuRect = {width: 150, height: 200}; // Approximate menu size
-        let x = e.pageX;
-        let y = e.pageY;
+        const menuRect = {width: 150, height: 200};
+        let x = e.pageX, y = e.pageY;
         
-        if (x + menuRect.width > window.innerWidth + window.scrollX) {
-            x = window.innerWidth + window.scrollX - menuRect.width - 5;
-        }
-        if (y + menuRect.height > window.innerHeight + window.scrollY) {
-            y = window.innerHeight + window.scrollY - menuRect.height - 5;
-        }
+        if (x + menuRect.width > window.innerWidth) x = window.innerWidth - menuRect.width - 5;
+        if (y + menuRect.height > window.innerHeight) y = window.innerHeight - menuRect.height - 5;
         
-        menu.style.left = x + 'px';
-        menu.style.top = y + 'px';
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
     }
 });
 
 document.addEventListener('click', () => {
     document.getElementById('contextMenu').style.display = 'none';
+    if (editingCell) finishEdit(true);
 });
 
 function editCell() {
-    if (contextCell) {
-        contextCell.dispatchEvent(new Event('dblclick'));
-    }
+    if (contextCell) contextCell.dispatchEvent(new Event('dblclick'));
 }
 
 function copyCell() {
@@ -527,16 +476,16 @@ function copyCell() {
 
 function pasteCell() {
     if (contextCell && copiedCell !== null) {
+        if (currentUserRole === 'viewer') {
+            showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
+            return;
+        }
         const rowIndex = contextCell.parentElement.rowIndex - 1;
-        const cellIndex = contextCell.cellIndex;
+        const cellIndex = contextCell.cellIndex -1;
+        const field = Object.keys(tableData[0])[cellIndex];
         
-        const fields = ['date', 'leadCode', 'name', 'phone', 'channel', 'procedure', 'deposit', 
-                       'confirmY', 'transfer100', 'csConfirm', 'sales', 'lastStatus', 
-                       'updateAccess', 'callTime', 'status1', 'reason', 'etc', 'hnCustomer',
-                       'oldAppointment', 'dr', 'closedAmount', 'appointmentDate'];
-        
-        if (rowIndex >= 0 && fields[cellIndex - 1]) {
-            tableData[rowIndex][fields[cellIndex - 1]] = copiedCell;
+        if (field) {
+            tableData[rowIndex][field] = copiedCell;
             renderTable();
             saveToLocalStorage();
             showStatus('วางเซลล์แล้ว');
@@ -544,41 +493,29 @@ function pasteCell() {
     }
 }
 
-function insertRowAbove() {
+function insertRowAction(offset) {
+    if (currentUserRole !== 'administrator') {
+        showStatus('คุณไม่มีสิทธิ์เพิ่ม/แทรกแถว', true);
+        return;
+    }
     if (contextCell) {
         const rowIndex = contextCell.parentElement.rowIndex - 1;
-        const newRow = {
-            date: '', leadCode: '', name: '', phone: '', channel: '', procedure: '',
-            deposit: '', confirmY: '', transfer100: '', csConfirm: '', sales: '',
-            lastStatus: '', updateAccess: '', callTime: '', status1: '', reason: '',
-            etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: ''
-        };
-        
-        tableData.splice(rowIndex, 0, newRow);
+        const newRow = Object.fromEntries(Object.keys(initialData[0]).map(key => [key, '']));
+        tableData.splice(rowIndex + offset, 0, newRow);
         renderTable();
         saveToLocalStorage();
-        showStatus('แทรกแถวด้านบนแล้ว');
+        showStatus(offset ? 'แทรกแถวด้านล่างแล้ว' : 'แทรกแถวด้านบนแล้ว');
     }
 }
 
-function insertRowBelow() {
-    if (contextCell) {
-        const rowIndex = contextCell.parentElement.rowIndex - 1;
-        const newRow = {
-            date: '', leadCode: '', name: '', phone: '', channel: '', procedure: '',
-            deposit: '', confirmY: '', transfer100: '', csConfirm: '', sales: '',
-            lastStatus: '', updateAccess: '', callTime: '', status1: '', reason: '',
-            etc: '', hnCustomer: '', oldAppointment: '', dr: '', closedAmount: '', appointmentDate: ''
-        };
-        
-        tableData.splice(rowIndex + 1, 0, newRow);
-        renderTable();
-        saveToLocalStorage();
-        showStatus('แทรกแถวด้านล่างแล้ว');
-    }
-}
+function insertRowAbove() { insertRowAction(0); }
+function insertRowBelow() { insertRowAction(1); }
 
 function deleteRow() {
+    if (currentUserRole !== 'administrator') {
+        showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true);
+        return;
+    }
     if (contextCell) {
         const rowIndex = contextCell.parentElement.rowIndex - 1;
         if (confirm('ต้องการลบแถวนี้?')) {
@@ -591,17 +528,16 @@ function deleteRow() {
 }
 
 function clearCell() {
+    if (currentUserRole === 'viewer') {
+        showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
+        return;
+    }
     if (contextCell) {
         const rowIndex = contextCell.parentElement.rowIndex - 1;
-        const cellIndex = contextCell.cellIndex;
-        
-        const fields = ['date', 'leadCode', 'name', 'phone', 'channel', 'procedure', 'deposit', 
-                       'confirmY', 'transfer100', 'csConfirm', 'sales', 'lastStatus', 
-                       'updateAccess', 'callTime', 'status1', 'reason', 'etc', 'hnCustomer',
-                       'oldAppointment', 'dr', 'closedAmount', 'appointmentDate'];
-        
-        if (rowIndex >= 0 && fields[cellIndex - 1]) {
-            tableData[rowIndex][fields[cellIndex - 1]] = '';
+        const cellIndex = contextCell.cellIndex -1;
+        const field = Object.keys(tableData[0])[cellIndex];
+        if (field) {
+            tableData[rowIndex][field] = '';
             renderTable();
             saveToLocalStorage();
             showStatus('ล้างเซลล์แล้ว');
@@ -609,23 +545,42 @@ function clearCell() {
     }
 }
 
-// Initialize auto-save
 function initAutoSave() {
     if (autoSaveInterval) clearInterval(autoSaveInterval);
     autoSaveInterval = setInterval(() => {
         if (saveToLocalStorage()) {
-            showStatus('Auto-saved');
+            // showStatus('Auto-saved'); // Can be noisy, enable if needed
         }
-    }, 30000);
+    }, 60000);
 }
 
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    if (autoSaveInterval) clearInterval(autoSaveInterval);
-    saveToLocalStorage();
-});
+function updateUIByRole() {
+    const userBadge = document.querySelector('.user-badge');
+    const addUserButton = document.getElementById('addUserButton');
+    const deleteRowMenuItem = document.getElementById('deleteRowMenuItem');
+
+    addUserButton.style.display = 'none';
+    deleteRowMenuItem.style.display = 'none';
+    
+    let permissions = {
+        'administrator': { badge: 'Administrator', color: '#dc3545', canAdd: true, canDelete: true },
+        'sales': { badge: 'Sales', color: '#007bff', canAdd: true, canDelete: false },
+        'viewer': { badge: 'Viewer', color: '#6c757d', canAdd: false, canDelete: false }
+    };
+
+    let currentPermission = permissions[currentUserRole];
+    
+    if (currentPermission) {
+        userBadge.textContent = currentPermission.badge;
+        userBadge.style.backgroundColor = currentPermission.color;
+        if (currentPermission.canAdd) addUserButton.style.display = 'inline-block';
+        if (currentPermission.canDelete) deleteRowMenuItem.style.display = 'block';
+    }
+}
 
 // Initialize
+window.addEventListener('beforeunload', saveToLocalStorage);
 loadFromLocalStorage();
 renderTable();
 initAutoSave();
+updateUIByRole();
