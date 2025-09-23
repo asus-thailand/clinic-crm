@@ -4,7 +4,6 @@
 
 // --- 1. CONFIGURATION & INITIALIZATION ---
 // Supabase Configuration - From Environment Variables
-// NOTE: For local development, you might need a build tool like Vite to handle import.meta.env
 const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
@@ -68,22 +67,22 @@ const dropdownOptions = {
 // --- 2. MAIN APP INITIALIZATION ---
 async function initializeApp() {
     showLoading(true);
-    
+
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) {
             window.location.href = 'login.html';
             return;
         }
-        
+
         currentUserId = session.user.id;
-        
+
         const { data: userData, error: userError } = await supabaseClient
             .from('users')
             .select('role, username, full_name')
             .eq('id', currentUserId)
             .single();
-        
+
         if (userError) {
             console.error('Error fetching user profile:', userError);
             // สร้างโปรไฟล์เริ่มต้นถ้าไม่พบ
@@ -92,10 +91,10 @@ async function initializeApp() {
             currentUserRole = userData.role || 'sales';
             currentUsername = userData.username || session.user.email.split('@')[0];
         }
-        
+
         updateUIByRole();
         await fetchCustomerData();
-        
+
     } catch (error) {
         console.error('Initialization error:', error);
         showStatus('เกิดข้อผิดพลาดในการเริ่มต้นระบบ', true);
@@ -115,7 +114,7 @@ async function createDefaultUserProfile(user) {
             full_name: username,
             role: 'sales'
         });
-    
+
     if (!error) {
         currentUsername = username;
         currentUserRole = 'sales';
@@ -158,7 +157,7 @@ function updateUIByRole() {
             badgeColor: '#007bff',
             text: 'Edit All, Add New',
             canAdd: true,
-            canDelete: false, 
+            canDelete: false,
             canEditAll: true,
             canImport: false
         },
@@ -181,22 +180,22 @@ function updateUIByRole() {
             canImport: false
         }
     };
-    
+
     const perm = permissions[currentUserRole] || permissions['viewer'];
-    
+
     if (userBadge) {
         userBadge.textContent = perm.badge;
         userBadge.style.backgroundColor = perm.badgeColor;
     }
-    
+
     if (userPermissions) {
         userPermissions.textContent = perm.text;
     }
-    
+
     if (addUserButton) {
         addUserButton.style.display = perm.canAdd ? 'inline-block' : 'none';
     }
-    
+
     if (deleteRowMenuItem) {
         deleteRowMenuItem.style.display = perm.canDelete ? 'block' : 'none';
     }
@@ -213,15 +212,15 @@ async function fetchCustomerData() {
             .from('customers')
             .select('*')
             .order('created_at', { ascending: false });
-        
+
         if (error) throw error;
-        
+
         tableData = data || [];
         originalTableData = [...tableData];
         renderTable();
         updateStats();
         showStatus('ข้อมูลล่าสุดแล้ว');
-        
+
     } catch (error) {
         console.error('Error fetching customers:', error);
         showStatus('ดึงข้อมูลไม่สำเร็จ', true);
@@ -239,9 +238,9 @@ async function refreshData() {
 function renderTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     // Get headers from HTML
     const headers = Array.from(document.querySelectorAll('#excelTable thead th')).map(th => th.textContent.trim());
 
@@ -249,7 +248,7 @@ function renderTable() {
         const tr = document.createElement('tr');
         tr.dataset.id = row.id;
         tr.dataset.index = index;
-        
+
         let html = '';
         headers.forEach(headerText => {
             const fieldName = FIELD_MAPPING[headerText];
@@ -260,7 +259,9 @@ function renderTable() {
                 const isDropdown = dropdownOptions[fieldName] !== undefined;
                 const cellClass = getCellClass(fieldName);
                 const cellValue = row[fieldName] || '';
-                const ondblclick = `startEdit(this, ${index}, '${fieldName}')`;
+                
+                // แก้ไขตรงนี้: ส่ง row.id แทน index
+                const ondblclick = `startEdit(this, '${row.id}', '${fieldName}')`;
                 const ynClass = (fieldName === 'confirm_y' || fieldName === 'transfer_100') ? `yn-cell ${cellValue === 'Y' ? 'yes' : cellValue === 'N' ? 'no' : ''}` : '';
 
                 html += `<td class="${cellClass} ${isDropdown ? 'has-dropdown' : ''} ${ynClass}" ondblclick="${ondblclick}">${cellValue}</td>`;
@@ -268,7 +269,7 @@ function renderTable() {
         });
 
         html += `<td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>`;
-        
+
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
@@ -290,31 +291,33 @@ function getCellClass(field) {
 }
 
 // --- 6. CELL EDITING ---
-function startEdit(cell, rowIndex, field) {
-    // ❗ --- ลบโค้ดตรวจสอบสิทธิ์สำหรับ Sales ออกจากตรงนี้ ---
-    // เพราะเราใช้ RLS ของ Supabase ในการจัดการสิทธิ์แล้ว
-    // if (currentUserRole === 'sales') { ... }
-
+// แก้ไข: รับ rowId แทน rowIndex
+function startEdit(cell, rowId, field) {
     if (currentUserRole === 'viewer') {
         showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
         return;
     }
-    
+
     if (editingCell) finishEdit(true);
-    
+
     editingCell = cell;
-    const originalValue = tableData[rowIndex][field] || '';
+    const row = tableData.find(r => r.id === rowId);
+    if (!row) {
+        showStatus('ไม่พบข้อมูลที่จะแก้ไข', true);
+        return;
+    }
+    const originalValue = row[field] || '';
     cell.classList.add('editing');
-    
+
     if (dropdownOptions[field]) {
         const select = document.createElement('select');
         select.className = 'cell-select';
-        
+
         const emptyOption = document.createElement('option');
         emptyOption.value = '';
         emptyOption.textContent = '-- เลือก --';
         select.appendChild(emptyOption);
-        
+
         dropdownOptions[field].forEach(opt => {
             const option = document.createElement('option');
             option.value = opt;
@@ -322,35 +325,35 @@ function startEdit(cell, rowIndex, field) {
             if (opt === originalValue) option.selected = true;
             select.appendChild(option);
         });
-        
+
         select.onchange = async () => {
-            await updateCell(rowIndex, field, select.value);
+            await updateCell(rowId, field, select.value);
         };
-        
+
         select.onblur = () => finishEdit(true);
-        
+
         cell.innerHTML = '';
         cell.appendChild(select);
         select.focus();
-        
+
     } else {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'cell-input';
         input.value = originalValue;
-        
+
         input.onblur = async () => {
-            await updateCell(rowIndex, field, input.value);
+            await updateCell(rowId, field, input.value);
         };
-        
+
         input.onkeydown = async (e) => {
             if (e.key === 'Enter') {
-                await updateCell(rowIndex, field, input.value);
+                await updateCell(rowId, field, input.value);
             } else if (e.key === 'Escape') {
                 finishEdit(true);
             }
         };
-        
+
         cell.innerHTML = '';
         cell.appendChild(input);
         input.focus();
@@ -366,13 +369,13 @@ function finishEdit(cancel = false) {
     }
 }
 
-// ❗ --- แก้ไขฟังก์ชัน updateCell() ---
-async function updateCell(rowIndex, field, newValue) {
-    const rowId = tableData[rowIndex].id;
-    
-    // ตรวจสอบข้อมูลเบื้องต้น
-    // เราจะใช้ RPC function เพื่อให้ Server จัดการการอัปเดตข้อมูล
-    
+// แก้ไข: ฟังก์ชัน updateCell()
+async function updateCell(rowId, field, newValue) {
+    if (!rowId) {
+        showStatus('ข้อผิดพลาด: ไม่พบ ID ของแถว', true);
+        return;
+    }
+
     try {
         const { data, error } = await supabaseClient.rpc('update_customer_field', {
             customer_id: rowId,
@@ -382,18 +385,19 @@ async function updateCell(rowIndex, field, newValue) {
         });
 
         if (error) throw error;
-        
+
         // หลังจากอัปเดตสำเร็จใน Server แล้ว เราค่อยอัปเดตข้อมูลใน Frontend
-        tableData[rowIndex][field] = newValue;
-        originalTableData[rowIndex][field] = newValue;
-        
-        // เราไม่จำเป็นต้องเรียก fetchCustomerData() ทั้งหมดอีกครั้ง
-        // แค่อัปเดต UI ที่เกี่ยวข้องเท่านั้น
-        renderTable(); 
+        const rowIndex = tableData.findIndex(r => r.id === rowId);
+        if (rowIndex !== -1) {
+            tableData[rowIndex][field] = newValue;
+            originalTableData[rowIndex][field] = newValue;
+        }
+
+        renderTable();
         showStatus('บันทึกสำเร็จ');
         finishEdit();
         updateStats();
-        
+
     } catch (error) {
         console.error('Update error:', error);
         showStatus(error.message || 'อัปเดตไม่สำเร็จ', true);
@@ -402,18 +406,18 @@ async function updateCell(rowIndex, field, newValue) {
 }
 
 // --- 7. ROW OPERATIONS ---
-// ❗ --- แก้ไขฟังก์ชัน addNewRow() ---
+// แก้ไข: เพิ่มการระบุ created_by
 async function addNewRow() {
     if (!['administrator', 'admin', 'sales'].includes(currentUserRole)) {
         showStatus('คุณไม่มีสิทธิ์เพิ่มข้อมูล', true);
         return;
     }
-    
+
     try {
         // เรียกใช้ RPC function เพื่อให้ Server สร้าง lead_code ใหม่
         const { data: nextLeadCode, error: leadCodeError } = await supabaseClient.rpc('get_next_lead_code');
         if (leadCodeError) throw leadCodeError;
-        
+
         const newRow = {
             lead_code: nextLeadCode,
             sales: currentUsername,
@@ -425,12 +429,12 @@ async function addNewRow() {
             .from('customers')
             .insert([newRow])
             .select();
-        
+
         if (error) throw error;
-        
+
         showStatus('เพิ่มข้อมูลสำเร็จ');
         await fetchCustomerData();
-        
+
     } catch (error) {
         console.error('Add error:', error);
         showStatus(error.message || 'เพิ่มข้อมูลไม่สำเร็จ', true);
@@ -442,23 +446,28 @@ async function deleteRow() {
         showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true);
         return;
     }
-    
+
     if (contextCell) {
-        const rowIndex = parseInt(contextCell.parentElement.dataset.index);
-        const rowId = tableData[rowIndex].id; // แก้ไขโค้ด: ดึง UUID จาก tableData
+        // แก้ไข: ดึง UUID จาก data-id
+        const rowId = contextCell.parentElement.dataset.id;
         
+        if (!rowId) {
+            showStatus('ไม่พบ ID ของแถวที่ต้องการลบ', true);
+            return;
+        }
+
         if (confirm('ต้องการลบแถวนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
             try {
                 const { error } = await supabaseClient
                     .from('customers')
                     .delete()
                     .eq('id', rowId);
-                
+
                 if (error) throw error;
-                
+
                 showStatus('ลบข้อมูลสำเร็จ');
                 await fetchCustomerData();
-                
+
             } catch (error) {
                 console.error('Delete error:', error);
                 showStatus('ลบข้อมูลไม่สำเร็จ', true);
@@ -488,14 +497,14 @@ const debouncedSearch = debounce((query) => {
         renderTable();
         return;
     }
-    
+
     const searchQuery = query.toLowerCase();
     tableData = originalTableData.filter(row => {
-        return Object.values(row).some(value => 
+        return Object.values(row).some(value =>
             String(value || '').toLowerCase().includes(searchQuery)
         );
     });
-    
+
     renderTable();
     updateStats();
 }, 300);
@@ -508,13 +517,13 @@ function searchTable(query) {
 function filterTable() {
     const statusFilter = document.getElementById('statusFilter').value;
     const salesFilter = document.getElementById('salesFilter').value;
-    
+
     tableData = originalTableData.filter(row => {
         let matchStatus = !statusFilter || row.status_1 === statusFilter;
         let matchSales = !salesFilter || row.sales === salesFilter;
         return matchStatus && matchSales;
     });
-    
+
     renderTable();
     updateStats();
 }
@@ -525,18 +534,18 @@ function updateStats() {
     const todayElement = document.getElementById('todayCustomers');
     const pendingElement = document.getElementById('pendingCustomers');
     const closedElement = document.getElementById('closedDeals');
-    
+
     if (totalElement) totalElement.textContent = tableData.length;
-    
+
     // Today's customers
     const today = new Date().toLocaleDateString('th-TH');
     const todayCount = tableData.filter(row => row.date === today).length;
     if (todayElement) todayElement.textContent = todayCount;
-    
+
     // Pending (no closed amount)
     const pending = tableData.filter(row => !row.closed_amount).length;
     if (pendingElement) pendingElement.textContent = pending;
-    
+
     // Closed deals
     const closed = tableData.filter(row => row.closed_amount).length;
     if (closedElement) closedElement.textContent = closed;
@@ -546,7 +555,7 @@ function updateStats() {
 function exportData() {
     const headers = Object.keys(FIELD_MAPPING).filter(header => header !== '#');
     let csv = '\ufeff' + headers.join(',') + '\n';
-    
+
     tableData.forEach((row, index) => {
         const rowData = headers.map(header => {
             const field = FIELD_MAPPING[header];
@@ -555,7 +564,7 @@ function exportData() {
         const formattedRowData = rowData.map(val => `"${String(val).replace(/"/g, '""')}"`);
         csv += formattedRowData.join(',') + '\n';
     });
-    
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -563,7 +572,7 @@ function exportData() {
     link.download = `beauty_clinic_crm_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    
+
     showStatus('Export สำเร็จ');
 }
 
@@ -580,14 +589,14 @@ document.addEventListener('contextmenu', (e) => {
 function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
     if (!menu) return;
-    
+
     menu.style.display = 'block';
-    
+
     // Adjust position to stay within viewport
     const menuRect = menu.getBoundingClientRect();
     const maxX = window.innerWidth - menuRect.width - 5;
     const maxY = window.innerHeight - menuRect.height - 5;
-    
+
     menu.style.left = Math.min(x, maxX) + 'px';
     menu.style.top = Math.min(y, maxY) + 'px';
 }
@@ -607,14 +616,14 @@ function showMobileMenu(event, rowIndex) {
     if (!contextCell) return;
 
     const cellRect = event.target.getBoundingClientRect();
-    
+
     menu.style.display = 'block';
-    
+
     // Adjust position to stay within viewport and near the button
     const menuRect = menu.getBoundingClientRect();
     const maxX = window.innerWidth - menuRect.width - 5;
     const maxY = window.innerHeight - menuRect.height - 5;
-    
+
     menu.style.left = Math.min(cellRect.left, maxX) + 'px';
     menu.style.top = Math.min(cellRect.bottom + 5, maxY) + 'px';
 }
@@ -623,7 +632,17 @@ function showMobileMenu(event, rowIndex) {
 // Context menu actions
 function editCell() {
     if (contextCell) {
-        contextCell.dispatchEvent(new MouseEvent('dblclick'));
+        // แก้ไข: ดึง rowId และ field เพื่อส่งไปยัง startEdit
+        const rowId = contextCell.parentElement.dataset.id;
+        const cellIndex = contextCell.cellIndex;
+        const fieldMap = Object.values(FIELD_MAPPING).filter(field => field !== null);
+        const fieldName = fieldMap[cellIndex - 1];
+
+        if (rowId && fieldName) {
+            startEdit(contextCell, rowId, fieldName);
+        } else {
+            showStatus('ไม่สามารถแก้ไขเซลล์นี้ได้', true);
+        }
     }
 }
 
@@ -636,31 +655,37 @@ function copyCell() {
 
 async function pasteCell() {
     if (contextCell && copiedCell !== null) {
-        const rowIndex = parseInt(contextCell.parentElement.dataset.index);
+        // แก้ไข: ดึง rowId และ field
+        const rowId = contextCell.parentElement.dataset.id;
         const cellIndex = contextCell.cellIndex;
-        
+
         // Map cell index to field name
         const fieldMap = Object.values(FIELD_MAPPING).filter(field => field !== null);
         const fieldName = fieldMap[cellIndex - 1];
-        
-        if (fieldName) {
-            await updateCell(rowIndex, fieldName, copiedCell);
+
+        if (rowId && fieldName) {
+            await updateCell(rowId, fieldName, copiedCell);
             showStatus('วางแล้ว');
+        } else {
+            showStatus('ไม่สามารถวางในเซลล์นี้ได้', true);
         }
     }
 }
 
 async function clearCell() {
     if (contextCell) {
-        const rowIndex = parseInt(contextCell.parentElement.dataset.index);
+        // แก้ไข: ดึง rowId และ field
+        const rowId = contextCell.parentElement.dataset.id;
         const cellIndex = contextCell.cellIndex;
-        
+
         const fieldMap = Object.values(FIELD_MAPPING).filter(field => field !== null);
         const fieldName = fieldMap[cellIndex - 1];
-        
-        if (fieldName) {
-            await updateCell(rowIndex, fieldName, '');
+
+        if (rowId && fieldName) {
+            await updateCell(rowId, fieldName, '');
             showStatus('ล้างเซลล์แล้ว');
+        } else {
+            showStatus('ไม่สามารถล้างเซลล์นี้ได้', true);
         }
     }
 }
@@ -677,11 +702,11 @@ function insertRowBelow() {
 function showStatus(message, isError = false) {
     const indicator = document.getElementById('statusIndicator');
     if (!indicator) return;
-    
+
     indicator.textContent = message;
     indicator.classList.add('show');
     indicator.classList.toggle('error', isError);
-    
+
     setTimeout(() => {
         indicator.classList.remove('show');
     }, 3000);
@@ -732,7 +757,7 @@ async function importData() {
         reader.onload = async (e) => {
             const text = e.target.result;
             const lines = text.split('\n').filter(line => line.trim() !== '');
-            
+
             // ใช้ headers จาก HTML เพื่อความถูกต้อง
             const htmlHeaders = Array.from(document.querySelectorAll('#excelTable thead th')).map(th => th.textContent.trim());
             const headers = htmlHeaders.filter(h => h !== '#' && h !== '...'); // Remove special columns
@@ -750,7 +775,7 @@ async function importData() {
                             row[fieldName] = values[index];
                         }
                     });
-                    
+
                     row.created_by = currentUserId;
                     row.created_at = new Date().toISOString();
 
@@ -799,14 +824,14 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         showStatus('บันทึกอัตโนมัติทำงานอยู่');
     }
-    
+
     // Ctrl+F to focus search
     if (e.ctrlKey && e.key === 'f') {
         e.preventDefault();
         const searchInput = document.getElementById('searchInput');
         if (searchInput) searchInput.focus();
     }
-    
+
     // Escape to cancel editing
     if (e.key === 'Escape' && editingCell) {
         finishEdit(true);
