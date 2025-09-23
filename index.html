@@ -1,135 +1,105 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beauty Clinic CRM - Excel Edition</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <div class="logo-icon">BC</div>
-                <div class="logo-text">
-                    <h1>Beauty Clinic CRM</h1>
-                    <p>Excel Edition - Advanced Management System</p>
-                </div>
-            </div>
-            <div class="user-info">
-                <div class="user-badge">Administrator</div>
-                <span style="font-size: 11px; opacity: 0.9;">Edit All Delete Manage Users Export</span>
-                <button class="btn" onclick="switchRole()">🔄 Switch Role</button>
-                <button class="btn" onclick="exportData()">📊 Export</button>
-                <button class="btn" onclick="showSettings()">⚙️ ตั้งค่า</button>
-                <button class="btn" onclick="handleLogout()">ออกจากระบบ</button>
-            </div>
-        </div>
-    </header>
-
-    <div class="stats-container">
-        <div class="stat-card">
-            <div class="stat-title">ลูกค้าทั้งหมด</div>
-            <div class="stat-value" id="totalCustomers">0</div>
-            <div class="stat-change stat-up">📈 Active Records</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">ลูกค้าใหม่วันนี้</div>
-            <div class="stat-value" id="todayCustomers">0</div>
-            <div class="stat-change" style="color: #007bff;">📅 Today</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">รอติดตาม</div>
-            <div class="stat-value" id="pendingCustomers">0</div>
-            <div class="stat-change stat-down">⏰ Pending</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">ปิดการขาย</div>
-            <div class="stat-value" id="closedDeals">0</div>
-            <div class="stat-change stat-up">✅ Closed</div>
-        </div>
-    </div>
-
-    <div class="toolbar">
-        <div class="search-container">
-            <input type="text" class="search-input" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า..." onkeyup="searchTable(this.value)">
-            <span class="search-icon">🔍</span>
-        </div>
-        
-        <select class="filter-select" id="statusFilter" onchange="filterTable()">
-            <option value="">ทุกสถานะ</option>
-            <option value="ธงเขียว 1">ธงเขียว 1</option>
-            <option value="ธงเขียว 2">ธงเขียว 2</option>
-            <option value="ธงเขียว 3">ธงเขียว 3</option>
-            <option value="ธงแดง">ธงแดง</option>
-        </select>
-        
-        <select class="filter-select" id="salesFilter" onchange="filterTable()">
-            <option value="">ทุกเซลล์</option>
-            <option value="MAM">MAM</option>
-            <option value="AU">AU</option>
-            <option value="GOLF">GOLF</option>
-            <option value="Online">Online</option>
-        </select>
-        
-        <button class="btn btn-primary" id="addUserButton" onclick="addNewRow()">+ เพิ่มลูกค้า</button>
-        <button class="btn" style="background: #6c757d;" onclick="location.reload()">🔄</button>
-    </div>
-
-    <div class="excel-container">
-        <div class="table-wrapper">
-            <table class="excel-table" id="excelTable">
-                <thead>
-                    <tr>
-                        <th class="row-number">#</th>
-                        <th class="admin-header">วัน/เดือน/ปี</th>
-                        <th class="admin-header">รหัสลีด</th>
-                        <th class="admin-header">ชื่อ-สกุล / ศจย.</th>
-                        <th class="admin-header">เบอร์โทรจริง</th>
-                        <th class="admin-header">ช่องทาง</th>
-                        <th class="admin-header">ประเภทหัตถการ</th>
-                        <th class="admin-header">มัดจำตอนแรก</th>
-                        <th class="admin-header">ยืนยันจาก Y/N</th>
-                        <th class="admin-header">โอนร้อยเปอร์เซ็นต์ Y/N</th>
-                        <th class="admin-header">CS ยัน Lead</th>
-                        <th class="admin-header">เซลล์</th>
-                        <th class="status-header">Last Status</th>
-                        <th class="status-header">อัพเดทการเข้าถึง</th>
-                        <th class="status-header">เวลาโทร</th>
-                        <th class="status1-header">Status 1 ADMIN</th>
-                        <th class="etc-header">เหตุผล</th>
-                        <th class="etc-header">ETC</th>
-                        <th class="etc-header">HN ลูกค้า</th>
-                        <th class="etc-header">วันที่นัดผ่าเก่าแล้ว</th>
-                        <th class="etc-header">DR.</th>
-                        <th class="etc-header">ยอดที่ปิดได้</th>
-                        <th class="etc-header">วันที่นัดทำหัตถการ</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="context-menu" id="contextMenu">
-        <div class="context-menu-item" onclick="editCell()">✏️ แก้ไข</div>
-        <div class="context-menu-item" onclick="copyCell()">📋 คัดลอก</div>
-        <div class="context-menu-item" onclick="pasteCell()">📄 วาง</div>
-        <div class="context-menu-separator"></div>
-        <div class="context-menu-item" onclick="insertRowAbove()">↑ แทรกแถวด้านบน</div>
-        <div class="context-menu-item" onclick="insertRowBelow()">↓ แทรกแถวด้านล่าง</div>
-        <div class="context-menu-separator"></div>
-        <div class="context-menu-item" id="deleteRowMenuItem" onclick="deleteRow()">🗑️ ลบแถว</div>
-        <div class="context-menu-item" onclick="clearCell()">🧹 ล้างเซลล์</div>
-    </div>
-
-    <div class="status-indicator" id="statusIndicator"></div>
-
-    <script src="script.js"></script>
-</body>
-</html>
+<p>&nbsp;</p>
+<p>Beauty Clinic CRM - Excel Edition</p>
+<header class="header">
+<div class="header-content">
+<div class="logo">
+<div class="logo-icon">BC</div>
+<div class="logo-text">
+<h1>Beauty Clinic CRM</h1>
+<p>Excel Edition - Advanced Management System</p>
+</div>
+</div>
+<div class="user-info">
+<div class="user-badge">Administrator</div>
+<span id="userPermissions" style="font-size: 11px; opacity: 0.9;"></span> <button class="btn">🔄 Switch Role</button> <button class="btn">📊 Export</button> <button class="btn">⚙️ ตั้งค่า</button> <button class="btn">ออกจากระบบ</button></div>
+</div>
+</header>
+<div class="stats-container">
+<div class="stat-card">
+<div class="stat-title">ลูกค้าทั้งหมด</div>
+<div id="totalCustomers" class="stat-value">0</div>
+<div class="stat-change stat-up">📈 Active Records</div>
+</div>
+<div class="stat-card">
+<div class="stat-title">ลูกค้าใหม่วันนี้</div>
+<div id="todayCustomers" class="stat-value">0</div>
+<div class="stat-change" style="color: #007bff;">📅 Today</div>
+</div>
+<div class="stat-card">
+<div class="stat-title">รอติดตาม</div>
+<div id="pendingCustomers" class="stat-value">0</div>
+<div class="stat-change stat-down">⏰ Pending</div>
+</div>
+<div class="stat-card">
+<div class="stat-title">ปิดการขาย</div>
+<div id="closedDeals" class="stat-value">0</div>
+<div class="stat-change stat-up">✅ Closed</div>
+</div>
+</div>
+<div class="toolbar">
+<div class="search-container"><input id="searchInput" class="search-input" type="text" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า..." /> <span class="search-icon">🔍</span></div>
+<select id="statusFilter" class="filter-select" onchange="filterTable()">
+<option value="">ทุกสถานะ</option>
+<option value="ธงเขียว 1">ธงเขียว 1</option>
+<option value="ธงเขียว 2">ธงเขียว 2</option>
+<option value="ธงเขียว 3">ธงเขียว 3</option>
+<option value="ธงแดง">ธงแดง</option>
+</select><select id="salesFilter" class="filter-select" onchange="filterTable()">
+<option value="">ทุกเซลล์</option>
+<option value="MAM">MAM</option>
+<option value="AU">AU</option>
+<option value="GOLF">GOLF</option>
+<option value="Online">Online</option>
+</select><button id="addUserButton" class="btn btn-primary">+ เพิ่มลูกค้า</button> <button class="btn" style="background: #6c757d;">🔄 รีเฟรช</button></div>
+<div id="loadingOverlay" class="loading-overlay">
+<div class="loading-spinner">
+<div class="spinner">&nbsp;</div>
+<p>กำลังโหลดข้อมูล...</p>
+</div>
+</div>
+<div class="excel-container">
+<div class="table-wrapper">
+<table id="excelTable" class="excel-table">
+<thead>
+<tr>
+<th class="row-number">#</th>
+<th class="admin-header">วัน/เดือน/ปี</th>
+<th class="admin-header">รหัสลีด</th>
+<th class="admin-header">ชื่อ-สกุล / ศจย.</th>
+<th class="admin-header">เบอร์โทรจริง</th>
+<th class="admin-header">ช่องทาง</th>
+<th class="admin-header">ประเภทหัตถการ</th>
+<th class="admin-header">มัดจำตอนแรก</th>
+<th class="admin-header">ยืนยันจา Y/N</th>
+<th class="admin-header">โอนร้อยเปอร์เซ็นต์ Y/N</th>
+<th class="admin-header">CS ยัน Lead</th>
+<th class="admin-header">เซลล์</th>
+<th class="status-header">Last Status</th>
+<th class="status-header">อัพเดทการเข้าถึง</th>
+<th class="status-header">เวลาโทร</th>
+<th class="status1-header">Status 1 ADMIN</th>
+<th class="etc-header">เหตุผล</th>
+<th class="etc-header">ETC</th>
+<th class="etc-header">HN ลูกค้า</th>
+<th class="etc-header">วันที่นัดผ่าเก่าแล้ว</th>
+<th class="etc-header">DR.</th>
+<th class="etc-header">ยอดที่ปิดได้</th>
+<th class="etc-header">วันที่นัดทำหัตถการ</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+</div>
+<div id="contextMenu" class="context-menu">
+<div class="context-menu-item">✏️ แก้ไข</div>
+<div class="context-menu-item">📋 คัดลอก</div>
+<div class="context-menu-item">📄 วาง</div>
+<div class="context-menu-separator">&nbsp;</div>
+<div class="context-menu-item">&uarr; แทรกแถวด้านบน</div>
+<div class="context-menu-item">&darr; แทรกแถวด้านล่าง</div>
+<div class="context-menu-separator">&nbsp;</div>
+<div id="deleteRowMenuItem" class="context-menu-item">🗑️ ลบแถว</div>
+<div class="context-menu-item">🧹 ล้างเซลล์</div>
+</div>
+<div id="statusIndicator" class="status-indicator">&nbsp;</div>
