@@ -29,6 +29,7 @@ let selectedCell = null;
 
 // --- Single Source of Truth for Field Mappings ---
 const FIELD_MAPPING = {
+    '#': null, // # is not a database field
     'วัน/เดือน/ปี': 'date',
     'ลำดับที่': 'lead_code',
     'ชื่อ-สกุล / ศจย.': 'name',
@@ -147,7 +148,8 @@ function updateUIByRole() {
     const userPermissions = document.getElementById('userPermissions');
     const addUserButton = document.getElementById('addUserButton');
     const deleteRowMenuItem = document.getElementById('deleteRowMenuItem');
-    
+    const importButton = document.getElementById('importButton'); // เพิ่มโค้ดนี้
+
     const permissions = {
         'administrator': {
             badge: 'Administrator',
@@ -155,15 +157,17 @@ function updateUIByRole() {
             text: 'Full Access - Edit, Delete, Manage All',
             canAdd: true,
             canDelete: true,
-            canEditAll: true
+            canEditAll: true,
+            canImport: true // เพิ่มโค้ดนี้
         },
         'admin': {
             badge: 'Admin',
             badgeColor: '#007bff',
             text: 'Edit All, Add New',
             canAdd: true,
-            canDelete: false, // แก้ไข: ลบได้เฉพาะ admin/administrator ตาม RLS
-            canEditAll: true
+            canDelete: false, 
+            canEditAll: true,
+            canImport: false // เพิ่มโค้ดนี้
         },
         'sales': {
             badge: 'Sales',
@@ -171,7 +175,8 @@ function updateUIByRole() {
             text: 'Edit Own, Add New',
             canAdd: true,
             canDelete: false,
-            canEditAll: false
+            canEditAll: false,
+            canImport: false // เพิ่มโค้ดนี้
         },
         'viewer': {
             badge: 'Viewer',
@@ -179,7 +184,8 @@ function updateUIByRole() {
             text: 'View Only',
             canAdd: false,
             canDelete: false,
-            canEditAll: false
+            canEditAll: false,
+            canImport: false // เพิ่มโค้ดนี้
         }
     };
     
@@ -200,6 +206,10 @@ function updateUIByRole() {
     
     if (deleteRowMenuItem) {
         deleteRowMenuItem.style.display = perm.canDelete ? 'block' : 'none';
+    }
+
+    if (importButton) {
+        importButton.style.display = perm.canImport ? 'inline-block' : 'none'; // เพิ่มโค้ดนี้
     }
 }
 
@@ -239,25 +249,33 @@ function renderTable() {
     
     tbody.innerHTML = '';
     
+    // Get headers from HTML
+    const headers = Array.from(document.querySelectorAll('#excelTable thead th')).map(th => th.textContent.trim());
+
     tableData.forEach((row, index) => {
         const tr = document.createElement('tr');
         tr.dataset.id = row.id;
         tr.dataset.index = index;
         
-        const html = `
-            <td class="row-number">${index + 1}</td>
-            ${Object.values(FIELD_MAPPING).map(field => {
-                const isDropdown = dropdownOptions[field] !== undefined;
-                const cellClass = getCellClass(field);
-                const cellValue = row[field] || '';
-                const ondblclick = `startEdit(this, ${index}, '${field}')`;
-                const ynClass = (field === 'confirm_y' || field === 'transfer_100') ? `yn-cell ${cellValue === 'Y' ? 'yes' : cellValue === 'N' ? 'no' : ''}` : '';
+        let html = '';
+        headers.forEach(headerText => {
+            const fieldName = FIELD_MAPPING[headerText];
+            if (fieldName === null) {
+                // Handle special columns like '#'
+                html += `<td class="row-number">${index + 1}</td>`;
+            } else if (fieldName) {
+                const isDropdown = dropdownOptions[fieldName] !== undefined;
+                const cellClass = getCellClass(fieldName);
+                const cellValue = row[fieldName] || '';
+                const ondblclick = `startEdit(this, ${index}, '${fieldName}')`;
+                const ynClass = (fieldName === 'confirm_y' || fieldName === 'transfer_100') ? `yn-cell ${cellValue === 'Y' ? 'yes' : cellValue === 'N' ? 'no' : ''}` : '';
 
-                return `<td class="${cellClass} ${isDropdown ? 'has-dropdown' : ''} ${ynClass}" ondblclick="${ondblclick}">${cellValue}</td>`;
-            }).join('')}
-            <td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>
-        `;
+                html += `<td class="${cellClass} ${isDropdown ? 'has-dropdown' : ''} ${ynClass}" ondblclick="${ondblclick}">${cellValue}</td>`;
+            }
+        });
 
+        html += `<td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>`;
+        
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
@@ -532,19 +550,15 @@ function updateStats() {
 
 // --- 10. EXPORT FUNCTIONALITY ---
 function exportData() {
-    const headers = [
-        '#', 'วัน/เดือน/ปี', 'รหัสลีด', 'ชื่อ-สกุล', 'เบอร์โทร',
-        'ช่องทาง', 'ประเภทหัตถการ', 'มัดจำ', 'ยืนยัน Y/N', 'โอน 100%',
-        'CS ยัน', 'เซลล์', 'Last Status', 'อัพเดท', 'เวลาโทร',
-        'Status 1', 'เหตุผล', 'ETC', 'HN ลูกค้า', 'นัดผ่าเก่า',
-        'DR.', 'ยอดปิด', 'นัดทำ'
-    ];
-    
+    const headers = Object.keys(FIELD_MAPPING).filter(header => header !== '#');
     let csv = '\ufeff' + headers.join(',') + '\n';
     
     tableData.forEach((row, index) => {
-        const rowData = Object.values(FIELD_MAPPING).map(field => row[field] || '');
-        const formattedRowData = [index + 1, ...rowData].map(val => `"${String(val).replace(/"/g, '""')}"`);
+        const rowData = headers.map(header => {
+            const field = FIELD_MAPPING[header];
+            return row[field] || '';
+        });
+        const formattedRowData = rowData.map(val => `"${String(val).replace(/"/g, '""')}"`);
         csv += formattedRowData.join(',') + '\n';
     });
     
@@ -631,7 +645,10 @@ async function pasteCell() {
         const rowIndex = parseInt(contextCell.parentElement.dataset.index);
         const cellIndex = contextCell.cellIndex;
         
-        const fieldName = Object.values(FIELD_MAPPING)[cellIndex - 1];
+        // Map cell index to field name
+        const fieldMap = Object.values(FIELD_MAPPING).filter(field => field !== null);
+        const fieldName = fieldMap[cellIndex - 1];
+        
         if (fieldName) {
             await updateCell(rowIndex, fieldName, copiedCell);
             showStatus('วางแล้ว');
@@ -644,7 +661,9 @@ async function clearCell() {
         const rowIndex = parseInt(contextCell.parentElement.dataset.index);
         const cellIndex = contextCell.cellIndex;
         
-        const fieldName = Object.values(FIELD_MAPPING)[cellIndex - 1];
+        const fieldMap = Object.values(FIELD_MAPPING).filter(field => field !== null);
+        const fieldName = fieldMap[cellIndex - 1];
+        
         if (fieldName) {
             await updateCell(rowIndex, fieldName, '');
             showStatus('ล้างเซลล์แล้ว');
@@ -681,7 +700,96 @@ function showLoading(show) {
     }
 }
 
-// --- 13. PLACEHOLDER FUNCTIONS ---
+// ❗ --- เพิ่มฟังก์ชันสำหรับ Modal ---
+function showImportModal() {
+    if (currentUserRole !== 'administrator') {
+        showStatus('คุณไม่มีสิทธิ์นำเข้าข้อมูล', true);
+        return;
+    }
+    document.getElementById('importModal').style.display = 'flex';
+    document.getElementById('importStatus').textContent = '';
+}
+
+function hideImportModal() {
+    document.getElementById('importModal').style.display = 'none';
+    document.getElementById('csvFile').value = '';
+}
+
+// --- 13. IMPORT FUNCTIONALITY ---
+async function importData() {
+    const fileInput = document.getElementById('csvFile');
+    const importStatus = document.getElementById('importStatus');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        importStatus.textContent = 'กรุณาเลือกไฟล์ .csv';
+        return;
+    }
+
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+        importStatus.textContent = 'รูปแบบไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ .csv';
+        return;
+    }
+
+    importStatus.textContent = 'กำลังนำเข้าข้อมูล... โปรดรอสักครู่';
+
+    try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            
+            // ใช้ headers จาก HTML เพื่อความถูกต้อง
+            const htmlHeaders = Array.from(document.querySelectorAll('#excelTable thead th')).map(th => th.textContent.trim());
+            const headers = htmlHeaders.filter(h => h !== '#' && h !== '...'); // Remove special columns
+
+            const dataToInsert = [];
+
+            // Skip header row
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/"/g, ''));
+                if (values.length === headers.length) {
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        const fieldName = FIELD_MAPPING[header];
+                        if (fieldName) {
+                            row[fieldName] = values[index];
+                        }
+                    });
+                    
+                    row.created_by = currentUserId;
+                    row.created_at = new Date().toISOString();
+
+                    dataToInsert.push(row);
+                }
+            }
+
+            if (dataToInsert.length === 0) {
+                importStatus.textContent = 'ไม่พบข้อมูลที่ถูกต้องในไฟล์';
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from('customers')
+                .insert(dataToInsert);
+
+            if (error) {
+                console.error('Import error:', error);
+                importStatus.textContent = `การนำเข้าล้มเหลว: ${error.message}`;
+            } else {
+                importStatus.textContent = `นำเข้าข้อมูลสำเร็จ ${dataToInsert.length} แถว`;
+                await fetchCustomerData(); // รีเฟรชตารางหลังจากนำเข้าเสร็จ
+                hideImportModal();
+            }
+        };
+        reader.readAsText(file);
+    } catch (error) {
+        console.error('Import process error:', error);
+        importStatus.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+    }
+}
+
+// --- 14. PLACEHOLDER FUNCTIONS ---
 function switchRole() {
     showStatus('ฟีเจอร์ Switch Role กำลังพัฒนา', true);
 }
@@ -690,7 +798,7 @@ function showSettings() {
     showStatus('หน้าตั้งค่ากำลังพัฒนา', true);
 }
 
-// --- 14. KEYBOARD SHORTCUTS ---
+// --- 15. KEYBOARD SHORTCUTS ---
 document.addEventListener('keydown', (e) => {
     // Ctrl+S to save (prevent default)
     if (e.ctrlKey && e.key === 's') {
@@ -711,7 +819,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// --- 15. INITIALIZE APP ON LOAD ---
+// --- 16. INITIALIZE APP ON LOAD ---
 document.addEventListener('DOMContentLoaded', () => {
     // Check if we're on the main page
     if (document.getElementById('excelTable')) {
