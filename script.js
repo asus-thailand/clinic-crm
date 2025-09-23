@@ -50,7 +50,7 @@ async function initializeApp() {
         
         currentUserId = session.user.id;
         
-        // Get user profile and role
+        // Get user profile and role จากตาราง users ที่เราสร้างไว้
         const { data: userData, error: userError } = await supabaseClient
             .from('users')
             .select('role, username, full_name')
@@ -59,7 +59,7 @@ async function initializeApp() {
         
         if (userError) {
             console.error('Error fetching user profile:', userError);
-            // Create default user profile if not exists
+            // สร้างโปรไฟล์เริ่มต้นถ้าไม่พบ
             await createDefaultUserProfile(session.user);
         } else {
             currentUserRole = userData.role || 'sales';
@@ -134,7 +134,7 @@ function updateUIByRole() {
             badgeColor: '#007bff',
             text: 'Edit All, Add New',
             canAdd: true,
-            canDelete: false,
+            canDelete: false, // แก้ไข: ลบได้เฉพาะ admin/administrator ตาม RLS
             canEditAll: true
         },
         'sales': {
@@ -248,31 +248,10 @@ function renderTable() {
 
 // --- 6. CELL EDITING ---
 function startEdit(cell, rowIndex, field) {
-    // ❗ --- เพิ่มโค้ดตรวจสอบสิทธิ์สำหรับ Sales ---
-    if (currentUserRole === 'sales') {
-        // รายชื่อคอลัมน์ที่ Sales "ห้าม" แก้ไข
-        const salesReadOnlyFields = [
-            'date', 
-            'lead_code', 
-            'name', 
-            'phone', 
-            'channel', 
-            'procedure', 
-            'confirm_y', 
-            'transfer_100', 
-            'cs_confirm', 
-            'sales'
-            // หมายเหตุ: เพิ่มชื่อคอลัมน์อื่นๆ ที่ไม่ต้องการให้ Sales แก้ไขได้ที่นี่
-        ];
+    // ❗ --- ลบโค้ดตรวจสอบสิทธิ์สำหรับ Sales ออกจากตรงนี้ ---
+    // เพราะเราใช้ RLS ของ Supabase ในการจัดการสิทธิ์แล้ว
+    // if (currentUserRole === 'sales') { ... }
 
-        if (salesReadOnlyFields.includes(field)) {
-            showStatus('Sales ไม่มีสิทธิ์แก้ไขข้อมูลส่วนนี้', true);
-            return; // หยุดการทำงานทันที ไม่ให้เข้าสู่โหมดแก้ไข
-        }
-    }
-    // --- สิ้นสุดโค้ดส่วนใหม่ ---
-
-    // โค้ดส่วนที่เหลือของฟังก์ชันยังคงเหมือนเดิม
     if (currentUserRole === 'viewer') {
         showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
         return;
@@ -283,10 +262,6 @@ function startEdit(cell, rowIndex, field) {
     editingCell = cell;
     const originalValue = tableData[rowIndex][field] || '';
     cell.classList.add('editing');
-    
-    // ... (โค้ดส่วนที่เหลือของฟังก์ชัน startEdit) ...
-    // ...
-}
     
     if (dropdownOptions[field]) {
         const select = document.createElement('select');
@@ -348,53 +323,61 @@ function finishEdit(cancel = false) {
     }
 }
 
+// ❗ --- แก้ไขฟังก์ชัน updateCell() ---
 async function updateCell(rowIndex, field, newValue) {
     const rowId = tableData[rowIndex].id;
-    const updateData = {};
-    updateData[field] = newValue || null;
-    updateData['updated_by'] = currentUserId;
+    
+    // ตรวจสอบข้อมูลเบื้องต้น
+    // เราจะใช้ RPC function เพื่อให้ Server จัดการการอัปเดตข้อมูล
     
     try {
-        const { error } = await supabaseClient
-            .from('customers')
-            .update(updateData)
-            .eq('id', rowId);
-        
+        const { data, error } = await supabaseClient.rpc('update_customer_field', {
+            customer_id: rowId,
+            field_name: field,
+            field_value: newValue,
+            user_role: currentUserRole
+        });
+
         if (error) throw error;
         
+        // หลังจากอัปเดตสำเร็จใน Server แล้ว เราค่อยอัปเดตข้อมูลใน Frontend
         tableData[rowIndex][field] = newValue;
         originalTableData[rowIndex][field] = newValue;
+        
+        // เราไม่จำเป็นต้องเรียก fetchCustomerData() ทั้งหมดอีกครั้ง
+        // แค่อัปเดต UI ที่เกี่ยวข้องเท่านั้น
+        renderTable(); 
         showStatus('บันทึกสำเร็จ');
         finishEdit();
         updateStats();
         
     } catch (error) {
         console.error('Update error:', error);
-        showStatus('อัปเดตไม่สำเร็จ', true);
+        showStatus(error.message || 'อัปเดตไม่สำเร็จ', true);
         finishEdit(true);
     }
 }
 
 // --- 7. ROW OPERATIONS ---
+// ❗ --- แก้ไขฟังก์ชัน addNewRow() ---
 async function addNewRow() {
     if (!['administrator', 'admin', 'sales'].includes(currentUserRole)) {
         showStatus('คุณไม่มีสิทธิ์เพิ่มข้อมูล', true);
         return;
     }
     
-    // Generate new lead code
-    const lastLeadCode = tableData.length > 0 
-        ? Math.max(...tableData.map(r => parseInt(r.lead_code) || 0)) 
-        : 1150;
-    
-    const newRow = {
-        lead_code: (lastLeadCode + 1).toString(),
-        sales: currentUsername,
-        date: new Date().toLocaleDateString('th-TH'),
-        created_by: currentUserId
-    };
-    
     try {
+        // เรียกใช้ RPC function เพื่อให้ Server สร้าง lead_code ใหม่
+        const { data: nextLeadCode, error: leadCodeError } = await supabaseClient.rpc('get_next_lead_code');
+        if (leadCodeError) throw leadCodeError;
+        
+        const newRow = {
+            lead_code: nextLeadCode,
+            sales: currentUsername,
+            date: new Date().toLocaleDateString('th-TH'),
+            created_by: currentUserId // เพิ่ม created_by เพื่อให้ RLS ทำงาน
+        };
+
         const { data, error } = await supabaseClient
             .from('customers')
             .insert([newRow])
@@ -407,7 +390,7 @@ async function addNewRow() {
         
     } catch (error) {
         console.error('Add error:', error);
-        showStatus('เพิ่มข้อมูลไม่สำเร็จ', true);
+        showStatus(error.message || 'เพิ่มข้อมูลไม่สำเร็จ', true);
     }
 }
 
@@ -441,7 +424,21 @@ async function deleteRow() {
 }
 
 // --- 8. SEARCH & FILTER ---
-function searchTable(query) {
+// ❗ --- เพิ่มฟังก์ชัน debounce ---
+function debounce(func, delay) {
+    let timeoutId;
+    return function(...args) {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+        timeoutId = setTimeout(() => {
+            func.apply(this, args);
+        }, delay);
+    };
+}
+
+// ❗ --- แก้ไขการเรียกใช้ searchTable() ---
+const debouncedSearch = debounce((query) => {
     if (!query) {
         tableData = [...originalTableData];
         renderTable();
@@ -457,6 +454,11 @@ function searchTable(query) {
     
     renderTable();
     updateStats();
+}, 300);
+
+// เปลี่ยนฟังก์ชัน searchTable เดิม เป็น debouncedSearch
+function searchTable(query) {
+    debouncedSearch(query);
 }
 
 function filterTable() {
@@ -502,7 +504,7 @@ function exportData() {
         '#', 'วัน/เดือน/ปี', 'รหัสลีด', 'ชื่อ-สกุล', 'เบอร์โทร',
         'ช่องทาง', 'ประเภทหัตถการ', 'มัดจำ', 'ยืนยัน Y/N', 'โอน 100%',
         'CS ยัน', 'เซลล์', 'Last Status', 'อัพเดท', 'เวลาโทร',
-        'Status 1', 'เหตุผล', 'ETC', 'HN', 'นัดผ่าเก่า',
+        'Status 1', 'เหตุผล', 'ETC', 'HN ลูกค้า', 'นัดผ่าเก่า',
         'DR.', 'ยอดปิด', 'นัดทำ'
     ];
     
@@ -702,4 +704,3 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
 });
-
