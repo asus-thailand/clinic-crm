@@ -240,6 +240,7 @@ function renderTable() {
             <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'dr')">${row.dr || ''}</td>
             <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'closed_amount')">${row.closed_amount || ''}</td>
             <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'appointment_date')">${row.appointment_date || ''}</td>
+            <td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>
         `;
         
         tbody.appendChild(tr);
@@ -580,6 +581,29 @@ document.addEventListener('click', () => {
     const menu = document.getElementById('contextMenu');
     if (menu) menu.style.display = 'none';
 });
+
+// ❗ --- เพิ่มฟังก์ชัน showMobileMenu() สำหรับการใช้งานบนมือถือ ---
+function showMobileMenu(event, rowIndex) {
+    event.stopPropagation();
+    const menu = document.getElementById('contextMenu');
+    if (!menu) return;
+
+    contextCell = event.target.closest('tr').querySelector('td:not(.row-number)');
+    if (!contextCell) return;
+
+    const cellRect = event.target.getBoundingClientRect();
+    
+    menu.style.display = 'block';
+    
+    // Adjust position to stay within viewport and near the button
+    const menuRect = menu.getBoundingClientRect();
+    const maxX = window.innerWidth - menuRect.width - 5;
+    const maxY = window.innerHeight - menuRect.height - 5;
+    
+    menu.style.left = Math.min(cellRect.left, maxX) + 'px';
+    menu.style.top = Math.min(cellRect.bottom + 5, maxY) + 'px';
+}
+
 
 // Context menu actions
 function editCell() {
