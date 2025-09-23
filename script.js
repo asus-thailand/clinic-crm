@@ -248,15 +248,33 @@ function renderTable() {
 
 // --- 6. CELL EDITING ---
 function startEdit(cell, rowIndex, field) {
-    // Check permissions
+    // ❗ --- เพิ่มโค้ดตรวจสอบสิทธิ์สำหรับ Sales ---
+    if (currentUserRole === 'sales') {
+        // รายชื่อคอลัมน์ที่ Sales "ห้าม" แก้ไข
+        const salesReadOnlyFields = [
+            'date', 
+            'lead_code', 
+            'name', 
+            'phone', 
+            'channel', 
+            'procedure', 
+            'confirm_y', 
+            'transfer_100', 
+            'cs_confirm', 
+            'sales'
+            // หมายเหตุ: เพิ่มชื่อคอลัมน์อื่นๆ ที่ไม่ต้องการให้ Sales แก้ไขได้ที่นี่
+        ];
+
+        if (salesReadOnlyFields.includes(field)) {
+            showStatus('Sales ไม่มีสิทธิ์แก้ไขข้อมูลส่วนนี้', true);
+            return; // หยุดการทำงานทันที ไม่ให้เข้าสู่โหมดแก้ไข
+        }
+    }
+    // --- สิ้นสุดโค้ดส่วนใหม่ ---
+
+    // โค้ดส่วนที่เหลือของฟังก์ชันยังคงเหมือนเดิม
     if (currentUserRole === 'viewer') {
         showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
-        return;
-    }
-    
-    // Sales can only edit their own records
-    if (currentUserRole === 'sales' && field === 'sales' && tableData[rowIndex].sales !== currentUsername) {
-        showStatus('คุณไม่มีสิทธิ์แก้ไขเซลล์นี้', true);
         return;
     }
     
@@ -265,6 +283,10 @@ function startEdit(cell, rowIndex, field) {
     editingCell = cell;
     const originalValue = tableData[rowIndex][field] || '';
     cell.classList.add('editing');
+    
+    // ... (โค้ดส่วนที่เหลือของฟังก์ชัน startEdit) ...
+    // ...
+}
     
     if (dropdownOptions[field]) {
         const select = document.createElement('select');
@@ -680,3 +702,4 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     }
 });
+
