@@ -6,108 +6,340 @@
     <title>Login - Beauty Clinic CRM</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f7fa; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        .login-container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        .logo { font-size: 24px; font-weight: 700; color: #764ba2; margin-bottom: 25px; }
-        .input-group { margin-bottom: 20px; text-align: left; }
-        .input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: #6c757d; }
-        .input-group input { width: 100%; padding: 12px 15px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
-        .secondary-action { margin-top: 20px; font-size: 14px; }
-        .secondary-action a { color: #667eea; text-decoration: none; }
-        #errorMessage { color: #dc3545; margin-top: 15px; font-size: 14px; display: none; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            font-family: 'Segoe UI', sans-serif; 
+        }
+        
+        .login-container { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
+            width: 100%; 
+            max-width: 400px; 
+            text-align: center;
+            animation: slideUp 0.5s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .logo { 
+            font-size: 28px; 
+            font-weight: 700; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px; 
+        }
+        
+        .subtitle {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        .input-group { 
+            margin-bottom: 20px; 
+            text-align: left; 
+        }
+        
+        .input-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-size: 14px; 
+            color: #6c757d; 
+            font-weight: 500;
+        }
+        
+        .input-group input { 
+            width: 100%; 
+            padding: 12px 15px; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            transition: all 0.3s ease;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn { 
+            width: 100%; 
+            padding: 15px; 
+            border: none; 
+            border-radius: 8px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .secondary-action { 
+            margin-top: 25px; 
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .secondary-action a { 
+            color: #667eea; 
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+        
+        .secondary-action a:hover {
+            color: #764ba2;
+        }
+        
+        #errorMessage, #successMessage { 
+            margin-top: 15px; 
+            font-size: 14px; 
+            display: none;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        
+        #errorMessage {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        
+        #successMessage {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .loading {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="logo">Beauty Clinic CRM</div>
+        <div class="subtitle">Excel Edition</div>
         
         <div class="input-group">
             <label for="email">อีเมล</label>
-            <input type="email" id="email" placeholder="กรอกอีเมลของคุณ">
+            <input type="email" id="email" placeholder="กรอกอีเมลของคุณ" autocomplete="email">
         </div>
         
         <div class="input-group">
             <label for="password">รหัสผ่าน</label>
-            <input type="password" id="password" placeholder="กรอกรหัสผ่าน">
+            <input type="password" id="password" placeholder="กรอกรหัสผ่าน" autocomplete="current-password">
         </div>
         
-        <button class="btn" onclick="handleLogin()">เข้าสู่ระบบ</button>
+        <button class="btn" id="loginBtn" onclick="handleLogin()">เข้าสู่ระบบ</button>
         
         <div class="secondary-action">
-            ยังไม่มีบัญชี? <a href="#" onclick="handleSignUp()">สร้างบัญชีใหม่</a>
+            ยังไม่มีบัญชี? <a href="#" onclick="toggleSignUp()">สร้างบัญชีใหม่</a>
         </div>
 
+        <div class="loading" id="loading"></div>
         <p id="errorMessage"></p>
+        <p id="successMessage"></p>
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co'; // ❗ วาง URL ของคุณที่นี่
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM'; // ❗ วาง Anon Key ของคุณที่นี่
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
         if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
             alert('กรุณาตั้งค่า SUPABASE_URL และ SUPABASE_ANON_KEY ในไฟล์ login.html ก่อน');
         }
 
-        // แก้ไขจุดที่ผิด: เปลี่ยนชื่อตัวแปรเป็น supabaseClient เพื่อไม่ให้ซ้ำซ้อน
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // Elements
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
         const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const loading = document.getElementById('loading');
+        const loginBtn = document.getElementById('loginBtn');
+        
+        let isSignUpMode = false;
 
-        async function handleSignUp() {
-            const email = emailInput.value;
+        // Toggle between login and signup
+        function toggleSignUp() {
+            isSignUpMode = !isSignUpMode;
+            loginBtn.textContent = isSignUpMode ? 'สร้างบัญชี' : 'เข้าสู่ระบบ';
+            document.querySelector('.secondary-action').innerHTML = isSignUpMode 
+                ? 'มีบัญชีแล้ว? <a href="#" onclick="toggleSignUp()">เข้าสู่ระบบ</a>'
+                : 'ยังไม่มีบัญชี? <a href="#" onclick="toggleSignUp()">สร้างบัญชีใหม่</a>';
+            hideMessages();
+        }
+
+        // Show/Hide messages
+        function showError(msg) {
+            errorMessage.textContent = msg;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+
+        function showSuccess(msg) {
+            successMessage.textContent = msg;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        // Loading state
+        function setLoading(isLoading) {
+            loading.style.display = isLoading ? 'block' : 'none';
+            loginBtn.disabled = isLoading;
+            emailInput.disabled = isLoading;
+            passwordInput.disabled = isLoading;
+        }
+
+        // Main login/signup handler
+        async function handleLogin() {
+            const email = emailInput.value.trim();
             const password = passwordInput.value;
             
-            if (password.length < 6) {
-                errorMessage.textContent = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
-                errorMessage.style.display = 'block';
+            // Validation
+            if (!email) {
+                showError('กรุณากรอกอีเมล');
                 return;
             }
-
-            // ใช้ตัวแปรใหม่ supabaseClient
-            const { data, error } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password,
-            });
-
-            if (error) {
-                errorMessage.textContent = 'สร้างบัญชีไม่สำเร็จ: ' + error.message;
-                errorMessage.style.display = 'block';
-            } else {
-                errorMessage.textContent = 'สร้างบัญชีสำเร็จแล้ว! กรุณาตรวจสอบอีเมลเพื่อยืนยัน (ถ้าเปิดใช้งาน)';
-                errorMessage.style.display = 'block';
+            
+            if (!password) {
+                showError('กรุณากรอกรหัสผ่าน');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+                return;
+            }
+            
+            setLoading(true);
+            hideMessages();
+            
+            try {
+                if (isSignUpMode) {
+                    // Sign Up
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email: email,
+                        password: password,
+                        options: {
+                            data: {
+                                username: email.split('@')[0],
+                                role: 'sales'
+                            }
+                        }
+                    });
+                    
+                    if (error) throw error;
+                    
+                    if (data.user && data.user.identities && data.user.identities.length === 0) {
+                        showError('อีเมลนี้ถูกใช้งานแล้ว');
+                    } else {
+                        showSuccess('สร้างบัญชีสำเร็จ! กำลังเข้าสู่ระบบ...');
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1500);
+                    }
+                } else {
+                    // Sign In
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    });
+                    
+                    if (error) throw error;
+                    
+                    showSuccess('เข้าสู่ระบบสำเร็จ!');
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                if (error.message.includes('Invalid login credentials')) {
+                    showError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+                } else if (error.message.includes('Email not confirmed')) {
+                    showError('กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ');
+                } else {
+                    showError(error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+                }
+            } finally {
+                setLoading(false);
             }
         }
 
-        async function handleLogin() {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-
-            // ใช้ตัวแปรใหม่ supabaseClient
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
-
-            if (error) {
-                errorMessage.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-                errorMessage.style.display = 'block';
-            } else {
-                window.location.href = 'index.html';
-            }
-        }
-
+        // Check if already logged in
         document.addEventListener('DOMContentLoaded', async () => {
-            // ใช้ตัวแปรใหม่ supabaseClient
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 window.location.href = 'index.html';
             }
         });
 
+        // Enter key support
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+        
+        emailInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                passwordInput.focus();
+            }
+        });
     </script>
 </body>
 </html>
-
