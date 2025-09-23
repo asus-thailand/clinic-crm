@@ -141,7 +141,7 @@ function updateUIByRole() {
     const userPermissions = document.getElementById('userPermissions');
     const addUserButton = document.getElementById('addUserButton');
     const deleteRowMenuItem = document.getElementById('deleteRowMenuItem');
-    const importButton = document.getElementById('importButton'); // เพิ่มโค้ดนี้
+    const importButton = document.getElementById('importButton');
 
     const permissions = {
         'administrator': {
@@ -151,7 +151,7 @@ function updateUIByRole() {
             canAdd: true,
             canDelete: true,
             canEditAll: true,
-            canImport: true // เพิ่มโค้ดนี้
+            canImport: true
         },
         'admin': {
             badge: 'Admin',
@@ -160,7 +160,7 @@ function updateUIByRole() {
             canAdd: true,
             canDelete: false, 
             canEditAll: true,
-            canImport: false // เพิ่มโค้ดนี้
+            canImport: false
         },
         'sales': {
             badge: 'Sales',
@@ -169,7 +169,7 @@ function updateUIByRole() {
             canAdd: true,
             canDelete: false,
             canEditAll: false,
-            canImport: false // เพิ่มโค้ดนี้
+            canImport: false
         },
         'viewer': {
             badge: 'Viewer',
@@ -178,7 +178,7 @@ function updateUIByRole() {
             canAdd: false,
             canDelete: false,
             canEditAll: false,
-            canImport: false // เพิ่มโค้ดนี้
+            canImport: false
         }
     };
     
@@ -202,7 +202,7 @@ function updateUIByRole() {
     }
 
     if (importButton) {
-        importButton.style.display = perm.canImport ? 'inline-block' : 'none'; // เพิ่มโค้ดนี้
+        importButton.style.display = perm.canImport ? 'inline-block' : 'none';
     }
 }
 
@@ -444,7 +444,8 @@ async function deleteRow() {
     }
     
     if (contextCell) {
-        const rowId = contextCell.parentElement.dataset.id;
+        const rowIndex = parseInt(contextCell.parentElement.dataset.index);
+        const rowId = tableData[rowIndex].id; // แก้ไขโค้ด: ดึง UUID จาก tableData
         
         if (confirm('ต้องการลบแถวนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
             try {
