@@ -70,7 +70,6 @@ async function initializeApp() {
     showLoading(true);
     
     try {
-        // Check authentication
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) {
             window.location.href = 'login.html';
@@ -79,7 +78,6 @@ async function initializeApp() {
         
         currentUserId = session.user.id;
         
-        // Get user profile and role จากตาราง users ที่เราสร้างไว้
         const { data: userData, error: userError } = await supabaseClient
             .from('users')
             .select('role, username, full_name')
@@ -93,14 +91,9 @@ async function initializeApp() {
         } else {
             currentUserRole = userData.role || 'sales';
             currentUsername = userData.username || session.user.email.split('@')[0];
-            sessionStorage.setItem('currentUsername', currentUsername);
-            sessionStorage.setItem('currentUserRole', currentUserRole);
         }
         
-        // Update UI based on role
         updateUIByRole();
-        
-        // Fetch customer data
         await fetchCustomerData();
         
     } catch (error) {
@@ -823,6 +816,13 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     // Check if we're on the main page
     if (document.getElementById('excelTable')) {
-        initializeApp();
+        // Check if there is a session
+        supabaseClient.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                initializeApp();
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
     }
 });
