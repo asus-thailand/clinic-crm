@@ -259,8 +259,8 @@ function renderTable() {
                 const isDropdown = dropdownOptions[fieldName] !== undefined;
                 const cellClass = getCellClass(fieldName);
                 const cellValue = row[fieldName] || '';
-                
-                // แก้ไขตรงนี้: ส่ง row.id แทน index
+
+                // แก้ไข: ส่ง row.id แทน index
                 const ondblclick = `startEdit(this, '${row.id}', '${fieldName}')`;
                 const ynClass = (fieldName === 'confirm_y' || fieldName === 'transfer_100') ? `yn-cell ${cellValue === 'Y' ? 'yes' : cellValue === 'N' ? 'no' : ''}` : '';
 
