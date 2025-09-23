@@ -25,6 +25,7 @@
                 <span id="userPermissions" style="font-size: 11px; opacity: 0.9;"></span>
                 <button class="btn" onclick="switchRole()">🔄 Switch Role</button>
                 <button class="btn" onclick="exportData()">📊 Export</button>
+                <button class="btn" id="importButton" style="display: none;" onclick="showImportModal()">📥 Import</button>
                 <button class="btn" onclick="showSettings()">⚙️ ตั้งค่า</button>
                 <button class="btn" onclick="handleLogout()">ออกจากระบบ</button>
             </div>
@@ -93,7 +94,6 @@
                         <th class="admin-header">ประเภทหัตถการ</th>
                         <th class="admin-header">ขอเบอร์ Y/N</th>
                         <th class="admin-header">มัดจำออนไลน์ Y/N</th>
-                        <th class="admin-header">ติดตามผล Y/N</th>
                         <th class="admin-header">CS ผู้ส่ง Lead</th>
                         <th class="admin-header">เซลล์</th>
                         <th class="status-header">Last Status</th>
@@ -129,6 +129,17 @@
 
     <div class="status-indicator" id="statusIndicator"></div>
 
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <span class="close-button" onclick="hideImportModal()">&times;</span>
+            <h2>นำเข้าข้อมูลจาก CSV</h2>
+            <p>กรุณาเลือกไฟล์ .csv ที่ต้องการนำเข้า</p>
+            <input type="file" id="csvFile" accept=".csv">
+            <button class="btn btn-primary" id="importBtn" onclick="importData()">นำเข้าข้อมูล</button>
+            <p id="importStatus" class="import-status"></p>
+        </div>
+    </div>
+
     <script src="script.js"></script>
     
     <style>
@@ -147,8 +158,53 @@
             animation: spin 1s linear infinite; margin: 0 auto 15px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Modal Styles --- */
+        .modal {
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            animation: fadeIn 0.3s;
+        }
+
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-button:hover, .close-button:focus {
+            color: black;
+            text-decoration: none;
+        }
+
+        .import-status {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #333;
+        }
     </style>
 </body>
 </html>
-
-
