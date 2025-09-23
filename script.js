@@ -260,7 +260,7 @@ function renderTable() {
                 const cellClass = getCellClass(fieldName);
                 const cellValue = row[fieldName] || '';
 
-                // แก้ไข: ส่ง row.id แทน index
+                // ส่ง row.id ไปยัง startEdit โดยตรง
                 const ondblclick = `startEdit(this, '${row.id}', '${fieldName}')`;
                 const ynClass = (fieldName === 'confirm_y' || fieldName === 'transfer_100') ? `yn-cell ${cellValue === 'Y' ? 'yes' : cellValue === 'N' ? 'no' : ''}` : '';
 
@@ -448,7 +448,7 @@ async function deleteRow() {
     }
 
     if (contextCell) {
-        // แก้ไข: ดึง UUID จาก data-id
+        // ดึง UUID จาก data-id
         const rowId = contextCell.parentElement.dataset.id;
         
         if (!rowId) {
@@ -632,7 +632,7 @@ function showMobileMenu(event, rowIndex) {
 // Context menu actions
 function editCell() {
     if (contextCell) {
-        // แก้ไข: ดึง rowId และ field เพื่อส่งไปยัง startEdit
+        // ดึง rowId และ field เพื่อส่งไปยัง startEdit
         const rowId = contextCell.parentElement.dataset.id;
         const cellIndex = contextCell.cellIndex;
         const fieldMap = Object.values(FIELD_MAPPING).filter(field => field !== null);
@@ -655,7 +655,7 @@ function copyCell() {
 
 async function pasteCell() {
     if (contextCell && copiedCell !== null) {
-        // แก้ไข: ดึง rowId และ field
+        // ดึง rowId และ field
         const rowId = contextCell.parentElement.dataset.id;
         const cellIndex = contextCell.cellIndex;
 
@@ -674,7 +674,7 @@ async function pasteCell() {
 
 async function clearCell() {
     if (contextCell) {
-        // แก้ไข: ดึง rowId และ field
+        // ดึง rowId และ field
         const rowId = contextCell.parentElement.dataset.id;
         const cellIndex = contextCell.cellIndex;
 
