@@ -413,3 +413,89 @@ body {
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+/* --- Mobile Responsive Table --- */
+@media (max-width: 768px) {
+    /* ปรับปรุง Header & Toolbar */
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .user-info {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-container {
+        width: 100%;
+        min-width: auto;
+    }
+
+    .filter-select {
+        width: 100%;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-top: 5px;
+        min-height: 44px; /* ทำให้ปุ่มกดง่ายขึ้นบนมือถือ */
+    }
+
+    /* ทำให้ตารางเลื่อนในแนวนอนได้ */
+    .table-wrapper {
+        overflow-x: auto;
+        max-height: calc(100vh - 250px);
+        -webkit-overflow-scrolling: touch; /* เพิ่มความลื่นไหลในการเลื่อนบน iOS */
+    }
+
+    .excel-table {
+        display: block;
+        min-width: 1000px; /* ลดความกว้างขั้นต่ำลงจาก 2200px */
+    }
+
+    /* ทำให้แถวแรกติดอยู่กับที่ */
+    .row-number, .admin-header, .status-header, .etc-header {
+        position: sticky;
+        left: 0;
+        z-index: 50;
+    }
+}
+
+/* --- Touch-friendly Context Menu --- */
+/* ซ่อนเมนูเดิมสำหรับมือถือ */
+@media (pointer: coarse) {
+  .context-menu {
+    display: none !important;
+  }
+}
+
+/* Styles for the new mobile action button and menu */
+.mobile-actions-btn {
+    display: none;
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: #666;
+}
+
+tr:hover .mobile-actions-btn {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .mobile-actions-btn {
+        display: block; /* แสดงปุ่มเสมอในโหมดมือถือ */
+    }
+}
