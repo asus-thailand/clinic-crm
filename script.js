@@ -3,6 +3,8 @@
 // ================================================================================
 
 // --- 1. CONFIGURATION & INITIALIZATION ---
+// Supabase Configuration - From Environment Variables
+// NOTE: For local development, you might need a build tool like Vite to handle import.meta.env
 const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
@@ -25,15 +27,41 @@ let copiedCell = null;
 let contextCell = null;
 let selectedCell = null;
 
+// --- Single Source of Truth for Field Mappings ---
+const FIELD_MAPPING = {
+    'วัน/เดือน/ปี': 'date',
+    'ลำดับที่': 'lead_code',
+    'ชื่อ-สกุล / ศจย.': 'name',
+    'เบอร์ติดต่อ': 'phone',
+    'ช่องทางสื่อ': 'channel',
+    'ประเภทหัตถการ': 'procedure',
+    'มัดจำ': 'deposit',
+    'ขอเบอร์ Y/N': 'confirm_y',
+    'มัดจำออนไลน์ Y/N': 'transfer_100',
+    'CS ผู้ส่ง Lead': 'cs_confirm',
+    'เซลล์': 'sales',
+    'Last Status': 'last_status',
+    'อัพเดทการเข้าถึง': 'update_access',
+    'เวลาโทร': 'call_time',
+    'Status SALE': 'status_1',
+    'เหตุผล': 'reason',
+    'ETC': 'etc',
+    'HN ลูกค้า': 'hn_customer',
+    'วันที่นัดผ่าเก่าแล้ว': 'old_appointment',
+    'DR.': 'dr',
+    'ยอดที่ปิดได้': 'closed_amount',
+    'วันที่นัดทำหัตถการ': 'appointment_date'
+};
+
 // Dropdown options
 const dropdownOptions = {
-    channel: ['Fbc By หมอธีร์', 'FBC-EYES', 'FBC-Hair', 'Walk-in', 'Online', 'Facebook', 'Instagram', 'Line'],
-    procedure: ['ปลูกผม', 'ยกคิ้ว', 'จมูก', 'ตา', 'ฉีดฟิลเลอร์', 'โบท็อกซ์', 'เลเซอร์'],
-    sales: ['MAM', 'AU', 'GOLF', 'Online', 'JANE', 'TOM', 'LISA'],
-    cs_confirm: ['CSX', 'CSY', 'CSZ'],
-    confirm_y: ['Y', 'N'],
-    transfer_100: ['Y', 'N'],
-    status_1: ['ธงเขียว 1', 'ธงเขียว 2', 'ธงเขียว 3', 'ธงเขียว 4', 'ธงแดง', 'โยกทราม', 'นัดงานไว้']
+    [FIELD_MAPPING['ช่องทางสื่อ']]: ['Fbc By หมอธีร์', 'FBC-EYES', 'FBC-Hair', 'Walk-in', 'Online', 'Facebook', 'Instagram', 'Line'],
+    [FIELD_MAPPING['ประเภทหัตถการ']]: ['ปลูกผม', 'ยกคิ้ว', 'จมูก', 'ตา', 'ฉีดฟิลเลอร์', 'โบท็อกซ์', 'เลเซอร์'],
+    [FIELD_MAPPING['เซลล์']]: ['MAM', 'AU', 'GOLF', 'Online', 'JANE', 'TOM', 'LISA'],
+    [FIELD_MAPPING['CS ผู้ส่ง Lead']]: ['CSX', 'CSY', 'CSZ'],
+    [FIELD_MAPPING['ขอเบอร์ Y/N']]: ['Y', 'N'],
+    [FIELD_MAPPING['มัดจำออนไลน์ Y/N']]: ['Y', 'N'],
+    [FIELD_MAPPING['Status SALE']]: ['ธงเขียว 1', 'ธงเขียว 2', 'ธงเขียว 3', 'ธงเขียว 4', 'ธงแดง', 'โยกทราม', 'นัดงานไว้']
 };
 
 // --- 2. MAIN APP INITIALIZATION ---
@@ -216,35 +244,38 @@ function renderTable() {
         tr.dataset.id = row.id;
         tr.dataset.index = index;
         
-        tr.innerHTML = `
+        const html = `
             <td class="row-number">${index + 1}</td>
-            <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'date')">${row.date || ''}</td>
-            <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'lead_code')">${row.lead_code || ''}</td>
-            <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'name')">${row.name || ''}</td>
-            <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'phone')">${row.phone || ''}</td>
-            <td class="admin-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'channel')">${row.channel || ''}</td>
-            <td class="admin-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'procedure')">${row.procedure || ''}</td>
-            <td class="admin-cell" ondblclick="startEdit(this, ${index}, 'deposit')">${row.deposit || ''}</td>
-            <td class="admin-cell yn-cell ${row.confirm_y === 'Y' ? 'yes' : row.confirm_y === 'N' ? 'no' : ''} has-dropdown" ondblclick="startEdit(this, ${index}, 'confirm_y')">${row.confirm_y || ''}</td>
-            <td class="admin-cell yn-cell ${row.transfer_100 === 'Y' ? 'yes' : row.transfer_100 === 'N' ? 'no' : ''} has-dropdown" ondblclick="startEdit(this, ${index}, 'transfer_100')">${row.transfer_100 || ''}</td>
-            <td class="admin-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'cs_confirm')">${row.cs_confirm || ''}</td>
-            <td class="admin-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'sales')">${row.sales || ''}</td>
-            <td class="status-cell" ondblclick="startEdit(this, ${index}, 'last_status')">${row.last_status || ''}</td>
-            <td class="status-cell" ondblclick="startEdit(this, ${index}, 'update_access')">${row.update_access || ''}</td>
-            <td class="status-cell" ondblclick="startEdit(this, ${index}, 'call_time')">${row.call_time || ''}</td>
-            <td class="status-cell has-dropdown" ondblclick="startEdit(this, ${index}, 'status_1')">${row.status_1 || ''}</td>
-            <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'reason')">${row.reason || ''}</td>
-            <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'etc')">${row.etc || ''}</td>
-            <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'hn_customer')">${row.hn_customer || ''}</td>
-            <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'old_appointment')">${row.old_appointment || ''}</td>
-            <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'dr')">${row.dr || ''}</td>
-            <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'closed_amount')">${row.closed_amount || ''}</td>
-            <td class="etc-cell" ondblclick="startEdit(this, ${index}, 'appointment_date')">${row.appointment_date || ''}</td>
+            ${Object.values(FIELD_MAPPING).map(field => {
+                const isDropdown = dropdownOptions[field] !== undefined;
+                const cellClass = getCellClass(field);
+                const cellValue = row[field] || '';
+                const ondblclick = `startEdit(this, ${index}, '${field}')`;
+                const ynClass = (field === 'confirm_y' || field === 'transfer_100') ? `yn-cell ${cellValue === 'Y' ? 'yes' : cellValue === 'N' ? 'no' : ''}` : '';
+
+                return `<td class="${cellClass} ${isDropdown ? 'has-dropdown' : ''} ${ynClass}" ondblclick="${ondblclick}">${cellValue}</td>`;
+            }).join('')}
             <td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>
         `;
-        
+
+        tr.innerHTML = html;
         tbody.appendChild(tr);
     });
+}
+
+function getCellClass(field) {
+    const adminFields = ['date', 'lead_code', 'name', 'phone', 'channel', 'procedure', 'deposit', 'confirm_y', 'transfer_100', 'cs_confirm', 'sales'];
+    const statusFields = ['last_status', 'update_access', 'call_time', 'status_1'];
+    const etcFields = ['reason', 'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'];
+
+    if (adminFields.includes(field)) {
+        return 'admin-cell';
+    } else if (statusFields.includes(field)) {
+        return 'status-cell';
+    } else if (etcFields.includes(field)) {
+        return 'etc-cell';
+    }
+    return '';
 }
 
 // --- 6. CELL EDITING ---
@@ -512,33 +543,9 @@ function exportData() {
     let csv = '\ufeff' + headers.join(',') + '\n';
     
     tableData.forEach((row, index) => {
-        const rowData = [
-            index + 1,
-            row.date || '',
-            row.lead_code || '',
-            row.name || '',
-            row.phone || '',
-            row.channel || '',
-            row.procedure || '',
-            row.deposit || '',
-            row.confirm_y || '',
-            row.transfer_100 || '',
-            row.cs_confirm || '',
-            row.sales || '',
-            row.last_status || '',
-            row.update_access || '',
-            row.call_time || '',
-            row.status_1 || '',
-            row.reason || '',
-            row.etc || '',
-            row.hn_customer || '',
-            row.old_appointment || '',
-            row.dr || '',
-            row.closed_amount || '',
-            row.appointment_date || ''
-        ].map(val => `"${String(val).replace(/"/g, '""')}"`);
-        
-        csv += rowData.join(',') + '\n';
+        const rowData = Object.values(FIELD_MAPPING).map(field => row[field] || '');
+        const formattedRowData = [index + 1, ...rowData].map(val => `"${String(val).replace(/"/g, '""')}"`);
+        csv += formattedRowData.join(',') + '\n';
     });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -624,18 +631,9 @@ async function pasteCell() {
         const rowIndex = parseInt(contextCell.parentElement.dataset.index);
         const cellIndex = contextCell.cellIndex;
         
-        // Map cell index to field name
-        const fieldMap = [
-            null, 'date', 'lead_code', 'name', 'phone', 'channel', 'procedure',
-            'deposit', 'confirm_y', 'transfer_100', 'cs_confirm', 'sales',
-            'last_status', 'update_access', 'call_time', 'status_1',
-            'reason', 'etc', 'hn_customer', 'old_appointment', 'dr',
-            'closed_amount', 'appointment_date'
-        ];
-        
-        const field = fieldMap[cellIndex];
-        if (field) {
-            await updateCell(rowIndex, field, copiedCell);
+        const fieldName = Object.values(FIELD_MAPPING)[cellIndex - 1];
+        if (fieldName) {
+            await updateCell(rowIndex, fieldName, copiedCell);
             showStatus('วางแล้ว');
         }
     }
@@ -646,17 +644,9 @@ async function clearCell() {
         const rowIndex = parseInt(contextCell.parentElement.dataset.index);
         const cellIndex = contextCell.cellIndex;
         
-        const fieldMap = [
-            null, 'date', 'lead_code', 'name', 'phone', 'channel', 'procedure',
-            'deposit', 'confirm_y', 'transfer_100', 'cs_confirm', 'sales',
-            'last_status', 'update_access', 'call_time', 'status_1',
-            'reason', 'etc', 'hn_customer', 'old_appointment', 'dr',
-            'closed_amount', 'appointment_date'
-        ];
-        
-        const field = fieldMap[cellIndex];
-        if (field) {
-            await updateCell(rowIndex, field, '');
+        const fieldName = Object.values(FIELD_MAPPING)[cellIndex - 1];
+        if (fieldName) {
+            await updateCell(rowIndex, fieldName, '');
             showStatus('ล้างเซลล์แล้ว');
         }
     }
