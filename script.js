@@ -367,12 +367,14 @@ function startEdit(cell, rowId, field) {
 }
 
 function finishEdit(cancel = false) {
-    if (editingCell) {
-        const rowId = editingCell.closest('tr').dataset.id;
-        const field = editingCell.dataset.field;
-        const row = tableData.find(r => r.id === rowId);
+    if (!editingCell) return; // Prevent error if editingCell is null
 
-        if (row && field) {
+    const rowId = editingCell.closest('tr')?.dataset.id;
+    const field = editingCell.dataset.field;
+    
+    if (rowId && field) {
+        const row = tableData.find(r => r.id === rowId);
+        if (row) {
              editingCell.textContent = row[field] || '';
 
             if (field === 'confirm_y' || field === 'transfer_100') {
@@ -381,10 +383,13 @@ function finishEdit(cancel = false) {
                 else if (row[field] === 'N') editingCell.classList.add('no');
             }
         }
-       
-        editingCell.classList.remove('editing');
-        editingCell = null;
+    } else {
+        // If rowId or field is missing, just clear the editing state
+        editingCell.textContent = editingCell.querySelector('input')?.value || editingCell.querySelector('select')?.value || '';
     }
+       
+    editingCell.classList.remove('editing');
+    editingCell = null;
 }
 
 async function updateCell(rowId, field, newValue) {
@@ -473,38 +478,41 @@ async function deleteRow() {
         return;
     }
 
-    if (contextCell) {
-        const rowId = contextCell.parentElement.dataset.id;
-        
-        if (!rowId) {
-            showStatus('ไม่พบ ID ของแถวที่ต้องการลบ', true);
-            return;
-        }
+    if (!contextCell) {
+        showStatus('ไม่พบเซลล์ที่เลือก', true);
+        return;
+    }
 
-        if (confirm('ต้องการลบแถวนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
-            try {
-                showLoading(true);
-                const { error } = await supabaseClient
-                    .from('customers')
-                    .delete()
-                    .eq('id', rowId);
+    const rowId = contextCell.parentElement?.dataset.id;
+    
+    if (!rowId) {
+        showStatus('ไม่พบ ID ของแถวที่ต้องการลบ', true);
+        return;
+    }
 
-                if (error) throw error;
+    if (confirm('ต้องการลบแถวนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
+        try {
+            showLoading(true);
+            const { error } = await supabaseClient
+                .from('customers')
+                .delete()
+                .eq('id', rowId);
 
-                const index = tableData.findIndex(r => r.id === rowId);
-                if (index !== -1) {
-                    tableData.splice(index, 1);
-                    originalTableData.splice(index, 1);
-                    renderTable();
-                    updateStats();
-                }
-                showStatus('ลบข้อมูลสำเร็จ');
-            } catch (error) {
-                console.error('Delete error:', error);
-                showStatus('ลบข้อมูลไม่สำเร็จ: ' + error.message, true);
-            } finally {
-                showLoading(false);
+            if (error) throw error;
+
+            const index = tableData.findIndex(r => r.id === rowId);
+            if (index !== -1) {
+                tableData.splice(index, 1);
+                originalTableData.splice(index, 1);
+                renderTable();
+                updateStats();
             }
+            showStatus('ลบข้อมูลสำเร็จ');
+        } catch (error) {
+            console.error('Delete error:', error);
+            showStatus('ลบข้อมูลไม่สำเร็จ: ' + error.message, true);
+        } finally {
+            showLoading(false);
         }
     }
 }
@@ -623,7 +631,6 @@ function exportData() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
         showStatus('Export สำเร็จ');
     } catch (error) {
         console.error('Export error:', error);
@@ -683,7 +690,7 @@ function showMobileMenu(event, rowIndex) {
 // Context menu actions
 function editCell() {
     if (contextCell) {
-        const rowId = contextCell.parentElement.dataset.id;
+        const rowId = contextCell.parentElement?.dataset.id;
         const field = contextCell.dataset.field;
 
         if (rowId && field) {
@@ -712,7 +719,7 @@ function copyCell() {
 
 async function pasteCell() {
     if (contextCell && copiedCell !== null) {
-        const rowId = contextCell.parentElement.dataset.id;
+        const rowId = contextCell.parentElement?.dataset.id;
         const field = contextCell.dataset.field;
 
         if (rowId && field) {
@@ -726,7 +733,7 @@ async function pasteCell() {
 
 async function clearCell() {
     if (contextCell) {
-        const rowId = contextCell.parentElement.dataset.id;
+        const rowId = contextCell.parentElement?.dataset.id;
         const field = contextCell.dataset.field;
 
         if (rowId && field) {
