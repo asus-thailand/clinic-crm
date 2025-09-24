@@ -75,7 +75,9 @@ const dropdownOptions = {
     'cs_confirm': ['CSX', 'CSY', 'CSZ'],
     'confirm_y': ['Y', 'N'],
     'transfer_100': ['Y', 'N'],
-    'status_1': ['status 1', 'status 2', 'status 3', 'status 4', 'ตามต่อ', 'ปิดการขาย', 'ไม่สนใจ']
+    'status_1': ['status 1', 'status 2', 'status 3', 'status 4', 'ตามต่อ', 'ปิดการขาย', 'ไม่สนใจ'],
+    // เพิ่ม dropdown สำหรับ Last Status
+    'last_status': ['online', '0%', '25%', '50%', '75%', '100%', 'case off']
 };
 
 
