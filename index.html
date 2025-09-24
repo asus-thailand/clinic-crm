@@ -8,7 +8,6 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
     <header class="header">
@@ -63,11 +62,11 @@
         
         <select class="filter-select" id="statusFilter" onchange="filterTable()">
             <option value="">ทุกสถานะ</option>
-            </select>
+        </select>
         
         <select class="filter-select" id="salesFilter" onchange="filterTable()">
             <option value="">ทุกเซลล์</option>
-             </select>
+        </select>
         
         <button class="btn btn-primary" id="addUserButton" onclick="addNewRow()">+ เพิ่มลูกค้า</button>
         <button class="btn" style="background: #6c757d;" onclick="refreshData()">🔄 รีเฟรช</button>
@@ -110,6 +109,7 @@
                     </tr>
                 </thead>
                 <tbody id="tableBody">
+                    <!-- ข้อมูลจะถูกเติมโดย script.js -->
                 </tbody>
             </table>
         </div>
@@ -143,7 +143,7 @@
     <script src="script.js"></script>
     
     <style>
-        /* Loading overlay styles (included here for simplicity) */
+        /* Loading overlay styles */
         .loading-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(255, 255, 255, 0.8);
@@ -159,7 +159,7 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* --- Modal Styles --- */
+        /* Modal Styles */
         .modal {
             position: fixed;
             z-index: 2000;
@@ -206,25 +206,5 @@
             color: #333;
         }
     </style>
-    <script>
-        // Check if a Supabase session exists before loading the main app script
-        document.addEventListener('DOMContentLoaded', () => {
-            const supabaseClient = supabase.createClient('https://dmzsughhxdgpnazvjtci.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM');
-            
-            // Check if we're on the main page
-            if (document.getElementById('excelTable')) {
-                supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                    if (session) {
-                        // A session exists, proceed to load the app
-                        // This part is handled by the script.js file which is loaded below
-                        // We do not need a new call here.
-                    } else {
-                        // No session, redirect to login
-                        window.location.href = 'login.html';
-                    }
-                });
-            }
-        });
-    </script>
 </body>
 </html>
