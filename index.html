@@ -8,6 +8,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
+
 </head>
 <body>
     <header class="header">
@@ -62,11 +63,11 @@
         
         <select class="filter-select" id="statusFilter" onchange="filterTable()">
             <option value="">ทุกสถานะ</option>
-        </select>
+            </select>
         
         <select class="filter-select" id="salesFilter" onchange="filterTable()">
             <option value="">ทุกเซลล์</option>
-        </select>
+             </select>
         
         <button class="btn btn-primary" id="addUserButton" onclick="addNewRow()">+ เพิ่มลูกค้า</button>
         <button class="btn" style="background: #6c757d;" onclick="refreshData()">🔄 รีเฟรช</button>
@@ -109,7 +110,6 @@
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <!-- ข้อมูลจะถูกเติมโดย script.js -->
                 </tbody>
             </table>
         </div>
@@ -143,7 +143,7 @@
     <script src="script.js"></script>
     
     <style>
-        /* Loading overlay styles */
+        /* Loading overlay styles (included here for simplicity) */
         .loading-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(255, 255, 255, 0.8);
@@ -159,7 +159,7 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Modal Styles */
+        /* --- Modal Styles --- */
         .modal {
             position: fixed;
             z-index: 2000;
