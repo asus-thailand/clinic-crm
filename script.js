@@ -75,7 +75,7 @@ const dropdownOptions = {
     'cs_confirm': ['CSX', 'CSY', 'CSZ'],
     'confirm_y': ['Y', 'N'],
     'transfer_100': ['Y', 'N'],
-    'status_1': [''status 1', 'status 2', 'status 3', 'status 4', 'ตามต่อ', 'ปิดการขาย', 'ไม่สนใจ']
+    'status_1': ['status 1', 'status 2', 'status 3', 'status 4', 'ตามต่อ', 'ปิดการขาย', 'ไม่สนใจ']
 };
 
 
@@ -352,7 +352,7 @@ function startEdit(cell, rowId, field) {
         return;
     }
 
-    // New permission check
+    // New permission check for sales role
     if (currentUserRole === 'sales') {
         const isOwner = row.sales === currentUsername;
         const isEditableField = salesEditableFields.includes(field);
@@ -1147,5 +1147,3 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
     showStatus('เกิดข้อผิดพลาด: ' + e.reason, true);
 });
-
-
