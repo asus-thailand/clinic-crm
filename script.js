@@ -20,6 +20,7 @@ let originalTableData = []; // For filtering
 let editingCell = null;
 let copiedCell = null;
 let contextCell = null;
+let salesList = []; // New global variable to store sales list
 
 // --- Single Source of Truth for Field Mappings ---
 const FIELD_MAPPING = {
@@ -48,16 +49,32 @@ const FIELD_MAPPING = {
     'วันที่นัดทำหัตถการ': 'appointment_date'
 };
 
-// Dropdown options
+// Dropdown options (fixed lists)
 const dropdownOptions = {
     'channel': ['Fbc By หมอธีร์', 'FBC-EYES', 'FBC-Hair', 'Walk-in', 'Online', 'Facebook', 'Instagram', 'Line'],
     'procedure': ['ปลูกผม', 'ยกคิ้ว', 'จมูก', 'ตา', 'ฉีดฟิลเลอร์', 'โบท็อกซ์', 'เลเซอร์'],
-    'sales': ['MAM', 'AU', 'GOLF', 'Online', 'JANE', 'TOM', 'LISA'],
     'cs_confirm': ['CSX', 'CSY', 'CSZ'],
     'confirm_y': ['Y', 'N'],
     'transfer_100': ['Y', 'N'],
     'status_1': ['ธงเขียว 1', 'ธงเขียว 2', 'ธงเขียว 3', 'ธงเขียว 4', 'ธงแดง', 'โยกทราม', 'นัดงานไว้']
 };
+
+// Define fields that sales can edit
+const salesEditableFields = [
+    'last_status',
+    'update_access',
+    'call_time',
+    'status_1',
+    'reason',
+    'etc',
+    'hn_customer',
+    'old_appointment',
+    'dr',
+    'closed_amount',
+    'appointment_date',
+    'sales' // Sales can reassign customers to other sales
+];
+
 
 // --- 2. MAIN APP INITIALIZATION ---
 async function initializeApp() {
@@ -86,6 +103,7 @@ async function initializeApp() {
         }
 
         updateUIByRole();
+        await fetchSalesList();
         populateFilterOptions();
         await fetchCustomerData();
         setupRealtimeSubscription();
@@ -257,10 +275,9 @@ function renderTable() {
         headers.forEach(headerText => {
             const fieldName = FIELD_MAPPING[headerText];
             if (fieldName === null) {
-                // Handle row number column
                 html += `<td class="row-number">${index + 1}</td>`;
             } else if (fieldName) {
-                const isDropdown = dropdownOptions[fieldName] !== undefined;
+                const isDropdown = dropdownOptions[fieldName] !== undefined || fieldName === 'sales';
                 const cellClass = getCellClass(fieldName);
                 const cellValue = row[fieldName] || '';
 
@@ -274,7 +291,6 @@ function renderTable() {
             }
         });
         
-        // Mobile actions column
         html += `<td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>`;
         
         tr.innerHTML = html;
@@ -300,6 +316,12 @@ function startEdit(cell, rowId, field) {
         return;
     }
 
+    // New check for sales role
+    if (currentUserRole === 'sales' && !salesEditableFields.includes(field)) {
+        showStatus('คุณไม่มีสิทธิ์แก้ไขคอลัมน์นี้', true);
+        return;
+    }
+
     if (editingCell) finishEdit(true);
 
     editingCell = cell;
@@ -311,7 +333,12 @@ function startEdit(cell, rowId, field) {
     const originalValue = row[field] || '';
     cell.classList.add('editing');
 
-    if (dropdownOptions[field]) {
+    let dropdownItems = dropdownOptions[field];
+    if (field === 'sales') {
+        dropdownItems = salesList; // Use dynamic sales list
+    }
+
+    if (dropdownItems) {
         const select = document.createElement('select');
         select.className = 'cell-select';
 
@@ -320,7 +347,7 @@ function startEdit(cell, rowId, field) {
         emptyOption.textContent = '-- เลือก --';
         select.appendChild(emptyOption);
 
-        dropdownOptions[field].forEach(opt => {
+        dropdownItems.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt;
             option.textContent = opt;
@@ -367,7 +394,7 @@ function startEdit(cell, rowId, field) {
 }
 
 function finishEdit(cancel = false) {
-    if (!editingCell) return; // Prevent error if editingCell is null
+    if (!editingCell) return;
 
     const rowId = editingCell.closest('tr')?.dataset.id;
     const field = editingCell.dataset.field;
@@ -384,7 +411,6 @@ function finishEdit(cancel = false) {
             }
         }
     } else {
-        // If rowId or field is missing, just clear the editing state
         editingCell.textContent = editingCell.querySelector('input')?.value || editingCell.querySelector('select')?.value || '';
     }
        
@@ -518,6 +544,21 @@ async function deleteRow() {
 }
 
 // --- 8. SEARCH & FILTER ---
+async function fetchSalesList() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('users')
+            .select('username');
+
+        if (error) throw error;
+
+        // Filter out null usernames and store the list
+        salesList = data.map(user => user.username).filter(username => username !== null);
+    } catch (error) {
+        console.error('Error fetching sales list:', error);
+    }
+}
+
 function populateFilterOptions() {
     const statusFilter = document.getElementById('statusFilter');
     const salesFilter = document.getElementById('salesFilter');
@@ -534,7 +575,7 @@ function populateFilterOptions() {
 
     if (salesFilter) {
         salesFilter.innerHTML = '<option value="">ทุกเซลล์</option>';
-        dropdownOptions.sales.forEach(sales => {
+        salesList.forEach(sales => {
             const option = document.createElement('option');
             option.value = sales;
             option.textContent = sales;
@@ -689,59 +730,67 @@ function showMobileMenu(event, rowIndex) {
 
 // Context menu actions
 function editCell() {
-    if (contextCell) {
-        const rowId = contextCell.parentElement?.dataset.id;
-        const field = contextCell.dataset.field;
+    if (!contextCell) {
+        showStatus('ไม่พบเซลล์ที่เลือก', true);
+        return;
+    }
+    const rowId = contextCell.parentElement?.dataset.id;
+    const field = contextCell.dataset.field;
 
-        if (rowId && field) {
-            startEdit(contextCell, rowId, field);
-        } else {
-            showStatus('ไม่สามารถแก้ไขเซลล์นี้ได้', true);
-        }
+    if (rowId && field) {
+        startEdit(contextCell, rowId, field);
+    } else {
+        showStatus('ไม่สามารถแก้ไขเซลล์นี้ได้', true);
     }
 }
 
 function copyCell() {
-    if (contextCell) {
-        copiedCell = contextCell.textContent;
+    if (!contextCell) {
+        showStatus('ไม่พบเซลล์ที่เลือก', true);
+        return;
+    }
+    copiedCell = contextCell.textContent;
 
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(copiedCell).then(() => {
-                showStatus('คัดลอกแล้ว');
-            }).catch(() => {
-                showStatus('คัดลอกแล้ว (ในหน่วยความจำ)');
-            });
-        } else {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(copiedCell).then(() => {
+            showStatus('คัดลอกแล้ว');
+        }).catch(() => {
             showStatus('คัดลอกแล้ว (ในหน่วยความจำ)');
-        }
+        });
+    } else {
+        showStatus('คัดลอกแล้ว (ในหน่วยความจำ)');
     }
 }
 
 async function pasteCell() {
-    if (contextCell && copiedCell !== null) {
-        const rowId = contextCell.parentElement?.dataset.id;
-        const field = contextCell.dataset.field;
+    if (!contextCell || copiedCell === null) {
+        showStatus('ไม่มีข้อมูลที่จะวาง', true);
+        return;
+    }
+    const rowId = contextCell.parentElement?.dataset.id;
+    const field = contextCell.dataset.field;
 
-        if (rowId && field) {
-            await updateCell(rowId, field, copiedCell);
-            showStatus('วางแล้ว');
-        } else {
-            showStatus('ไม่สามารถวางในเซลล์นี้ได้', true);
-        }
+    if (rowId && field) {
+        await updateCell(rowId, field, copiedCell);
+        showStatus('วางแล้ว');
+    } else {
+        showStatus('ไม่สามารถวางในเซลล์นี้ได้', true);
     }
 }
 
 async function clearCell() {
-    if (contextCell) {
-        const rowId = contextCell.parentElement?.dataset.id;
-        const field = contextCell.dataset.field;
+    if (!contextCell) {
+        showStatus('ไม่พบเซลล์ที่เลือก', true);
+        return;
+    }
+    const rowId = contextCell.parentElement?.dataset.id;
+    const field = contextCell.dataset.field;
 
-        if (rowId && field) {
-            await updateCell(rowId, field, '');
-            showStatus('ล้างเซลล์แล้ว');
-        } else {
-            showStatus('ไม่สามารถล้างเซลล์นี้ได้', true);
-        }
+    if (rowId && field) {
+        await updateCell(rowId, field, '');
+        showStatus('ล้างเซลล์แล้ว');
+    } else {
+        showStatus('ไม่สามารถล้างเซลล์นี้ได้', true);
     }
 }
 
