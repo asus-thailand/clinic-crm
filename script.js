@@ -271,7 +271,8 @@ function renderTable() {
                           data-field="${fieldName}">${cellValue}</td>`;
             }
         });
-
+        
+        // Mobile actions column
         html += `<td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>`;
         
         tr.innerHTML = html;
@@ -367,20 +368,18 @@ function finishEdit(cancel = false) {
     if (editingCell) {
         const rowId = editingCell.closest('tr').dataset.id;
         const field = editingCell.dataset.field;
+        const row = tableData.find(r => r.id === rowId);
 
-        if (!cancel && rowId && field) {
-            const row = tableData.find(r => r.id === rowId);
-            if (row) {
-                editingCell.textContent = row[field] || '';
+        if (row && field) {
+             editingCell.textContent = row[field] || '';
 
-                if (field === 'confirm_y' || field === 'transfer_100') {
-                    editingCell.className = editingCell.className.replace(/\b(yes|no)\b/g, '');
-                    if (row[field] === 'Y') editingCell.classList.add('yes');
-                    else if (row[field] === 'N') editingCell.classList.add('no');
-                }
+            if (field === 'confirm_y' || field === 'transfer_100') {
+                editingCell.className = editingCell.className.replace(/\b(yes|no)\b/g, '');
+                if (row[field] === 'Y') editingCell.classList.add('yes');
+                else if (row[field] === 'N') editingCell.classList.add('no');
             }
         }
-
+       
         editingCell.classList.remove('editing');
         editingCell = null;
     }
@@ -402,7 +401,10 @@ async function updateCell(rowId, field, newValue) {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Update failed:', error);
+            throw new Error(`อัปเดตไม่สำเร็จ: ${error.message}`);
+        }
 
         const rowIndex = tableData.findIndex(r => r.id === rowId);
         if (rowIndex !== -1 && data) {
@@ -415,8 +417,8 @@ async function updateCell(rowId, field, newValue) {
         showStatus('บันทึกสำเร็จ');
     } catch (error) {
         console.error('Update error:', error);
-        showStatus('อัปเดตไม่สำเร็จ: ' + error.message, true);
-        finishEdit(true);
+        showStatus(error.message || 'อัปเดตไม่สำเร็จ', true);
+        finishEdit(true); // Revert changes on error
     }
 }
 
