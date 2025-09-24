@@ -4,6 +4,7 @@
 
 // --- 1. CONFIGURATION & INITIALIZATION ---
 // Supabase Configuration
+// WARNING: Do not hardcode keys in production! Use environment variables.
 const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
@@ -55,7 +56,7 @@ const dropdownOptions = {
     'cs_confirm': ['CSX', 'CSY', 'CSZ'],
     'confirm_y': ['Y', 'N'],
     'transfer_100': ['Y', 'N'],
-    'status_1': ['สเตตัส 1', 'สเตตัส 2', 'สเตตัส 3', 'สเตตัส 4', 'สเตตัส 5', 'ไม่สนใจ', 'ปิดการขาย']
+    'status_1': ['ธงเขียว 1', 'ธงเขียว 2', 'ธงเขียว 3', 'ธงเขียว 4', 'ธงแดง', 'โยกทราม', 'นัดงานไว้']
 };
 
 // --- 2. MAIN APP INITIALIZATION ---
@@ -81,7 +82,7 @@ async function initializeApp() {
             await createDefaultUserProfile(session.user);
         } else {
             currentUserRole = userData.role || 'sales';
-            currentUsername = userData.username || session.user.email.split('@')[0];
+            currentUsername = userData.username || userData.full_name || session.user.email.split('@')[0];
         }
 
         updateUIByRole();
@@ -978,4 +979,3 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
     showStatus('เกิดข้อผิดพลาด: ' + e.reason, true);
 });
-
