@@ -148,7 +148,7 @@ async function handleLogout() {
         showLoading(true);
         // Unsubscribe from real-time changes before logging out
         if (realtimeSubscription) {
-            supabaseClient.removeChannel(realtimeSubscription);
+            await supabaseClient.removeChannel(realtimeSubscription);
             realtimeSubscription = null;
         }
 
@@ -321,6 +321,30 @@ function getCellClass(field) {
 }
 
 // --- 6. CELL EDITING ---
+/**
+ * Validates a single input value based on the field type.
+ * @param {string} value The value to validate.
+ * @param {string} field The field name to determine validation rules.
+ * @returns {string|null} An error message if invalid, otherwise null.
+ */
+function validateInput(value, field) {
+    // Basic validation for phone
+    if (field === 'phone') {
+        const phoneRegex = /^[0-9+()-\s]+$/;
+        if (value && !phoneRegex.test(value)) {
+            return `ฟิลด์ 'เบอร์ติดต่อ' รูปแบบไม่ถูกต้อง`;
+        }
+    }
+    // Basic validation for closed_amount
+    if (field === 'closed_amount' && value) {
+        if (isNaN(Number(value))) {
+            return `ฟิลด์ 'ยอดที่ปิดได้' ต้องเป็นตัวเลข`;
+        }
+    }
+    // Add more validation rules as needed...
+    return null;
+}
+
 function startEdit(cell, rowId, field) {
     const row = tableData.find(r => r.id === rowId);
     if (!row) {
@@ -329,9 +353,19 @@ function startEdit(cell, rowId, field) {
     }
 
     // New permission check
-    if (currentUserRole === 'sales' && !salesEditableFields.includes(field)) {
-        showStatus('คุณไม่มีสิทธิ์แก้ไขคอลัมน์นี้', true);
-        return;
+    if (currentUserRole === 'sales') {
+        const isOwner = row.sales === currentUsername;
+        const isEditableField = salesEditableFields.includes(field);
+
+        if (!isOwner) {
+            showStatus('คุณสามารถแก้ไขได้เฉพาะลูกค้าของคุณเท่านั้น', true);
+            return;
+        }
+
+        if (!isEditableField) {
+            showStatus('คุณไม่มีสิทธิ์แก้ไขคอลัมน์นี้', true);
+            return;
+        }
     }
 
     if (currentUserRole === 'viewer') {
@@ -369,7 +403,7 @@ function startEdit(cell, rowId, field) {
         });
 
         select.onchange = async () => {
-            await updateCell(rowId, field, select.value);
+            await updateCell(rowId, field, select.value, originalValue);
         };
         select.onblur = () => finishEdit(false);
 
@@ -385,7 +419,7 @@ function startEdit(cell, rowId, field) {
 
         input.onblur = async () => {
             if (input.value !== originalValue) {
-                await updateCell(rowId, field, input.value);
+                await updateCell(rowId, field, input.value, originalValue);
             } else {
                 finishEdit(true);
             }
@@ -393,7 +427,7 @@ function startEdit(cell, rowId, field) {
 
         input.onkeydown = async (e) => {
             if (e.key === 'Enter') {
-                await updateCell(rowId, field, input.value);
+                await updateCell(rowId, field, input.value, originalValue);
             } else if (e.key === 'Escape') {
                 finishEdit(true);
             }
@@ -431,9 +465,26 @@ function finishEdit(cancel = false) {
     editingCell = null;
 }
 
-async function updateCell(rowId, field, newValue) {
+async function updateCell(rowId, field, newValue, originalValue) {
     if (!rowId || !field) {
         showStatus('ข้อผิดพลาด: ข้อมูลไม่ครบถ้วน', true);
+        return;
+    }
+    
+    // Validate input before sending to DB
+    const validationError = validateInput(newValue, field);
+    if (validationError) {
+        showStatus(validationError, true);
+        
+        // Rollback on validation error
+        const rowIndex = tableData.findIndex(r => r.id === rowId);
+        if (rowIndex !== -1) {
+            tableData[rowIndex][field] = originalValue;
+            originalTableData[rowIndex][field] = originalValue;
+            renderTable();
+        }
+
+        finishEdit(true);
         return;
     }
 
@@ -464,7 +515,15 @@ async function updateCell(rowId, field, newValue) {
     } catch (error) {
         console.error('Update error:', error);
         showStatus(error.message || 'อัปเดตไม่สำเร็จ', true);
-        finishEdit(true); // Revert changes on error
+        
+        // Rollback data to original value on failure
+        const rowIndex = tableData.findIndex(r => r.id === rowId);
+        if (rowIndex !== -1) {
+            tableData[rowIndex][field] = originalValue;
+            originalTableData[rowIndex][field] = originalValue;
+            renderTable();
+        }
+        finishEdit(true);
     }
 }
 
@@ -478,11 +537,17 @@ async function addNewRow() {
     try {
         showLoading(true);
 
-        const { data: nextLeadCode, error: leadCodeError } = await supabaseClient.rpc('get_next_lead_code');
-        if (leadCodeError) throw leadCodeError;
+        const { data: latestLead, error: latestLeadError } = await supabaseClient
+            .from('customers')
+            .select('lead_code')
+            .order('lead_code', { ascending: false })
+            .limit(1)
+            .single();
+
+        const nextLeadCode = (latestLead && !latestLeadError) ? parseInt(latestLead.lead_code) + 1 : 1001;
 
         const newRow = {
-            lead_code: nextLeadCode || '1001',
+            lead_code: nextLeadCode.toString(),
             sales: currentUsername,
             date: new Date().toLocaleDateString('th-TH'),
             created_by: currentUserId
@@ -879,35 +944,68 @@ async function importData() {
                 const text = e.target.result;
                 const lines = text.split('\n').filter(line => line.trim() !== '');
 
-                const headers = Object.keys(FIELD_MAPPING).filter(header => header !== '#');
-                const dataToInsert = [];
+                // Use headers from HTML to map fields
+                const htmlHeaders = Array.from(document.querySelectorAll('#excelTable thead th')).map(th => th.textContent.trim());
+                const headers = htmlHeaders.filter(h => h !== '#');
 
+                const dataToInsert = [];
+                const errors = [];
+
+                // Skip header row
                 for (let i = 1; i < lines.length; i++) {
                     const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
                         .map(v => v.trim().replace(/^"|"$/g, ''));
                     
-                    if (values.length === headers.length) {
-                        const row = {};
-                        headers.forEach((header, index) => {
-                            const fieldName = FIELD_MAPPING[header];
-                            if (fieldName) {
-                                row[fieldName] = values[index];
-                            }
-                        });
-
-                        row.created_by = currentUserId;
-                        row.created_at = new Date().toISOString();
-
-                        dataToInsert.push(row);
+                    if (values.length !== headers.length) {
+                        errors.push(`แถว ${i+1}: จำนวนคอลัมน์ไม่ตรงกับ header`);
+                        continue;
                     }
+
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        const fieldName = FIELD_MAPPING[header];
+                        if (fieldName) {
+                            row[fieldName] = values[index];
+                        }
+                    });
+
+                    // Basic validation
+                    const phone = String(row.phone || '');
+                    const phoneRegex = /^[0-9+()-\s]+$/;
+                    if (phone && !phoneRegex.test(phone)) {
+                        errors.push(`แถว ${i+1}: ฟิลด์ 'เบอร์ติดต่อ' รูปแบบไม่ถูกต้อง`);
+                        continue;
+                    }
+
+                    if (row.lead_code && isNaN(parseInt(String(row.lead_code).replace(/\D/g, ''), 10))) {
+                        errors.push(`แถว ${i+1}: ฟิลด์ 'ลำดับที่' ต้องเป็นตัวเลข`);
+                        continue;
+                    }
+
+                    if (row.date) {
+                        const d = new Date(row.date);
+                        if (isNaN(d.getTime())) {
+                            errors.push(`แถว ${i+1}: ฟิลด์ 'วัน/เดือน/ปี' รูปแบบวันที่ไม่ถูกต้อง`);
+                            continue;
+                        }
+                    }
+
+                    row.created_by = currentUserId;
+                    row.created_at = new Date().toISOString();
+
+                    dataToInsert.push(row);
                 }
 
+                if (errors.length > 0) {
+                    importStatus.textContent = `พบข้อผิดพลาด ${errors.length} แถว: ${errors.join('; ')}`;
+                }
+                
                 if (dataToInsert.length === 0) {
-                    importStatus.textContent = 'ไม่พบข้อมูลที่ถูกต้องในไฟล์';
-                    showLoading(false);
-                    return;
+                     importStatus.textContent = 'ไม่พบข้อมูลที่ถูกต้องในไฟล์';
+                     showLoading(false);
+                     return;
                 }
-
+                
                 const { data, error } = await supabaseClient
                     .from('customers')
                     .insert(dataToInsert)
@@ -915,7 +1013,7 @@ async function importData() {
 
                 if (error) throw error;
 
-                importStatus.textContent = `นำเข้าข้อมูลสำเร็จ ${dataToInsert.length} แถว`;
+                importStatus.textContent = `นำเข้าข้อมูลสำเร็จ ${data.length} แถว`;
                 await fetchCustomerData();
                 setTimeout(hideImportModal, 2000);
             } catch (error) {
@@ -950,27 +1048,22 @@ function showSettings() {
 
 // --- 15. KEYBOARD SHORTCUTS ---
 document.addEventListener('keydown', (e) => {
+    // Ctrl+S to save (prevent default)
     if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
         showStatus('บันทึกอัตโนมัติทำงานอยู่');
     }
 
+    // Ctrl+F to focus search
     if (e.ctrlKey && e.key === 'f') {
         e.preventDefault();
         const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.focus();
-            searchInput.select();
-        }
+        if (searchInput) searchInput.focus();
     }
 
+    // Escape to cancel editing
     if (e.key === 'Escape' && editingCell) {
         finishEdit(true);
-    }
-
-    if (e.ctrlKey && e.key === 'r') {
-        e.preventDefault();
-        refreshData();
     }
 });
 
