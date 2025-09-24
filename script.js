@@ -27,7 +27,7 @@ const FIELD_MAPPING = {
     '#': null, // # is not a database field
     'วัน/เดือน/ปี': 'date',
     'ลำดับที่': 'lead_code',
-    'ชื่อ-สกุล / ศจย.': 'name',
+    'ชื่อ-สกุล/ ชื่อเล่น': 'name',
     'เบอร์ติดต่อ': 'phone',
     'ช่องทางสื่อ': 'channel',
     'ประเภทหัตถการ': 'procedure',
@@ -1035,4 +1035,5 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
     showStatus('เกิดข้อผิดพลาด: ' + e.reason, true);
 });
+
 
