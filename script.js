@@ -4,7 +4,8 @@
 
 // --- 1. CONFIGURATION & INITIALIZATION ---
 // Supabase Configuration
-// WARNING: Do not hardcode keys in production! Use environment variables.
+// WARNING: In a real-world production environment, you should use server-side proxies or environment variables that are not exposed to the client-side.
+// For demonstration purposes, we keep the keys here.
 const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
@@ -21,13 +22,31 @@ let editingCell = null;
 let copiedCell = null;
 let contextCell = null;
 let salesList = []; // New global variable to store sales list
+let realtimeSubscription = null; // To manage the subscription instance
+
+
+// Define fields that sales can edit
+const salesEditableFields = [
+    'last_status',
+    'update_access',
+    'call_time',
+    'status_1',
+    'reason',
+    'etc',
+    'hn_customer',
+    'old_appointment',
+    'dr',
+    'closed_amount',
+    'appointment_date',
+    'sales'
+];
 
 // --- Single Source of Truth for Field Mappings ---
 const FIELD_MAPPING = {
-    '#': null, // # is not a database field
+    '#': null,
     'วัน/เดือน/ปี': 'date',
     'ลำดับที่': 'lead_code',
-    'ชื่อ-สกุล/ ชื่อเล่น': 'name',
+    'ชื่อ-สกุล / ศจย.': 'name',
     'เบอร์ติดต่อ': 'phone',
     'ช่องทางสื่อ': 'channel',
     'ประเภทหัตถการ': 'procedure',
@@ -56,24 +75,8 @@ const dropdownOptions = {
     'cs_confirm': ['CSX', 'CSY', 'CSZ'],
     'confirm_y': ['Y', 'N'],
     'transfer_100': ['Y', 'N'],
-    'status_1': ['สเตตัส 1', 'สเตตัส 2', 'สเตตัส 3', 'สเตตัส 4', 'ตามต่อ', 'ปิดการขาย', 'ไม่สนใจ']
+    'status_1': ['ธงเขียว 1', 'ธงเขียว 2', 'ธงเขียว 3', 'ธงเขียว 4', 'ธงแดง', 'โยกทราม', 'นัดงานไว้']
 };
-
-// Define fields that sales can edit
-const salesEditableFields = [
-    'last_status',
-    'update_access',
-    'call_time',
-    'status_1',
-    'reason',
-    'etc',
-    'hn_customer',
-    'old_appointment',
-    'dr',
-    'closed_amount',
-    'appointment_date',
-    'sales' // Sales can reassign customers to other sales
-];
 
 
 // --- 2. MAIN APP INITIALIZATION ---
@@ -143,6 +146,12 @@ async function createDefaultUserProfile(user) {
 async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) {
         showLoading(true);
+        // Unsubscribe from real-time changes before logging out
+        if (realtimeSubscription) {
+            supabaseClient.removeChannel(realtimeSubscription);
+            realtimeSubscription = null;
+        }
+
         const { error } = await supabaseClient.auth.signOut();
         if (error) {
             console.error('Error logging out:', error);
@@ -275,6 +284,7 @@ function renderTable() {
         headers.forEach(headerText => {
             const fieldName = FIELD_MAPPING[headerText];
             if (fieldName === null) {
+                // Handle row number column
                 html += `<td class="row-number">${index + 1}</td>`;
             } else if (fieldName) {
                 const isDropdown = dropdownOptions[fieldName] !== undefined || fieldName === 'sales';
@@ -291,6 +301,7 @@ function renderTable() {
             }
         });
         
+        // Mobile actions column
         html += `<td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>`;
         
         tr.innerHTML = html;
@@ -311,25 +322,27 @@ function getCellClass(field) {
 
 // --- 6. CELL EDITING ---
 function startEdit(cell, rowId, field) {
-    if (currentUserRole === 'viewer') {
-        showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
-        return;
-    }
-
-    // New check for sales role
-    if (currentUserRole === 'sales' && !salesEditableFields.includes(field)) {
-        showStatus('คุณไม่มีสิทธิ์แก้ไขคอลัมน์นี้', true);
-        return;
-    }
-
-    if (editingCell) finishEdit(true);
-
-    editingCell = cell;
     const row = tableData.find(r => r.id === rowId);
     if (!row) {
         showStatus('ไม่พบข้อมูลที่จะแก้ไข', true);
         return;
     }
+
+    // New permission check
+    if (currentUserRole === 'sales' && !salesEditableFields.includes(field)) {
+        showStatus('คุณไม่มีสิทธิ์แก้ไขคอลัมน์นี้', true);
+        return;
+    }
+
+    if (currentUserRole === 'viewer') {
+        showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
+        return;
+    }
+
+
+    if (editingCell) finishEdit(true);
+
+    editingCell = cell;
     const originalValue = row[field] || '';
     cell.classList.add('editing');
 
@@ -672,6 +685,7 @@ function exportData() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
         showStatus('Export สำเร็จ');
     } catch (error) {
         console.error('Export error:', error);
@@ -962,7 +976,12 @@ document.addEventListener('keydown', (e) => {
 
 // --- 16. REAL-TIME SUBSCRIPTION ---
 function setupRealtimeSubscription() {
-    supabaseClient
+    // Make sure we don't have an existing subscription before creating a new one
+    if (realtimeSubscription) {
+        supabaseClient.removeChannel(realtimeSubscription);
+    }
+
+    realtimeSubscription = supabaseClient
         .channel('customers_changes')
         .on('postgres_changes', {
             event: '*',
@@ -1035,5 +1054,3 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
     showStatus('เกิดข้อผิดพลาด: ' + e.reason, true);
 });
-
-
