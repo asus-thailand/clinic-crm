@@ -55,7 +55,7 @@ const dropdownOptions = {
     'cs_confirm': ['CSX', 'CSY', 'CSZ'],
     'confirm_y': ['Y', 'N'],
     'transfer_100': ['Y', 'N'],
-    'status_1': ['ธงเขียว 1', 'ธงเขียว 2', 'ธงเขียว 3', 'ธงเขียว 4', 'ธงแดง', 'โยกทราม', 'นัดงานไว้']
+    'status_1': ['สเตตัส 1', 'สเตตัส 2', 'สเตตัส 3', 'สเตตัส 4', 'สเตตัส 5', 'ไม่สนใจ', 'ปิดการขาย']
 };
 
 // --- 2. MAIN APP INITIALIZATION ---
@@ -978,3 +978,4 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
     showStatus('เกิดข้อผิดพลาด: ' + e.reason, true);
 });
+
