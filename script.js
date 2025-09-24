@@ -87,6 +87,7 @@ async function initializeApp() {
         updateUIByRole();
         populateFilterOptions();
         await fetchCustomerData();
+        setupRealtimeSubscription();
 
     } catch (error) {
         console.error('Initialization error:', error);
@@ -951,7 +952,6 @@ document.addEventListener('DOMContentLoaded', () => {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 initializeApp();
-                setupRealtimeSubscription();
             } else {
                 window.location.href = 'login.html';
             }
