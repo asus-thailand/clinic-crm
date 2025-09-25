@@ -91,6 +91,11 @@ body {
     transform: translateY(-1px);
 }
 
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Stats Dashboard */
 .stats-container {
     display: grid;
@@ -336,7 +341,7 @@ body {
     outline: none;
 }
 
-/* Dropdown arrow indicator */
+/* Dropdown arrow indicator - FIXED */
 .has-dropdown::after {
     content: '▼';
     position: absolute;
@@ -466,14 +471,44 @@ body {
         left: 0;
         z-index: 50;
     }
+
+    /* ปรับขนาดเซลล์สำหรับ mobile */
+    .excel-table td {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+
+    /* ปรับ stats cards สำหรับ mobile */
+    .stats-container {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 0 10px;
+    }
+
+    .stat-card {
+        padding: 15px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+    }
 }
 
 /* --- Touch-friendly Context Menu --- */
 /* ซ่อนเมนูเดิมสำหรับมือถือ */
 @media (pointer: coarse) {
-  .context-menu {
-    display: none !important;
-  }
+    .context-menu {
+        /* Don't force hide, let JS handle it */
+        min-width: 200px;
+        font-size: 14px;
+    }
+
+    .context-menu-item {
+        padding: 10px 15px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
 }
 
 /* Styles for the new mobile action button and menu */
@@ -488,6 +523,7 @@ body {
     font-size: 16px;
     cursor: pointer;
     color: #666;
+    padding: 5px;
 }
 
 tr:hover .mobile-actions-btn {
@@ -497,5 +533,67 @@ tr:hover .mobile-actions-btn {
 @media (max-width: 768px) {
     .mobile-actions-btn {
         display: block; /* แสดงปุ่มเสมอในโหมดมือถือ */
+        position: static;
+        transform: none;
+    }
+}
+
+/* Loading States */
+.loading-cell {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Error States */
+.error-cell {
+    background-color: #ffe6e6 !important;
+    border-color: #ff0000 !important;
+}
+
+/* Success States */
+.success-cell {
+    background-color: #e6ffe6 !important;
+    animation: successPulse 0.5s ease;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+/* Improved Print Styles */
+@media print {
+    .header, .toolbar, .stats-container, .context-menu, .status-indicator, .mobile-actions-btn {
+        display: none !important;
+    }
+
+    .excel-container {
+        box-shadow: none;
+        border-radius: 0;
+    }
+
+    .table-wrapper {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .excel-table {
+        font-size: 10pt;
+    }
+
+    .excel-table td, .excel-table th {
+        padding: 4px;
+        border: 1px solid #000;
+    }
+
+    body {
+        background: white;
     }
 }
