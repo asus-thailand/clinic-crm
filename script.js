@@ -21,9 +21,20 @@ let originalTableData = []; // For filtering
 let editingCell = null;
 let copiedCell = null;
 let contextCell = null;
-let salesList = []; // New global variable to store sales list
+let salesList = []; // Global variable to store sales list
 let realtimeSubscription = null; // To manage the subscription instance
 
+// Operation states for better loading management
+const operationStates = {
+    isUpdating: false,
+    isDeleting: false,
+    isFetching: false,
+    isImporting: false
+};
+
+// Update queue for handling race conditions
+let updateQueue = [];
+let isProcessingQueue = false;
 
 // Define fields that sales can edit
 const salesEditableFields = [
@@ -76,10 +87,11 @@ const dropdownOptions = {
     'confirm_y': ['Y', 'N'],
     'transfer_100': ['Y', 'N'],
     'status_1': ['status 1', 'status 2', 'status 3', 'status 4', 'ตามต่อ', 'ปิดการขาย', 'ไม่สนใจ'],
-    // เพิ่ม dropdown สำหรับ Last Status
     'last_status': ['online', '0%', '25%', '50%', '75%', '100%', 'case off']
 };
 
+// Session refresh interval
+let sessionRefreshInterval = null;
 
 // --- 2. MAIN APP INITIALIZATION ---
 async function initializeApp() {
@@ -112,6 +124,7 @@ async function initializeApp() {
         populateFilterOptions();
         await fetchCustomerData();
         setupRealtimeSubscription();
+        setupSessionRefresh();
 
     } catch (error) {
         console.error('Initialization error:', error);
@@ -148,6 +161,13 @@ async function createDefaultUserProfile(user) {
 async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) {
         showLoading(true);
+        
+        // Clear session refresh interval
+        if (sessionRefreshInterval) {
+            clearInterval(sessionRefreshInterval);
+            sessionRefreshInterval = null;
+        }
+        
         // Unsubscribe from real-time changes before logging out
         if (realtimeSubscription) {
             await supabaseClient.removeChannel(realtimeSubscription);
@@ -163,6 +183,21 @@ async function handleLogout() {
             window.location.href = 'login.html';
         }
     }
+}
+
+function setupSessionRefresh() {
+    // Refresh session every 30 minutes
+    sessionRefreshInterval = setInterval(async () => {
+        try {
+            const { data: { session }, error } = await supabaseClient.auth.refreshSession();
+            if (error || !session) {
+                console.error('Session refresh failed:', error);
+                window.location.href = 'login.html';
+            }
+        } catch (error) {
+            console.error('Session refresh error:', error);
+        }
+    }, 30 * 60 * 1000); // 30 minutes
 }
 
 function updateUIByRole() {
@@ -237,6 +272,9 @@ function updateUIByRole() {
 
 // --- 4. DATA FETCHING & MANAGEMENT ---
 async function fetchCustomerData() {
+    if (operationStates.isFetching) return;
+    operationStates.isFetching = true;
+    
     try {
         showStatus('กำลังโหลดข้อมูล...');
 
@@ -260,6 +298,8 @@ async function fetchCustomerData() {
         showStatus('ดึงข้อมูลไม่สำเร็จ: ' + error.message, true);
         tableData = [];
         renderTable();
+    } finally {
+        operationStates.isFetching = false;
     }
 }
 
@@ -304,7 +344,7 @@ function renderTable() {
         });
         
         // Mobile actions column
-        html += `<td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">...</button></td>`;
+        html += `<td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">⋯</button></td>`;
         
         tr.innerHTML = html;
         tbody.appendChild(tr);
@@ -324,26 +364,66 @@ function getCellClass(field) {
 
 // --- 6. CELL EDITING ---
 /**
- * Validates a single input value based on the field type.
- * @param {string} value The value to validate.
- * @param {string} field The field name to determine validation rules.
- * @returns {string|null} An error message if invalid, otherwise null.
+ * Enhanced validation with date support
  */
 function validateInput(value, field) {
-    // Basic validation for phone
+    // Phone validation
     if (field === 'phone') {
         const phoneRegex = /^[0-9+()-\s]+$/;
         if (value && !phoneRegex.test(value)) {
             return `ฟิลด์ 'เบอร์ติดต่อ' รูปแบบไม่ถูกต้อง`;
         }
     }
-    // Basic validation for closed_amount
-    if (field === 'closed_amount' && value) {
-        if (isNaN(Number(value))) {
-            return `ฟิลด์ 'ยอดที่ปิดได้' ต้องเป็นตัวเลข`;
+    
+    // Number validation for amount fields
+    if (field === 'closed_amount' || field === 'deposit') {
+        if (value && isNaN(Number(value))) {
+            return `ฟิลด์นี้ต้องเป็นตัวเลข`;
         }
     }
-    // Add more validation rules as needed...
+    
+    // Date validation
+    if (field === 'date' || field === 'appointment_date' || field === 'old_appointment') {
+        if (value) {
+            // Allow multiple date formats
+            const dateFormats = [
+                /^\d{1,2}\/\d{1,2}\/\d{4}$/, // DD/MM/YYYY
+                /^\d{4}-\d{2}-\d{2}$/,        // YYYY-MM-DD
+                /^\d{1,2}-\d{1,2}-\d{4}$/     // DD-MM-YYYY
+            ];
+            
+            const isValidFormat = dateFormats.some(regex => regex.test(value));
+            if (!isValidFormat) {
+                return 'รูปแบบวันที่ไม่ถูกต้อง (ต้องเป็น DD/MM/YYYY)';
+            }
+            
+            // Try to parse date to check validity
+            const parts = value.split(/[\/\-]/);
+            if (parts.length === 3) {
+                const day = parseInt(parts[0]);
+                const month = parseInt(parts[1]);
+                const year = parseInt(parts[2]);
+                
+                if (month < 1 || month > 12) {
+                    return 'เดือนไม่ถูกต้อง (1-12)';
+                }
+                if (day < 1 || day > 31) {
+                    return 'วันไม่ถูกต้อง (1-31)';
+                }
+                if (year < 1900 || year > 2100) {
+                    return 'ปีไม่ถูกต้อง';
+                }
+            }
+        }
+    }
+    
+    // Lead code validation
+    if (field === 'lead_code') {
+        if (value && !(/^\d+$/.test(value))) {
+            return 'รหัสลีดต้องเป็นตัวเลขเท่านั้น';
+        }
+    }
+    
     return null;
 }
 
@@ -354,7 +434,7 @@ function startEdit(cell, rowId, field) {
         return;
     }
 
-    // New permission check for sales role
+    // Permission check for sales role
     if (currentUserRole === 'sales') {
         const isOwner = row.sales === currentUsername;
         const isEditableField = salesEditableFields.includes(field);
@@ -374,7 +454,6 @@ function startEdit(cell, rowId, field) {
         showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูล', true);
         return;
     }
-
 
     if (editingCell) finishEdit(true);
 
@@ -451,7 +530,7 @@ function finishEdit(cancel = false) {
     if (rowId && field) {
         const row = tableData.find(r => r.id === rowId);
         if (row) {
-             editingCell.textContent = row[field] || '';
+            editingCell.textContent = row[field] || '';
 
             if (field === 'confirm_y' || field === 'transfer_100') {
                 editingCell.className = editingCell.className.replace(/\b(yes|no)\b/g, '');
@@ -465,6 +544,50 @@ function finishEdit(cancel = false) {
        
     editingCell.classList.remove('editing');
     editingCell = null;
+}
+
+// Enhanced update queue processor
+async function processUpdateQueue() {
+    if (isProcessingQueue || updateQueue.length === 0) return;
+    
+    isProcessingQueue = true;
+    
+    while (updateQueue.length > 0) {
+        const update = updateQueue.shift();
+        try {
+            await executeUpdate(update);
+        } catch (error) {
+            console.error('Update failed:', error);
+            // Revert on failure
+            if (update.revert) {
+                update.revert();
+            }
+        }
+    }
+    
+    isProcessingQueue = false;
+}
+
+async function executeUpdate(update) {
+    const { rowId, field, newValue, originalValue } = update;
+    
+    const { data, error } = await supabaseClient
+        .from('customers')
+        .update({ [field]: newValue })
+        .eq('id', rowId)
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    const rowIndex = tableData.findIndex(r => r.id === rowId);
+    if (rowIndex !== -1 && data) {
+        tableData[rowIndex] = data;
+        originalTableData[rowIndex] = { ...data };
+    }
+    
+    updateStats();
+    showStatus('บันทึกสำเร็จ');
 }
 
 async function updateCell(rowId, field, newValue, originalValue) {
@@ -490,43 +613,24 @@ async function updateCell(rowId, field, newValue, originalValue) {
         return;
     }
 
-    try {
-        const updateData = { [field]: newValue };
-
-        const { data, error } = await supabaseClient
-            .from('customers')
-            .update(updateData)
-            .eq('id', rowId)
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Update failed:', error);
-            throw new Error(`อัปเดตไม่สำเร็จ: ${error.message}`);
+    // Add to update queue
+    updateQueue.push({
+        rowId,
+        field,
+        newValue,
+        originalValue,
+        revert: () => {
+            const rowIndex = tableData.findIndex(r => r.id === rowId);
+            if (rowIndex !== -1) {
+                tableData[rowIndex][field] = originalValue;
+                originalTableData[rowIndex][field] = originalValue;
+                renderTable();
+            }
         }
-
-        const rowIndex = tableData.findIndex(r => r.id === rowId);
-        if (rowIndex !== -1 && data) {
-            tableData[rowIndex] = data;
-            originalTableData[rowIndex] = { ...data };
-        }
-
-        finishEdit();
-        updateStats();
-        showStatus('บันทึกสำเร็จ');
-    } catch (error) {
-        console.error('Update error:', error);
-        showStatus(error.message || 'อัปเดตไม่สำเร็จ', true);
-        
-        // Rollback data to original value on failure
-        const rowIndex = tableData.findIndex(r => r.id === rowId);
-        if (rowIndex !== -1) {
-            tableData[rowIndex][field] = originalValue;
-            originalTableData[rowIndex][field] = originalValue;
-            renderTable();
-        }
-        finishEdit(true);
-    }
+    });
+    
+    finishEdit();
+    processUpdateQueue();
 }
 
 // --- 7. ROW OPERATIONS ---
@@ -599,6 +703,8 @@ async function deleteRow() {
     if (confirm('ต้องการลบแถวนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
         try {
             showLoading(true);
+            operationStates.isDeleting = true;
+            
             const { error } = await supabaseClient
                 .from('customers')
                 .delete()
@@ -619,6 +725,7 @@ async function deleteRow() {
             showStatus('ลบข้อมูลไม่สำเร็จ: ' + error.message, true);
         } finally {
             showLoading(false);
+            operationStates.isDeleting = false;
         }
     }
 }
@@ -632,10 +739,18 @@ async function fetchSalesList() {
 
         if (error) throw error;
 
+        // Check if data exists and is an array
+        if (!data || !Array.isArray(data)) {
+            salesList = [];
+            return;
+        }
+
         // Filter out null usernames and store the list
         salesList = data.map(user => user.username).filter(username => username !== null);
     } catch (error) {
         console.error('Error fetching sales list:', error);
+        salesList = []; // Set default empty array
+        showStatus('ไม่สามารถโหลดรายชื่อเซลล์ได้', true);
     }
 }
 
@@ -852,7 +967,8 @@ async function pasteCell() {
     const field = contextCell.dataset.field;
 
     if (rowId && field) {
-        await updateCell(rowId, field, copiedCell);
+        const originalValue = contextCell.textContent;
+        await updateCell(rowId, field, copiedCell, originalValue);
         showStatus('วางแล้ว');
     } else {
         showStatus('ไม่สามารถวางในเซลล์นี้ได้', true);
@@ -868,7 +984,8 @@ async function clearCell() {
     const field = contextCell.dataset.field;
 
     if (rowId && field) {
-        await updateCell(rowId, field, '');
+        const originalValue = contextCell.textContent;
+        await updateCell(rowId, field, '', originalValue);
         showStatus('ล้างเซลล์แล้ว');
     } else {
         showStatus('ไม่สามารถล้างเซลล์นี้ได้', true);
@@ -938,12 +1055,16 @@ async function importData() {
 
     importStatus.textContent = 'กำลังนำเข้าข้อมูล... โปรดรอสักครู่';
     showLoading(true);
+    operationStates.isImporting = true;
 
     try {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const text = e.target.result;
+                let text = e.target.result;
+                // Remove BOM if present
+                text = text.replace(/^\uFEFF/, '');
+                
                 const lines = text.split('\n').filter(line => line.trim() !== '');
 
                 // Use headers from HTML to map fields
@@ -964,33 +1085,23 @@ async function importData() {
                     }
 
                     const row = {};
+                    let hasValidationError = false;
+                    
                     headers.forEach((header, index) => {
                         const fieldName = FIELD_MAPPING[header];
                         if (fieldName) {
-                            row[fieldName] = values[index];
+                            const value = values[index];
+                            // Validate field
+                            const validationError = validateInput(value, fieldName);
+                            if (validationError) {
+                                errors.push(`แถว ${i+1}: ${validationError}`);
+                                hasValidationError = true;
+                            }
+                            row[fieldName] = value;
                         }
                     });
-
-                    // Basic validation
-                    const phone = String(row.phone || '');
-                    const phoneRegex = /^[0-9+()-\s]+$/;
-                    if (phone && !phoneRegex.test(phone)) {
-                        errors.push(`แถว ${i+1}: ฟิลด์ 'เบอร์ติดต่อ' รูปแบบไม่ถูกต้อง`);
-                        continue;
-                    }
-
-                    if (row.lead_code && isNaN(parseInt(String(row.lead_code).replace(/\D/g, ''), 10))) {
-                        errors.push(`แถว ${i+1}: ฟิลด์ 'ลำดับที่' ต้องเป็นตัวเลข`);
-                        continue;
-                    }
-
-                    if (row.date) {
-                        const d = new Date(row.date);
-                        if (isNaN(d.getTime())) {
-                            errors.push(`แถว ${i+1}: ฟิลด์ 'วัน/เดือน/ปี' รูปแบบวันที่ไม่ถูกต้อง`);
-                            continue;
-                        }
-                    }
+                    
+                    if (hasValidationError) continue;
 
                     row.created_by = currentUserId;
                     row.created_at = new Date().toISOString();
@@ -998,14 +1109,17 @@ async function importData() {
                     dataToInsert.push(row);
                 }
 
-                if (errors.length > 0) {
+                if (errors.length > 0 && errors.length < 10) {
                     importStatus.textContent = `พบข้อผิดพลาด ${errors.length} แถว: ${errors.join('; ')}`;
+                } else if (errors.length >= 10) {
+                    importStatus.textContent = `พบข้อผิดพลาดมากกว่า 10 แถว กรุณาตรวจสอบไฟล์`;
                 }
                 
                 if (dataToInsert.length === 0) {
-                     importStatus.textContent = 'ไม่พบข้อมูลที่ถูกต้องในไฟล์';
-                     showLoading(false);
-                     return;
+                    importStatus.textContent = 'ไม่พบข้อมูลที่ถูกต้องในไฟล์';
+                    showLoading(false);
+                    operationStates.isImporting = false;
+                    return;
                 }
                 
                 const { data, error } = await supabaseClient
@@ -1023,19 +1137,22 @@ async function importData() {
                 importStatus.textContent = `การนำเข้าล้มเหลว: ${error.message}`;
             } finally {
                 showLoading(false);
+                operationStates.isImporting = false;
             }
         };
 
         reader.onerror = () => {
             importStatus.textContent = 'เกิดข้อผิดพลาดในการอ่านไฟล์';
             showLoading(false);
+            operationStates.isImporting = false;
         };
 
-        reader.readAsText(file);
+        reader.readAsText(file, 'utf-8');
     } catch (error) {
         console.error('Import error:', error);
         importStatus.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
         showLoading(false);
+        operationStates.isImporting = false;
     }
 }
 
@@ -1117,7 +1234,57 @@ function handleRealtimeUpdate(payload) {
     }
 }
 
-// --- 17. INITIALIZE APP ON LOAD ---
+// --- 17. TOUCH EVENTS FOR MOBILE ---
+let touchStartX = null;
+let touchStartY = null;
+
+document.addEventListener('touchstart', handleTouchStart, {passive: false});
+document.addEventListener('touchend', handleTouchEnd, {passive: false});
+
+function handleTouchStart(e) {
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+}
+
+function handleTouchEnd(e) {
+    if (!touchStartX || !touchStartY) {
+        return;
+    }
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+
+    // Reset values
+    touchStartX = null;
+    touchStartY = null;
+
+    // Detect swipe gestures if needed
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe
+        if (deltaX > 50) {
+            // Swipe right - could trigger some action
+        } else if (deltaX < -50) {
+            // Swipe left - could trigger some action
+        }
+    }
+}
+
+// --- 18. CLEANUP ON PAGE UNLOAD ---
+window.addEventListener('beforeunload', async () => {
+    // Clean up subscriptions
+    if (realtimeSubscription) {
+        await supabaseClient.removeChannel(realtimeSubscription);
+    }
+    
+    // Clear intervals
+    if (sessionRefreshInterval) {
+        clearInterval(sessionRefreshInterval);
+    }
+});
+
+// --- 19. INITIALIZE APP ON LOAD ---
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('excelTable')) {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -1130,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- 18. HANDLE SESSION EXPIRY ---
+// --- 20. HANDLE SESSION EXPIRY ---
 supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         if (!session) {
@@ -1139,7 +1306,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     }
 });
 
-// --- 19. ERROR BOUNDARY ---
+// --- 21. ERROR BOUNDARY ---
 window.addEventListener('error', (e) => {
     console.error('Global error:', e.error);
     showStatus('เกิดข้อผิดพลาด: ' + e.error.message, true);
