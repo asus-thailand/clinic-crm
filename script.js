@@ -1316,3 +1316,4 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
     showStatus('เกิดข้อผิดพลาด: ' + e.reason, true);
 });
+
