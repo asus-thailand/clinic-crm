@@ -220,9 +220,10 @@ function updateUIByRole() {
         'admin': {
             badge: 'Admin',
             badgeColor: '#007bff',
-            text: 'Edit All, Add New',
+            text: 'Edit All, Add New, Delete',
             canAdd: true,
-            canDelete: false,
+            // ✅ จุดที่ 1: แก้ไขสิทธิ์ canDelete จาก false เป็น true
+            canDelete: true,
             canEditAll: true,
             canImport: false
         },
@@ -683,7 +684,10 @@ async function addNewRow() {
 }
 
 async function deleteRow() {
-    if (currentUserRole !== 'administrator') {
+    // ✅ จุดที่ 2: แก้ไขเงื่อนไขการตรวจสอบสิทธิ์
+    // จากเดิม: if (currentUserRole !== 'administrator')
+    // เป็น:   if (!['administrator', 'admin'].includes(currentUserRole))
+    if (!['administrator', 'admin'].includes(currentUserRole)) {
         showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true);
         return;
     }
@@ -1316,4 +1320,3 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
     showStatus('เกิดข้อผิดพลาด: ' + e.reason, true);
 });
-
