@@ -1,3 +1,51 @@
+/* ================================================================================
+   BEAUTY CLINIC CRM - REFACTORED STYLESHEET
+   ================================================================================ */
+
+/* --- 1. CSS Variables (Theme Configuration) --- */
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    
+    --text-color-primary: #333;
+    --text-color-secondary: #6c757d;
+    --text-color-white: #fff;
+    --text-color-black: #000;
+
+    --bg-color-light: #f5f7fa;
+    --bg-color-white: #fff;
+    --bg-color-overlay: rgba(255, 255, 255, 0.85);
+
+    --border-color-light: #e9ecef;
+    --border-color-medium: #d0d0d0;
+    --border-color-dark: #b7b7b7;
+
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --info-color: #007bff;
+    
+    --admin-header-bg: #70ad47;
+    --status-header-bg: #ff00ff;
+    --status1-header-bg: #92d050;
+    --etc-header-bg: #ffc000;
+
+    --admin-cell-bg: #e2efda;
+    --status-cell-bg: #fce4ec;
+    --etc-cell-bg: #fff2cc;
+    
+    --font-family-sans-serif: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-family-calibri: 'Calibri', Arial, sans-serif;
+    
+    --border-radius-small: 6px;
+    --border-radius-medium: 8px;
+    --border-radius-large: 12px;
+
+    --shadow-light: 0 2px 10px rgba(0,0,0,0.08);
+    --shadow-medium: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+/* --- 2. Global Styles & Resets --- */
 * {
     margin: 0;
     padding: 0;
@@ -5,17 +53,17 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f7fa;
-    color: #333;
+    font-family: var(--font-family-sans-serif);
+    background: var(--bg-color-light);
+    color: var(--text-color-primary);
     font-size: 14px;
     line-height: 1.4;
 }
 
-/* Header */
+/* --- 3. Header --- */
 .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: var(--primary-gradient);
+    color: var(--text-color-white);
     padding: 15px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.1);
     position: sticky;
@@ -51,7 +99,6 @@ body {
 
 .logo-text h1 {
     font-size: 22px;
-    font-weight: 700;
     margin-bottom: 2px;
 }
 
@@ -67,23 +114,24 @@ body {
 }
 
 .user-badge {
-    background: #dc3545;
+    background: var(--error-color);
     padding: 6px 12px;
     border-radius: 15px;
     font-size: 12px;
     font-weight: 600;
 }
 
+/* --- 4. Buttons & Inputs --- */
 .btn {
     padding: 8px 16px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--border-radius-small);
     cursor: pointer;
     font-weight: 600;
     font-size: 12px;
     transition: all 0.3s ease;
     background: rgba(255,255,255,0.2);
-    color: white;
+    color: var(--text-color-white);
 }
 
 .btn:hover {
@@ -96,7 +144,44 @@ body {
     cursor: not-allowed;
 }
 
-/* Stats Dashboard */
+.btn-primary {
+    background: var(--info-color);
+    color: var(--text-color-white);
+    padding: 10px 20px;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.search-input, .filter-select {
+    padding: 10px 15px;
+    border: 2px solid var(--border-color-light);
+    border-radius: var(--border-radius-medium);
+    font-size: 14px;
+    background: var(--bg-color-white);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--info-color);
+}
+
+.search-container {
+    flex: 1;
+    min-width: 250px;
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-color-secondary);
+}
+
+/* --- 5. Stats Dashboard --- */
 .stats-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -107,44 +192,39 @@ body {
 }
 
 .stat-card {
-    background: white;
+    background: var(--bg-color-white);
     padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    border-left: 4px solid #007bff;
+    border-radius: var(--border-radius-large);
+    box-shadow: var(--shadow-light);
+    border-left: 4px solid var(--info-color);
     transition: all 0.3s ease;
 }
 
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    box-shadow: var(--shadow-medium);
 }
 
 .stat-title {
     font-size: 14px;
-    color: #6c757d;
+    color: var(--text-color-secondary);
     margin-bottom: 8px;
 }
 
 .stat-value {
     font-size: 28px;
     font-weight: 700;
-    color: #212529;
-    margin-bottom: 5px;
+    color: var(--text-color-primary);
 }
 
-.stat-change {
-    font-size: 12px;
-    font-weight: 600;
-}
+.stat-change { font-size: 12px; font-weight: 600; }
+.stat-up { color: var(--success-color); }
+.stat-down { color: var(--error-color); }
 
-.stat-up { color: #28a745; }
-.stat-down { color: #dc3545; }
-
-/* Toolbar */
+/* --- 6. Toolbar --- */
 .toolbar {
-    background: white;
-    border-bottom: 1px solid #e9ecef;
+    background: var(--bg-color-white);
+    border-bottom: 1px solid var(--border-color-light);
     padding: 15px 20px;
     display: flex;
     align-items: center;
@@ -154,60 +234,14 @@ body {
     margin: 0 auto;
 }
 
-.search-container {
-    flex: 1;
-    min-width: 250px;
-    position: relative;
-}
-
-.search-input {
-    width: 100%;
-    padding: 10px 40px 10px 15px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: #007bff;
-}
-
-.search-icon {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #6c757d;
-}
-
-.filter-select {
-    padding: 10px 15px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    background: white;
-    font-size: 13px;
-    min-width: 120px;
-}
-
-.btn-primary {
-    background: #007bff;
-    color: white;
-    padding: 10px 20px;
-}
-
-.btn-primary:hover {
-    background: #0056b3;
-}
-
-/* Excel Table Container */
+/* --- 7. Excel Table --- */
 .excel-container {
-    background: white;
+    background: var(--bg-color-white);
     margin: 20px auto;
     max-width: 1400px;
-    border-radius: 12px;
+    border-radius: var(--border-radius-large);
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    box-shadow: var(--shadow-medium);
 }
 
 .table-wrapper {
@@ -216,20 +250,18 @@ body {
     position: relative;
 }
 
-/* Excel Table Styles */
 .excel-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 11px;
-    font-family: 'Calibri', Arial, sans-serif;
+    font-family: var(--font-family-calibri);
     min-width: 2200px;
 }
 
-/* Headers with Excel colors */
 .excel-table thead th {
     font-weight: bold;
     text-align: center;
-    border: 1px solid #b7b7b7;
+    border: 1px solid var(--border-color-dark);
     padding: 8px 6px;
     position: sticky;
     top: 0;
@@ -237,16 +269,15 @@ body {
     height: 45px;
     vertical-align: middle;
     user-select: none;
-    color: white;
+    color: var(--text-color-white);
 }
 
-/* Row number column */
 .row-number {
     background: #e7e6e6 !important;
-    color: #000 !important;
+    color: var(--text-color-black) !important;
     font-weight: normal;
     text-align: center;
-    border: 1px solid #b7b7b7;
+    border: 1px solid var(--border-color-dark);
     width: 40px;
     min-width: 40px;
     position: sticky;
@@ -254,54 +285,28 @@ body {
     z-index: 50;
 }
 
-/* Green headers - ADMIN section */
-.admin-header {
-    background: #70ad47 !important;
-    color: white !important;
-}
+/* Header Colors */
+.admin-header { background: var(--admin-header-bg) !important; }
+.status-header { background: var(--status-header-bg) !important; }
+.status1-header { background: var(--status1-header-bg) !important; }
+.etc-header { background: var(--etc-header-bg) !important; color: var(--text-color-black) !important; }
 
-/* Pink headers - Status section */
-.status-header {
-    background: #ff00ff !important;
-    color: white !important;
-}
-
-.status1-header {
-    background: #92d050 !important;
-    color: white !important;
-}
-
-/* Yellow headers - ETC section */
-.etc-header {
-    background: #ffc000 !important;
-    color: black !important;
-}
-
-/* Cell styles */
+/* Cell Styles */
 .excel-table td {
-    border: 1px solid #d0d0d0;
+    border: 1px solid var(--border-color-medium);
     padding: 3px 6px;
     height: 22px;
-    background: white;
+    background: var(--bg-color-white);
     position: relative;
     vertical-align: middle;
     font-size: 11px;
 }
 
-/* Cell backgrounds by section */
-.admin-cell {
-    background: #e2efda;
-}
+/* Cell Backgrounds */
+.admin-cell { background: var(--admin-cell-bg); }
+.status-cell { background: var(--status-cell-bg); }
+.etc-cell { background: var(--etc-cell-bg); }
 
-.status-cell {
-    background: #fce4ec;
-}
-
-.etc-cell {
-    background: #fff2cc;
-}
-
-/* Excel-like hover and selection */
 .excel-table td:not(.row-number):hover {
     border: 2px solid #217346;
     cursor: cell;
@@ -309,39 +314,21 @@ body {
 
 .excel-table td.editing {
     padding: 0;
-    background: white !important;
+    background: var(--bg-color-white) !important;
     border: 2px solid #0066cc;
 }
 
-.excel-table td.selected {
-    background: #cce5ff !important;
-    border: 2px solid #0066cc;
-}
-
-/* Input styles */
-.cell-input {
+.cell-input, .cell-select {
     width: 100%;
     height: 100%;
     border: none;
     padding: 2px 4px;
     font-family: inherit;
     font-size: inherit;
-    background: white;
+    background: transparent;
     outline: none;
 }
 
-.cell-select {
-    width: 100%;
-    height: 100%;
-    border: none;
-    padding: 1px;
-    font-family: inherit;
-    font-size: inherit;
-    background: white;
-    outline: none;
-}
-
-/* Dropdown arrow indicator - FIXED */
 .has-dropdown::after {
     content: '▼';
     position: absolute;
@@ -350,37 +337,30 @@ body {
     transform: translateY(-50%);
     font-size: 8px;
     color: #666;
+    pointer-events: none;
 }
 
-/* Y/N cells */
-.yn-cell {
-    text-align: center;
-    font-weight: bold;
-}
+.yn-cell { text-align: center; font-weight: bold; }
+.yn-cell.yes { color: var(--success-color); }
+.yn-cell.no { color: var(--error-color); }
 
-.yn-cell.yes {
-    color: #008000;
-}
-
-.yn-cell.no {
-    color: #ff0000;
-}
-
-/* Context Menu */
+/* --- 8. Context Menu --- */
 .context-menu {
     position: absolute;
-    background: white;
+    background: var(--bg-color-white);
     border: 1px solid #ccc;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
     z-index: 1000;
     display: none;
     min-width: 150px;
+    border-radius: var(--border-radius-small);
+    overflow: hidden;
 }
 
 .context-menu-item {
-    padding: 6px 12px;
+    padding: 8px 12px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .context-menu-item:hover {
@@ -388,21 +368,23 @@ body {
 }
 
 .context-menu-separator {
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--border-color-light);
     margin: 2px 0;
 }
 
-/* Status indicator */
+/* --- 9. Indicators & Modals --- */
 .status-indicator {
     position: fixed;
     bottom: 10px;
     right: 10px;
-    padding: 5px 10px;
-    background: #4caf50;
-    color: white;
-    border-radius: 3px;
-    font-size: 11px;
+    padding: 8px 15px;
+    background: var(--success-color);
+    color: var(--text-color-white);
+    border-radius: var(--border-radius-small);
+    font-size: 12px;
     display: none;
+    z-index: 9998;
+    box-shadow: var(--shadow-medium);
 }
 
 .status-indicator.show {
@@ -411,26 +393,91 @@ body {
 }
 
 .status-indicator.error {
-    background: #dc3545;
+    background: var(--error-color);
+}
+
+.loading-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg-color-overlay);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-overlay.show { display: flex; }
+
+.loading-spinner { text-align: center; }
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+.modal {
+    position: fixed;
+    z-index: 2000;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    padding: 25px;
+    border-radius: var(--border-radius-large);
+    box-shadow: var(--shadow-medium);
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    animation: fadeIn 0.3s;
+}
+
+.modal-content h2 { margin-bottom: 15px; }
+.modal-content p { margin-bottom: 15px; }
+.modal-content input[type="file"] { margin-bottom: 15px; width: 100%; }
+
+.close-button {
+    color: #aaa;
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-button:hover { color: var(--text-color-black); }
+
+.import-status {
+    margin-top: 15px;
+    font-size: 14px;
+    color: var(--text-color-primary);
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Mobile Responsive Table --- */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* --- 10. Responsive Design --- */
 @media (max-width: 768px) {
-    /* ปรับปรุง Header & Toolbar */
     .header-content {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
-    }
-
-    .user-info {
-        flex-wrap: wrap;
-        gap: 10px;
     }
 
     .toolbar {
@@ -438,162 +485,39 @@ body {
         align-items: stretch;
     }
 
-    .search-container {
-        width: 100%;
-        min-width: auto;
-    }
-
-    .filter-select {
-        width: 100%;
-    }
-    
     .btn {
         width: 100%;
-        margin-top: 5px;
-        min-height: 44px; /* ทำให้ปุ่มกดง่ายขึ้นบนมือถือ */
+        text-align: center;
     }
-
-    /* ทำให้ตารางเลื่อนในแนวนอนได้ */
+    
     .table-wrapper {
-        overflow-x: auto;
-        max-height: calc(100vh - 250px);
-        -webkit-overflow-scrolling: touch; /* เพิ่มความลื่นไหลในการเลื่อนบน iOS */
+        max-height: calc(100vh - 280px);
+        -webkit-overflow-scrolling: touch;
     }
 
     .excel-table {
-        display: block;
-        min-width: 1000px; /* ลดความกว้างขั้นต่ำลงจาก 2200px */
+        min-width: 1200px;
     }
 
-    /* ทำให้แถวแรกติดอยู่กับที่ */
-    .row-number, .admin-header, .status-header, .etc-header {
-        position: sticky;
-        left: 0;
-        z-index: 50;
-    }
-
-    /* ปรับขนาดเซลล์สำหรับ mobile */
-    .excel-table td {
-        padding: 5px 8px;
-        font-size: 12px;
-    }
-
-    /* ปรับ stats cards สำหรับ mobile */
     .stats-container {
         grid-template-columns: 1fr 1fr;
         gap: 10px;
         padding: 0 10px;
     }
 
-    .stat-card {
-        padding: 15px;
-    }
-
-    .stat-value {
-        font-size: 24px;
-    }
+    .stat-card { padding: 15px; }
+    .stat-value { font-size: 24px; }
 }
 
-/* --- Touch-friendly Context Menu --- */
-/* ซ่อนเมนูเดิมสำหรับมือถือ */
-@media (pointer: coarse) {
-    .context-menu {
-        /* Don't force hide, let JS handle it */
-        min-width: 200px;
-        font-size: 14px;
-    }
-
-    .context-menu-item {
-        padding: 10px 15px;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-    }
-}
-
-/* Styles for the new mobile action button and menu */
-.mobile-actions-btn {
-    display: none;
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    font-size: 16px;
-    cursor: pointer;
-    color: #666;
-    padding: 5px;
-}
-
-tr:hover .mobile-actions-btn {
-    display: block;
-}
-
-@media (max-width: 768px) {
-    .mobile-actions-btn {
-        display: block; /* แสดงปุ่มเสมอในโหมดมือถือ */
-        position: static;
-        transform: none;
-    }
-}
-
-/* Loading States */
-.loading-cell {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-/* Error States */
-.error-cell {
-    background-color: #ffe6e6 !important;
-    border-color: #ff0000 !important;
-}
-
-/* Success States */
-.success-cell {
-    background-color: #e6ffe6 !important;
-    animation: successPulse 0.5s ease;
-}
-
-@keyframes successPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-    100% { transform: scale(1); }
-}
-
-/* Improved Print Styles */
+/* --- 11. Print Styles --- */
 @media print {
-    .header, .toolbar, .stats-container, .context-menu, .status-indicator, .mobile-actions-btn {
+    .header, .toolbar, .stats-container, .context-menu, .status-indicator, .mobile-actions-btn, .modal {
         display: none !important;
     }
 
-    .excel-container {
-        box-shadow: none;
-        border-radius: 0;
-    }
-
-    .table-wrapper {
-        max-height: none;
-        overflow: visible;
-    }
-
-    .excel-table {
-        font-size: 10pt;
-    }
-
-    .excel-table td, .excel-table th {
-        padding: 4px;
-        border: 1px solid #000;
-    }
-
-    body {
-        background: white;
-    }
+    body { background: var(--bg-color-white); }
+    .excel-container { box-shadow: none; border-radius: 0; }
+    .table-wrapper { max-height: none; overflow: visible; }
+    .excel-table { font-size: 10pt; }
+    .excel-table td, .excel-table th { padding: 4px; border: 1px solid var(--text-color-black); }
 }
