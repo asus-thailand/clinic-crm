@@ -1,6 +1,6 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT (SENIOR DEV REVISION)
-// FIXES: API Keys (Placeholder)
+// FIXES: API Keys (Placeholder), Magic Number
 // ================================================================================
 
 // --- 1. Supabase Configuration (FIXED SECURITY: API KEYS) ---
@@ -93,6 +93,9 @@ function checkRateLimit() {
     return true;
 }
 
+// 💡 BEST PRACTICE FIX: Define constant for redirect delay
+const REDIRECT_DELAY_MS = 500; 
+
 // --- 7. Core Authentication Functions ---
 async function handleLogin() {
     if (!checkRateLimit()) return;
@@ -118,8 +121,8 @@ async function handleLogin() {
         loginAttempts = 0; // Reset on success
         showMessage('เข้าสู่ระบบสำเร็จ!', false);
         
-        // Use a slight delay before redirecting
-        setTimeout(() => { window.location.href = 'index.html'; }, 500);
+        // ❌ MAGIC NUMBER FIX: Use constant
+        setTimeout(() => { window.location.href = 'index.html'; }, REDIRECT_DELAY_MS);
         
     } catch (error) {
         console.error('Login error:', error);
