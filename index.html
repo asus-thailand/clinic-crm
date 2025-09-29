@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beauty Clinic CRM - Excel Edition</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
 
 </head>
@@ -22,9 +21,9 @@
             </div>
             <div class="user-info">
                 <div class="user-badge">Loading...</div>
-                <button class="btn" onclick="exportData()">📊 Export</button>
-                <button class="btn" id="importButton" onclick="showImportModal()">📥 Import</button>
-                <button class="btn" onclick="handleLogout()">ออกจากระบบ</button>
+                <button class="btn" id="exportButton">📊 Export</button>
+                <button class="btn" id="importButton">📥 Import</button>
+                <button class="btn" id="logoutButton">ออกจากระบบ</button>
             </div>
         </div>
     </header>
@@ -54,17 +53,17 @@
 
     <div class="toolbar">
         <div class="search-container">
-            <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า..." onkeyup="searchTable(this.value)">
+            <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า...">
             <span class="search-icon">🔍</span>
         </div>
-        <select class="filter-select" id="statusFilter" onchange="filterTable()">
+        <select class="filter-select" id="statusFilter">
             <option value="">ทุกสถานะ</option>
         </select>
-        <select class="filter-select" id="salesFilter" onchange="filterTable()">
+        <select class="filter-select" id="salesFilter">
             <option value="">ทุกเซลล์</option>
         </select>
-        <button class="btn btn-primary" id="addUserButton" onclick="addNewRow()">+ เพิ่มลูกค้า</button>
-        <button class="btn" style="background: #6c757d;" onclick="refreshData()">🔄 รีเฟรช</button>
+        <button class="btn btn-primary" id="addUserButton">+ เพิ่มลูกค้า</button>
+        <button class="btn" style="background: #6c757d;" id="refreshButton">🔄 รีเฟรช</button>
     </div>
 
     <div class="excel-container">
@@ -105,12 +104,12 @@
     </div>
 
     <div class="context-menu" id="contextMenu">
-        <div class="context-menu-item" onclick="editCell()">✏️ แก้ไข</div>
-        <div class="context-menu-item" onclick="copyCell()">📋 คัดลอก</div>
-        <div class="context-menu-item" onclick="pasteCell()">📄 วาง</div>
+        <div class="context-menu-item" data-action="edit">✏️ แก้ไข</div>
+        <div class="context-menu-item" data-action="copy">📋 คัดลอก</div>
+        <div class="context-menu-item" data-action="paste">📄 วาง</div>
         <div class="context-menu-separator"></div>
-        <div class="context-menu-item" id="deleteRowMenuItem" onclick="deleteRow()">🗑️ ลบแถว</div>
-        <div class="context-menu-item" onclick="clearCell()">🧹 ล้างเซลล์</div>
+        <div class="context-menu-item" data-action="delete" id="deleteRowMenuItem">🗑️ ลบแถว</div>
+        <div class="context-menu-item" data-action="clear">🧹 ล้างเซลล์</div>
     </div>
     
     <div class="status-indicator" id="statusIndicator"></div>
@@ -124,18 +123,18 @@
 
     <div class="modal" id="importModal">
         <div class="modal-content">
-            <span class="close-button" onclick="hideImportModal()">&times;</span>
+            <span class="close-button" data-modal-close="importModal">&times;</span>
             <h2>นำเข้าข้อมูลจาก CSV</h2>
             <p>กรุณาเลือกไฟล์ .csv ที่มี Headers ตรงกับตาราง</p>
             <input type="file" id="csvFile" accept=".csv">
-            <button class="btn btn-primary" id="importBtn" onclick="importData()">นำเข้าข้อมูล</button>
+            <button class="btn btn-primary" id="importBtn">นำเข้าข้อมูล</button>
             <p id="importStatus" class="import-status"></p>
         </div>
     </div>
 
     <div class="modal" id="statusUpdateModal">
         <div class="modal-content">
-            <span class="close-button" onclick="hideStatusUpdateModal()">&times;</span>
+            <span class="close-button" data-modal-close="statusUpdateModal">&times;</span>
             <h2>อัปเดตสถานะลูกค้า</h2>
             <p>ลูกค้า: <strong id="modalCustomerName"></strong></p>
             <div class="modal-input-group">
@@ -153,20 +152,21 @@
                 <label for="modalNotesText">บันทึกเพิ่มเติม:</label>
                 <textarea id="modalNotesText" rows="4" placeholder="กรอกรายละเอียดการติดต่อที่นี่..."></textarea>
             </div>
-            <button class="btn btn-primary" onclick="submitStatusUpdate()">บันทึกสถานะ</button>
+            <button class="btn btn-primary" id="submitStatusUpdateBtn">บันทึกสถานะ</button>
             <input type="hidden" id="modalCustomerId">
         </div>
     </div>
 
     <div class="modal" id="historyModal">
         <div class="modal-content">
-            <span class="close-button" onclick="hideHistoryModal()">&times;</span>
+            <span class="close-button" data-modal-close="historyModal">&times;</span>
             <h2>ประวัติการติดตาม: <span id="historyCustomerName"></span></h2>
             <div id="historyTimelineContainer" class="timeline-container">
                 </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
