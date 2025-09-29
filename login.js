@@ -132,7 +132,7 @@ async function handleSignUp(event) {
     try {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        
+
         if (data?.user && data.user.identities && data.user.identities.length === 0) {
              showMessage('อีเมลนี้ถูกใช้งานแล้วโดยไม่มีการยืนยันตัวตน', true);
              return;
@@ -165,7 +165,7 @@ async function checkExistingSession() {
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     checkExistingSession();
-    
+
     if (loginBtn) {
         loginBtn.addEventListener('click', handleLogin);
     }
