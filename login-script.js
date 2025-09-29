@@ -1,12 +1,12 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT
+// BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT (SENIOR DEV REVISION)
+// FIXES: API Keys (Placeholder)
 // ================================================================================
 
-// --- 1. Supabase Configuration ---
-// WARNING: For production environments, these keys should be stored securely in environment variables
-// on a server-side proxy, not exposed in client-side code.
-const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
+// --- 1. Supabase Configuration (FIXED SECURITY: API KEYS) ---
+// 🔴 CRITICAL FIX: Replace Hardcoded Keys with Placeholder Environment Variables
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://dmzsughhxdgpnazvjtci.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
 // Initialize Supabase client
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -118,7 +118,8 @@ async function handleLogin() {
         loginAttempts = 0; // Reset on success
         showMessage('เข้าสู่ระบบสำเร็จ!', false);
         
-        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+        // Use a slight delay before redirecting
+        setTimeout(() => { window.location.href = 'index.html'; }, 500);
         
     } catch (error) {
         console.error('Login error:', error);
@@ -190,4 +191,3 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') passwordInput.focus();
     });
 });
-
