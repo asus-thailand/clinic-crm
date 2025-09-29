@@ -2,7 +2,7 @@
 // BEAUTY CLINIC CRM - FINAL PRODUCTION-READY SCRIPT (SENIOR DEV REVISION)
 // FIXES: CRITICAL BUG (process.env) and Best Practices
 // REFACTORED: Data Handling, Real-time, and Export Logic
-// 🟢 NEW FEATURE: Status Update History Modal
+// 🟢 NEW FEATURE: Status Update History Modal & Timeline View
 // ================================================================================
 
 // --- 0. SECURITY & HELPER FUNCTIONS ---
@@ -381,7 +381,6 @@ function renderTable() {
             const fieldName = FIELD_MAPPING[headerText];
             const td = document.createElement('td');
             
-            // ส่วนนี้จะจัดการกับคอลัมน์ที่มีข้อมูล
             if (fieldName) {
                 const isDropdown = dropdownOptions[fieldName] !== undefined || fieldName === 'sales';
                 const cellClass = getCellClass(fieldName);
@@ -397,15 +396,12 @@ function renderTable() {
                 }
                 
                 td.dataset.field = fieldName;
-                // ใช้ textContent เพื่อป้องกัน XSS
                 td.textContent = cellValue; 
                 
-                // เพิ่ม event listener สำหรับ double click
                 td.addEventListener('dblclick', function() {
                     startEdit(this, row.id, fieldName);
                 });
             } else if (headerText === '#') {
-                // เลขลำดับแถว
                 td.className = 'row-number';
                 td.textContent = index + 1; 
             }
@@ -413,27 +409,32 @@ function renderTable() {
             tr.appendChild(td);
         });
 
-        // 🟢 MODIFIED: เพิ่มคอลัมน์ "จัดการ" และปุ่ม "อัปเดต"
+        // 🟢 MODIFIED: เพิ่มปุ่ม "ดูประวัติ" และ "อัปเดต"
         const actionsCell = document.createElement('td');
         actionsCell.className = 'actions-cell';
         
         const updateButton = document.createElement('button');
         updateButton.className = 'btn-update';
         updateButton.textContent = 'อัปเดต';
-        
-        // กำหนด event listener ให้ปุ่ม
         updateButton.onclick = () => {
-            // ป้องกัน XSS โดยการ escape ชื่อลูกค้าก่อนแสดงผล
             const safeCustomerName = escapeHtml(row.name || 'N/A');
             showStatusUpdateModal(row.id, safeCustomerName);
         };
         
-        // ซ่อนปุ่มถ้าเป็น Viewer
+        const historyButton = document.createElement('button');
+        historyButton.className = 'btn-history';
+        historyButton.textContent = 'ประวัติ';
+        historyButton.onclick = () => {
+            const safeCustomerName = escapeHtml(row.name || 'N/A');
+            showHistoryModal(row.id, safeCustomerName);
+        };
+        
         if (currentUserRole === 'viewer') {
             updateButton.style.display = 'none';
         }
 
         actionsCell.appendChild(updateButton);
+        actionsCell.appendChild(historyButton);
         tr.appendChild(actionsCell);
         
         tbody.appendChild(tr);
@@ -607,19 +608,16 @@ function finishEdit(cancel = false) {
     const field = editingCell.dataset.field;
     
     if (rowId && field) {
-        // คืนค่าการแสดงผลจาก tableData ซึ่งเป็น state ล่าสุดเสมอ
         const row = tableData.find(r => r.id === rowId);
         if (row) {
             editingCell.textContent = row[field] || '';
 
-            // Re-apply Y/N classes
             if (field === 'confirm_y' || field === 'transfer_100') {
                 editingCell.classList.remove('yes', 'no');
                 if (row[field] === 'Y') editingCell.classList.add('yes');
                 else if (row[field] === 'N') editingCell.classList.add('no');
             }
         } else {
-            // ถ้าไม่พบ row (อาจถูกกรองออกไป) ให้ render ตารางใหม่
             renderTable();
         }
     }
@@ -648,24 +646,22 @@ async function updateCell(rowId, field, newValue, originalValue) {
 
     pendingUpdates.set(updateKey, true);
 
-    // Optimistic UI: อัปเดตข้อมูลที่แสดงผลทันที
     const rowIndex = tableData.findIndex(r => r.id === rowId);
     if (rowIndex !== -1) {
         tableData[rowIndex][field] = newValue;
-        renderTable(); // re-render เพื่อให้ UI อัปเดตทันที (เช่น สีของ Y/N)
+        renderTable();
     }
 
     try {
         await executeUpdateWithMutex(rowId, field, newValue, originalValue);
     } catch (error) {
-        // Rollback on error
         console.error('Update failed:', error);
         showStatus('บันทึกไม่สำเร็จ: ' + error.message, true);
         const originalIndex = originalTableData.findIndex(r => r.id === rowId);
         if(originalIndex !== -1) {
-            originalTableData[originalIndex][field] = originalValue; // คืนค่าใน source of truth
+            originalTableData[originalIndex][field] = originalValue;
         }
-        filterTable(); // re-render UI จาก source of truth ที่ถูกต้อง
+        filterTable();
     } finally {
         pendingUpdates.delete(updateKey);
     }
@@ -684,17 +680,13 @@ function executeUpdateWithMutex(rowId, field, newValue, originalValue) {
 
                 if (error) throw error;
 
-                // อัปเดตข้อมูลใน originalTableData ซึ่งเป็น Source of Truth
                 const originalIndex = originalTableData.findIndex(r => r.id === rowId);
                 if (originalIndex !== -1 && data) {
                     originalTableData[originalIndex] = { ...data };
                 }
 
-                // ✅ [REFACTOR] เรียก filterTable() เพื่อ re-render UI ตามเงื่อนไขปัจจุบัน
-                // การทำแบบนี้จะแก้ปัญหาข้อมูลไม่อัปเดตตาม filter หลังแก้ไข
                 filterTable(); 
                 
-                // updateStats ถูกเรียกภายใน filterTable() แล้ว
                 showStatus('บันทึกสำเร็จ');
                 resolve(data);
             } catch (error) {
@@ -745,9 +737,7 @@ async function addNewRow() {
         if (error) throw error;
 
         if (data) {
-            // เพิ่มข้อมูลใหม่เข้า source of truth
             originalTableData.unshift({ ...data });
-            // อัปเดต UI ผ่าน filterTable
             filterTable();
         }
         showStatus('เพิ่มข้อมูลสำเร็จ');
@@ -789,12 +779,10 @@ async function deleteRow() {
 
             if (error) throw error;
 
-            // ลบข้อมูลออกจาก source of truth
             const index = originalTableData.findIndex(r => r.id === rowId);
             if (index !== -1) {
                 originalTableData.splice(index, 1);
             }
-            // อัปเดต UI
             filterTable();
             showStatus('ลบข้อมูลสำเร็จ');
 
@@ -879,7 +867,6 @@ function filterTable() {
     const salesFilter = document.getElementById('salesFilter')?.value || '';
     const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
 
-    // ✅ [REFACTOR] ตรรกะการกรองยังคงใช้ originalTableData เป็นแหล่งข้อมูลหลักเสมอ
     const filteredData = originalTableData.filter(row => {
         let matchStatus = !statusFilter || row.status_1 === statusFilter;
         let matchSales = !salesFilter || row.sales === salesFilter;
@@ -894,12 +881,9 @@ function filterTable() {
         return matchStatus && matchSales && matchSearch;
     });
 
-    // อัปเดต tableData ซึ่งเป็นข้อมูลสำหรับแสดงผล
     tableData.length = 0;
     tableData.push(...filteredData);
     
-    // ✅ [REFACTOR] renderTable() และ updateStats() จะถูกเรียกจากที่นี่เสมอหลังการกรอง
-    // ทำให้ UI และสถิติสอดคล้องกัน
     renderTable();
     updateStats();
 }
@@ -912,7 +896,6 @@ function updateStats() {
     const pendingElement = document.getElementById('pendingCustomers');
     const closedElement = document.getElementById('closedDeals');
 
-    // ใช้ tableData (ข้อมูลที่กรองแล้ว) ในการคำนวณสถิติที่แสดงผล
     const currentData = tableData;
     
     if (totalElement) totalElement.textContent = currentData.length;
@@ -934,12 +917,10 @@ function exportData() {
         const headers = Object.keys(FIELD_MAPPING).filter(header => header !== '#');
         let csv = '\ufeff' + headers.join(',') + '\n';
 
-        // ✅ [REFACTOR] เปลี่ยนจาก tableData เป็น originalTableData เพื่อ export ข้อมูลทั้งหมด
         originalTableData.forEach(row => {
             const rowData = headers.map(header => {
                 const field = FIELD_MAPPING[header];
                 let val = row[field] === null || row[field] === undefined ? '' : String(row[field]);
-                // ✅ [FIX] แก้ไขการจัดการกับค่าที่มี double quote ให้ถูกต้องตามมาตรฐาน CSV
                 if (val.includes(',') || val.includes('"') || val.includes('\n')) {
                     val = '"' + val.replace(/"/g, '""') + '"';
                 }
@@ -1079,7 +1060,6 @@ function copyCell() {
             showStatus('คัดลอกแล้ว (ในหน่วยความจำ)');
         });
     } else {
-        // Fallback for browsers without clipboard API
         showStatus('คัดลอกแล้ว (ในหน่วยความจำ)');
     }
 }
@@ -1264,7 +1244,7 @@ async function importData() {
                 if (error) throw error;
 
                 if (importStatus) importStatus.textContent = `นำเข้าข้อมูลสำเร็จ ${data.length} แถว`;
-                await fetchCustomerData(); // โหลดข้อมูลทั้งหมดใหม่
+                await fetchCustomerData();
                 setTimeout(hideImportModal, 2000);
                 
             } catch (error) {
@@ -1341,20 +1321,17 @@ function showSettings() {
 
 // --- 16. KEYBOARD SHORTCUTS ---
 document.addEventListener('keydown', (e) => {
-    // Ctrl+S to save (now informational)
     if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
         showStatus('บันทึกอัตโนมัติทำงานอยู่');
     }
 
-    // Ctrl+F to focus search
     if (e.ctrlKey && e.key === 'f') {
         e.preventDefault();
         const searchInput = document.getElementById('searchInput');
         if (searchInput) searchInput.focus();
     }
 
-    // Escape to cancel editing
     if (e.key === 'Escape' && editingCell) {
         finishEdit(true);
     }
@@ -1408,9 +1385,6 @@ function reconnectRealtime() {
 }
 
 function handleRealtimeUpdate(payload) {
-    // console.log('Realtime update:', payload);
-    
-    // Ignore if busy with local operations
     if (pendingUpdates.size > 0 || operationStates.isDeleting || operationStates.isImporting) {
         return;
     }
@@ -1420,18 +1394,14 @@ function handleRealtimeUpdate(payload) {
     let dataChanged = false;
 
     if (payload.eventType === 'INSERT') {
-        // ตรวจสอบว่าข้อมูลยังไม่มีอยู่จริงใน Source of Truth
         if (!originalTableData.find(r => r.id === newRow.id)) {
-            // ✅ [REFACTOR] เพิ่มข้อมูลใหม่เข้าไปใน originalTableData
             originalTableData.unshift({ ...newRow });
             dataChanged = true;
             showStatus('มีข้อมูลใหม่เข้ามา');
         }
     } else if (payload.eventType === 'UPDATE') {
-        // ค้นหา index ใน Source of Truth
         const originalIndex = originalTableData.findIndex(r => r.id === newRow.id);
         if (originalIndex !== -1) {
-            // ✅ [REFACTOR] อัปเดตข้อมูลใน originalTableData
             originalTableData[originalIndex] = { ...newRow };
             dataChanged = true;
             if (newRow.created_by !== currentUserId) {
@@ -1441,16 +1411,13 @@ function handleRealtimeUpdate(payload) {
     } else if (payload.eventType === 'DELETE') {
         const originalIndex = originalTableData.findIndex(r => r.id === (oldRow.id || newRow.id));
         if (originalIndex !== -1) {
-            // ✅ [REFACTOR] ลบข้อมูลออกจาก originalTableData
             originalTableData.splice(originalIndex, 1);
             dataChanged = true;
             showStatus('มีข้อมูลถูกลบ');
         }
     }
     
-    // ✅ [REFACTOR] ถ้ามีการเปลี่ยนแปลงข้อมูล ให้เรียก filterTable() เพื่ออัปเดต UI ทั้งหมด
     if (dataChanged) {
-        // ป้องกันการอัปเดตทับขณะผู้ใช้กำลังแก้ไข
         const updatedRowId = newRow?.id || oldRow?.id;
         if (editingCell && editingCell.closest('tr')?.dataset.id === updatedRowId) {
             return;
@@ -1489,13 +1456,11 @@ document.addEventListener('touchend', (e) => {
     touchStartY = null;
     touchStartTime = null;
 
-    // Detect tap
     if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10 && deltaTime < 300) {
         const currentTime = Date.now();
         const tapDelta = currentTime - lastTapTime;
         lastTapTime = currentTime;
         
-        // Double tap detection
         if (tapDelta < 300) {
             const cell = e.target.closest('td');
             if (cell && cell.dataset.field) {
@@ -1533,8 +1498,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- 21. HANDLE SESSION EXPIRY ---
 supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-        // A SIGNED_OUT event is triggered on successful logout. We don't want to redirect in that case.
-        // We only want to redirect if the session becomes null unexpectedly.
         if (!session && window.location.pathname.includes('index.html')) {
             clearAllTimers();
             showStatus('Session expired. Redirecting to login...', true);
@@ -1559,14 +1522,11 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 // ================================================================================
-// 🟢 START: NEW FUNCTIONS FOR STATUS UPDATE MODAL
+// 🟢 START: NEW FUNCTIONS FOR STATUS & HISTORY MODALS
 // ================================================================================
 
-/**
- * แสดงหน้าต่าง (Modal) สำหรับอัปเดตสถานะ
- * @param {string} customerId - ID ของลูกค้าที่ต้องการอัปเดต
- * @param {string} customerName - ชื่อของลูกค้าที่จะแสดงบน Modal
- */
+// -- STATUS UPDATE MODAL --
+
 function showStatusUpdateModal(customerId, customerName) {
     const modal = document.getElementById('statusUpdateModal');
     const nameElement = document.getElementById('modalCustomerName');
@@ -1579,9 +1539,6 @@ function showStatusUpdateModal(customerId, customerName) {
     }
 }
 
-/**
- * ซ่อนและรีเซ็ตหน้าต่าง (Modal) อัปเดตสถานะ
- */
 function hideStatusUpdateModal() {
     const modal = document.getElementById('statusUpdateModal');
     const statusSelect = document.getElementById('modalStatusSelect');
@@ -1590,17 +1547,12 @@ function hideStatusUpdateModal() {
 
     if (modal) {
         modal.style.display = 'none';
-        // รีเซ็ตค่าในฟอร์ม
         if (statusSelect) statusSelect.value = '';
         if (notesText) notesText.value = '';
         if (idInput) idInput.value = '';
     }
 }
 
-/**
- * ฟังก์ชันที่ถูกเรียกเมื่อผู้ใช้กด 'บันทึก' ใน Modal
- * ทำหน้าที่รวบรวมข้อมูลและส่งไปให้ฟังก์ชัน addStatusUpdate
- */
 async function submitStatusUpdate() {
     const customerId = document.getElementById('modalCustomerId').value;
     const newStatus = document.getElementById('modalStatusSelect').value;
@@ -1614,12 +1566,6 @@ async function submitStatusUpdate() {
     await addStatusUpdate(customerId, newStatus, notes);
 }
 
-/**
- * Logic หลักในการบันทึกประวัติสถานะใหม่ และอัปเดตข้อมูลลูกค้า
- * @param {string} customerId - ID ของลูกค้า
- * @param {string} newStatus - สถานะใหม่
- * @param {string} notes - บันทึกเพิ่มเติม
- */
 async function addStatusUpdate(customerId, newStatus, notes) {
     if (!customerId || !newStatus) {
         showStatus('ข้อมูลสำหรับอัปเดตไม่ครบถ้วน', true);
@@ -1629,7 +1575,6 @@ async function addStatusUpdate(customerId, newStatus, notes) {
     showLoading(true);
 
     try {
-        // 1. เพิ่มข้อมูลใหม่ลงในตาราง customer_status_history
         const { error: historyError } = await supabaseClient
             .from('customer_status_history')
             .insert({
@@ -1641,7 +1586,6 @@ async function addStatusUpdate(customerId, newStatus, notes) {
 
         if (historyError) throw historyError;
 
-        // 2. อัปเดตคอลัมน์ 'last_status' ในตาราง customers เพื่อให้ข้อมูลในตารางหลักทันสมัยเสมอ
         const { data: updatedCustomer, error: customerError } = await supabaseClient
             .from('customers')
             .update({ last_status: newStatus })
@@ -1651,15 +1595,12 @@ async function addStatusUpdate(customerId, newStatus, notes) {
 
         if (customerError) throw customerError;
 
-        // 3. อัปเดตข้อมูลใน State (originalTableData) เพื่อให้ UI สอดคล้องกันทันที
         const originalIndex = originalTableData.findIndex(r => r.id === customerId);
         if (originalIndex !== -1) {
             originalTableData[originalIndex] = { ...originalTableData[originalIndex], ...updatedCustomer };
         }
         
-        // 4. เรียก filterTable() เพื่อ re-render UI ใหม่ทั้งหมด
         filterTable();
-
         showStatus('อัปเดตสถานะสำเร็จ');
         hideStatusUpdateModal();
 
@@ -1671,6 +1612,103 @@ async function addStatusUpdate(customerId, newStatus, notes) {
     }
 }
 
+
+// -- HISTORY TIMELINE MODAL --
+
+function showHistoryModal(customerId, customerName) {
+    const modal = document.getElementById('historyModal');
+    const nameElement = document.getElementById('historyCustomerName');
+    
+    if (modal && nameElement) {
+        nameElement.textContent = customerName || 'N/A';
+        modal.style.display = 'flex';
+        fetchAndRenderHistory(customerId);
+    }
+}
+
+function hideHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    if (modal) {
+        modal.style.display = 'none';
+        const container = document.getElementById('historyTimelineContainer');
+        if (container) container.innerHTML = '<div class="spinner"></div>';
+    }
+}
+
+async function fetchAndRenderHistory(customerId) {
+    const container = document.getElementById('historyTimelineContainer');
+    if (!container) return;
+
+    container.innerHTML = '<div class="spinner"></div>';
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('customer_status_history')
+            .select(`
+                *,
+                users ( username )
+            `)
+            .eq('customer_id', customerId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        renderHistoryTimeline(data, container);
+
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        container.innerHTML = '<p style="color: red;">ไม่สามารถโหลดประวัติได้</p>';
+    }
+}
+
+function renderHistoryTimeline(historyData, container) {
+    container.innerHTML = '';
+
+    if (!historyData || historyData.length === 0) {
+        container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>';
+        return;
+    }
+
+    historyData.forEach(item => {
+        const timelineItem = document.createElement('div');
+        timelineItem.className = 'timeline-item';
+
+        const icon = document.createElement('div');
+        icon.className = 'timeline-icon';
+        icon.textContent = '✓';
+
+        const content = document.createElement('div');
+        content.className = 'timeline-content';
+
+        const status = document.createElement('div');
+        status.className = 'timeline-status';
+        status.textContent = escapeHtml(item.status);
+
+        const notes = document.createElement('div');
+        notes.className = 'timeline-notes';
+        notes.textContent = escapeHtml(item.notes);
+
+        const footer = document.createElement('div');
+        footer.className = 'timeline-footer';
+        const eventDate = new Date(item.created_at);
+        const formattedDate = eventDate.toLocaleString('th-TH', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        const userName = item.users ? item.users.username : 'N/A';
+        footer.textContent = `โดย: ${userName} | ${formattedDate}`;
+
+        content.appendChild(status);
+        if (item.notes) content.appendChild(notes);
+        content.appendChild(footer);
+
+        timelineItem.appendChild(icon);
+        timelineItem.appendChild(content);
+
+        container.appendChild(timelineItem);
+    });
+}
+
 // ================================================================================
-// 🟢 END: NEW FUNCTIONS FOR STATUS UPDATE MODAL
+// 🟢 END: NEW FUNCTIONS
 // ================================================================================
