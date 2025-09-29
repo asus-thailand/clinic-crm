@@ -95,7 +95,8 @@
                         <th class="etc-header">DR.</th>
                         <th class="etc-header">ยอดที่ปิดได้</th>
                         <th class="etc-header">วันที่นัดทำหัตถการ</th>
-                        <th class="actions-header">จัดการ</th> </tr>
+                        <th class="actions-header">จัดการ</th>
+                    </tr>
                 </thead>
                 <tbody id="tableBody">
                     </tbody>
@@ -137,7 +138,6 @@
             <span class="close-button" onclick="hideStatusUpdateModal()">&times;</span>
             <h2>อัปเดตสถานะลูกค้า</h2>
             <p>ลูกค้า: <strong id="modalCustomerName"></strong></p>
-            
             <div class="modal-input-group">
                 <label for="modalStatusSelect">สถานะใหม่:</label>
                 <select id="modalStatusSelect">
@@ -149,14 +149,21 @@
                     <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
                 </select>
             </div>
-    
             <div class="modal-input-group">
                 <label for="modalNotesText">บันทึกเพิ่มเติม:</label>
                 <textarea id="modalNotesText" rows="4" placeholder="กรอกรายละเอียดการติดต่อที่นี่..."></textarea>
             </div>
-    
             <button class="btn btn-primary" onclick="submitStatusUpdate()">บันทึกสถานะ</button>
             <input type="hidden" id="modalCustomerId">
+        </div>
+    </div>
+
+    <div class="modal" id="historyModal">
+        <div class="modal-content">
+            <span class="close-button" onclick="hideHistoryModal()">&times;</span>
+            <h2>ประวัติการติดตาม: <span id="historyCustomerName"></span></h2>
+            <div id="historyTimelineContainer" class="timeline-container">
+                </div>
         </div>
     </div>
 
