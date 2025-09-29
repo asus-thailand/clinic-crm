@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (DEBUG VERSION)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PRODUCTION READY)
 // ================================================================================
 
 import { supabase } from './config.js';
@@ -14,17 +14,14 @@ const state = {
 };
 
 async function initializeApp() {
-    console.log("1. Starting initialization..."); // LOG 1
     ui.showLoading(true);
     try {
-        console.log("2. Checking session..."); // LOG 2
         const session = await api.getSession();
         if (!session) {
             window.location.replace('login.html');
             return;
         }
 
-        console.log("3. Fetching user profile..."); // LOG 3
         const userProfile = await api.getUserProfile(session.user.id);
         if (userProfile) {
             state.currentUser = { id: session.user.id, ...userProfile };
@@ -35,12 +32,11 @@ async function initializeApp() {
         
         ui.updateUIAfterLogin(state.currentUser);
 
-        console.log("4. Fetching initial data (customers and sales)..."); // LOG 4
         const [customers, salesList] = await Promise.all([
             api.fetchAllCustomers(),
             api.fetchSalesList()
         ]);
-        console.log("5. Data fetched successfully!"); // LOG 5
+        
         state.customers = customers;
         state.salesList = salesList;
 
@@ -49,10 +45,9 @@ async function initializeApp() {
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
 
     } catch (error) {
-        console.error('Initialization failed:', error); // LOG ERROR
+        console.error('Initialization failed:', error);
         ui.showStatus(error.message, true);
     } finally {
-        console.log("6. Hiding loading overlay."); // LOG 6
         ui.showLoading(false);
     }
 }
@@ -81,10 +76,75 @@ async function handleLogout() {
     }
 }
 
-// ... (โค้ดส่วนอื่น ๆ เหมือนเดิม) ...
+function handleTableClick(event) {
+    const action = event.target.dataset.action;
+    const id = event.target.dataset.id;
+    const name = event.target.dataset.name;
+
+    if (action === 'update-status') {
+        ui.showModal('statusUpdateModal', { customerId: id, customerName: name });
+    } else if (action === 'view-history') {
+        handleViewHistory(id, name);
+    }
+}
+
+async function handleViewHistory(customerId, customerName) {
+    ui.showModal('historyModal', { customerName });
+    try {
+        const historyData = await api.fetchStatusHistory(customerId);
+        ui.renderHistoryTimeline(historyData);
+    } catch (error) {
+        ui.showStatus(error.message, true);
+    }
+}
+
+async function handleSubmitStatusUpdate() {
+    const modal = document.getElementById('statusUpdateModal');
+    const customerId = modal.querySelector('#modalCustomerId').value;
+    const newStatus = modal.querySelector('#modalStatusSelect').value;
+    const notes = modal.querySelector('#modalNotesText').value.trim();
+
+    if (!newStatus) {
+        ui.showStatus('กรุณาเลือกสถานะ', true);
+        return;
+    }
+    
+    ui.showLoading(true);
+    try {
+        await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
+        const updatedCustomer = await api.updateCustomerCell(customerId, 'last_status', newStatus);
+
+        const index = state.customers.findIndex(c => c.id === customerId);
+        if (index !== -1) {
+            state.customers[index] = updatedCustomer;
+        }
+
+        applyFiltersAndRender();
+        ui.hideModal('statusUpdateModal');
+        ui.showStatus('อัปเดตสถานะสำเร็จ', false);
+    } catch (error) {
+        ui.showStatus(error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+function setupEventListeners() {
+    document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
+    document.getElementById('tableBody')?.addEventListener('click', handleTableClick);
+    document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
+    
+    document.querySelectorAll('[data-modal-close]').forEach(button => {
+        button.addEventListener('click', () => ui.hideModal(button.dataset.modalClose));
+    });
+
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+        state.activeFilters.search = e.target.value;
+        applyFiltersAndRender();
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
-    // setupEventListeners(); // เราจะปิดส่วนนี้ไปก่อนเพื่อลดความซับซ้อน
-    document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
+    setupEventListeners();
 });
