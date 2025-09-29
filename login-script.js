@@ -1,33 +1,30 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT (FINAL FIX: BUGS & BEST PRACTICE)
-// FIXES: CRITICAL BUGS (process.env, TDZ, DOM Access) and Magic Number
+// FIXES: CRITICAL BUGS (API KEYS, TDZ, DOM Access)
 // ================================================================================
 
-// --- 1. Supabase Configuration (FIXED SECURITY: API KEYS) ---
-// 🔴 CRITICAL FIX: ใช้ window object เป็น Placeholder สำหรับ Environment Variables
-const SUPABASE_URL = window.SUPABASE_URL || 'https://dmzsughhxdgpnazvjtci.supabase.co';
-const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
+// --- 1. Supabase Configuration (FIXED) ---
+// 🔴 CRITICAL FIX: แก้ไขการกำหนดค่า API Keys ให้ถูกต้องและทำงานบนเบราว์เซอร์ได้
+const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
 // Initialize Supabase client
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// --- 2. UI Element References (ADJUSTED: ประกาศเป็น null เพื่อแก้ปัญหา DOM Access/TDZ) ---
+// --- 2. UI Element References (ADJUSTED) ---
+// ประกาศเป็น null ก่อน เพื่อรอให้ DOM โหลดเสร็จ
 let emailInput = null;
 let passwordInput = null;
 let loginBtn = null;
 let messageDiv = null;
 
-// --- 3. Rate Limiting for Security (ADJUSTED: ประกาศก่อนฟังก์ชันเพื่อแก้ปัญหา TDZ) ---
+// --- 3. Rate Limiting for Security ---
 let loginAttempts = 0;
 let lastAttemptTime = 0;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_TIME_MS = 5 * 60 * 1000; // 5 minutes
 
-// 💡 BEST PRACTICE FIX: Define constant for redirect delay
-const REDIRECT_DELAY_MS = 500; 
-
 // --- 4. UI Helper Functions ---
-// 💡 FIX: เพิ่มการตรวจสอบ null check
 function setLoading(isLoading) {
     if (loginBtn) {
         loginBtn.disabled = isLoading;
@@ -35,7 +32,6 @@ function setLoading(isLoading) {
     }
 }
 
-// 💡 FIX: เพิ่มการตรวจสอบ null check
 function showMessage(msg, isError = false) {
     if (messageDiv) {
         messageDiv.style.display = 'block';
@@ -44,12 +40,8 @@ function showMessage(msg, isError = false) {
     }
 }
 
-// 💡 FIX: เพิ่มการตรวจสอบ null check
 function togglePasswordVisibility() {
-    // แก้ไขปัญหา Cannot access 'passwordInput' before initialization
-    if (!passwordInput) {
-        return; 
-    }
+    if (!passwordInput) return;
     const icon = document.querySelector('.toggle-password');
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
@@ -63,22 +55,18 @@ function togglePasswordVisibility() {
 // --- 5. Input Validation ---
 function validateCredentials(email, password, isSigningUp = false) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
     if (!email || !password) {
         showMessage('กรุณากรอกอีเมลและรหัสผ่าน', true);
         return false;
     }
-    
     if (!emailRegex.test(email)) {
         showMessage('รูปแบบอีเมลไม่ถูกต้อง', true);
         return false;
     }
-    
     if (password.length < 6) {
         showMessage('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร', true);
         return false;
     }
-
     if (isSigningUp) {
         const hasUpperCase = /[A-Z]/.test(password);
         const hasLowerCase = /[a-z]/.test(password);
@@ -88,18 +76,15 @@ function validateCredentials(email, password, isSigningUp = false) {
             return false;
         }
     }
-    
     return true;
 }
 
 // --- 6. Rate Limit Logic ---
-// 💡 FIX: ปลอดภัยจาก TDZ แล้ว
 function checkRateLimit() {
     const now = Date.now();
     if (now - lastAttemptTime > LOCKOUT_TIME_MS) {
-        loginAttempts = 0; // Reset counter after lockout period
+        loginAttempts = 0;
     }
-    
     if (loginAttempts >= MAX_ATTEMPTS) {
         const remainingTime = Math.ceil((LOCKOUT_TIME_MS - (now - lastAttemptTime)) / 1000);
         showMessage(`คุณพยายามเข้าสู่ระบบหลายครั้งเกินไป กรุณารอ ${remainingTime} วินาที`, true);
@@ -110,14 +95,9 @@ function checkRateLimit() {
 
 // --- 7. Core Authentication Functions ---
 async function handleLogin() {
-    // 💡 FIX: ตรวจสอบว่า DOM โหลดเสร็จก่อน
-    if (!emailInput || !passwordInput) {
-        showMessage('ระบบยังโหลดไม่สมบูรณ์ กรุณาลองใหม่', true);
-        return;
-    }
-    
+    if (!emailInput || !passwordInput) return;
     if (!checkRateLimit()) return;
-    
+
     setLoading(true);
     if (messageDiv) messageDiv.style.display = 'none';
 
@@ -132,16 +112,11 @@ async function handleLogin() {
     try {
         loginAttempts++;
         lastAttemptTime = Date.now();
-        
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        
-        loginAttempts = 0; // Reset on success
+        loginAttempts = 0;
         showMessage('เข้าสู่ระบบสำเร็จ!', false);
-        
-        // ❌ MAGIC NUMBER FIX: Use constant
-        setTimeout(() => { window.location.href = 'index.html'; }, REDIRECT_DELAY_MS);
-        
+        setTimeout(() => { window.location.href = 'index.html'; }, 500);
     } catch (error) {
         console.error('Login error:', error);
         if (error.message && error.message.includes('Invalid login credentials')) {
@@ -155,18 +130,13 @@ async function handleLogin() {
 }
 
 async function handleSignUp() {
-    // 💡 FIX: ตรวจสอบว่า DOM โหลดเสร็จก่อน
-    if (!emailInput || !passwordInput) {
-        showMessage('ระบบยังโหลดไม่สมบูรณ์ กรุณาลองใหม่', true);
-        return;
-    }
-    
+    if (!emailInput || !passwordInput) return;
     setLoading(true);
     if (messageDiv) messageDiv.style.display = 'none';
 
     const email = emailInput.value.trim();
     const password = passwordInput.value;
-    
+
     if (!validateCredentials(email, password, true)) {
         setLoading(false);
         return;
@@ -175,16 +145,13 @@ async function handleSignUp() {
     try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         if (error) throw error;
-
         if (data?.user?.identities?.length === 0) {
             showMessage('อีเมลนี้ถูกใช้งานแล้ว', true);
             return;
         }
-
         showMessage('ลงทะเบียนสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี', false);
         emailInput.value = '';
         passwordInput.value = '';
-
     } catch (error) {
         console.error('Sign up error:', error);
         if (error.message && error.message.includes('already registered')) {
@@ -205,24 +172,22 @@ async function checkExistingSession() {
     }
 }
 
+// 🔴 CRITICAL FIX: รอให้ DOM โหลดเสร็จก่อนเริ่มทำงาน
 document.addEventListener('DOMContentLoaded', () => {
-    // 💡 FIX: กำหนดค่าตัวแปร DOM References ภายใน DOMContentLoaded เพื่อแก้ปัญหา DOM Access Error
     emailInput = document.getElementById('email');
     passwordInput = document.getElementById('password');
     loginBtn = document.getElementById('loginBtn');
     messageDiv = document.getElementById('message');
-    
+
     checkExistingSession();
-    
+
     if (emailInput) emailInput.focus();
-    
-    // 💡 FIX: เพิ่มการตรวจสอบ null check ก่อน addEventListener
+
     if (passwordInput) {
         passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleLogin();
         });
     }
-        
     if (emailInput) {
         emailInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && passwordInput) passwordInput.focus();
