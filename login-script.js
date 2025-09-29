@@ -1,59 +1,55 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT (FINAL FIX: BUGS & BEST PRACTICE)
-// FIXES: CRITICAL BUGS (API KEYS, TDZ, DOM Access)
+// BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT
+// แก้ไขให้เป็น Module, นำเข้า Supabase client จากส่วนกลาง, และปรับปรุง Event Listeners
 // ================================================================================
 
-// --- 1. Supabase Configuration (FIXED) ---
-// 🔴 CRITICAL FIX: แก้ไขการกำหนดค่า API Keys ให้ถูกต้องและทำงานบนเบราว์เซอร์ได้
-const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
+// นำเข้า Supabase client ที่สร้างไว้ใน config.js
+import { supabase } from './config.js';
 
-// Initialize Supabase client
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// --- 1. UI Element References ---
+// ดึง Element มาเก็บไว้ในตัวแปรหลังจาก DOM โหลดเสร็จ
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const loginBtn = document.getElementById('loginBtn');
+const messageDiv = document.getElementById('message');
+const signUpLink = document.getElementById('signUpLink');
+const togglePasswordBtn = document.getElementById('togglePasswordBtn');
 
-// --- 2. UI Element References (ADJUSTED) ---
-// ประกาศเป็น null ก่อน เพื่อรอให้ DOM โหลดเสร็จ
-let emailInput = null;
-let passwordInput = null;
-let loginBtn = null;
-let messageDiv = null;
-
-// --- 3. Rate Limiting for Security ---
+// --- 2. Rate Limiting for Security ---
 let loginAttempts = 0;
 let lastAttemptTime = 0;
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_TIME_MS = 5 * 60 * 1000; // 5 minutes
+const LOCKOUT_TIME_MS = 5 * 60 * 1000; // 5 นาที
 
-// --- 4. UI Helper Functions ---
+// --- 3. UI Helper Functions ---
 function setLoading(isLoading) {
-    if (loginBtn) {
-        loginBtn.disabled = isLoading;
-        loginBtn.classList.toggle('loading', isLoading);
-    }
+    if (!loginBtn) return;
+    loginBtn.disabled = isLoading;
+    loginBtn.classList.toggle('loading', isLoading);
+    const span = loginBtn.querySelector('span');
+    if (span) span.style.display = isLoading ? 'none' : 'inline';
 }
 
 function showMessage(msg, isError = false) {
-    if (messageDiv) {
-        messageDiv.style.display = 'block';
-        messageDiv.textContent = msg;
-        messageDiv.className = isError ? 'message error' : 'message success';
-    }
+    if (!messageDiv) return;
+    messageDiv.style.display = 'block';
+    messageDiv.textContent = msg;
+    messageDiv.className = isError ? 'message error' : 'message success';
 }
 
 function togglePasswordVisibility() {
-    if (!passwordInput) return;
-    const icon = document.querySelector('.toggle-password');
+    if (!passwordInput || !togglePasswordBtn) return;
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        icon.textContent = '🙈';
+        togglePasswordBtn.textContent = '🙈';
     } else {
         passwordInput.type = 'password';
-        icon.textContent = '👁️';
+        togglePasswordBtn.textContent = '👁️';
     }
 }
 
-// --- 5. Input Validation ---
-function validateCredentials(email, password, isSigningUp = false) {
+// --- 4. Input Validation ---
+function validateCredentials(email, password) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !password) {
         showMessage('กรุณากรอกอีเมลและรหัสผ่าน', true);
@@ -67,23 +63,14 @@ function validateCredentials(email, password, isSigningUp = false) {
         showMessage('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร', true);
         return false;
     }
-    if (isSigningUp) {
-        const hasUpperCase = /[A-Z]/.test(password);
-        const hasLowerCase = /[a-z]/.test(password);
-        const hasNumbers = /\d/.test(password);
-        if (!(hasUpperCase && hasLowerCase && hasNumbers)) {
-            showMessage('รหัสผ่านต้องประกอบด้วยตัวพิมพ์ใหญ่, เล็ก, และตัวเลข', true);
-            return false;
-        }
-    }
     return true;
 }
 
-// --- 6. Rate Limit Logic ---
+// --- 5. Rate Limit Logic ---
 function checkRateLimit() {
     const now = Date.now();
     if (now - lastAttemptTime > LOCKOUT_TIME_MS) {
-        loginAttempts = 0;
+        loginAttempts = 0; // รีเซ็ตหลังจากหมดเวลา lockout
     }
     if (loginAttempts >= MAX_ATTEMPTS) {
         const remainingTime = Math.ceil((LOCKOUT_TIME_MS - (now - lastAttemptTime)) / 1000);
@@ -93,13 +80,12 @@ function checkRateLimit() {
     return true;
 }
 
-// --- 7. Core Authentication Functions ---
+// --- 6. Core Authentication Functions ---
 async function handleLogin() {
-    if (!emailInput || !passwordInput) return;
     if (!checkRateLimit()) return;
 
     setLoading(true);
-    if (messageDiv) messageDiv.style.display = 'none';
+    messageDiv.style.display = 'none';
 
     const email = emailInput.value.trim();
     const password = passwordInput.value;
@@ -112,14 +98,17 @@ async function handleLogin() {
     try {
         loginAttempts++;
         lastAttemptTime = Date.now();
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+
         if (error) throw error;
-        loginAttempts = 0;
+
+        loginAttempts = 0; // รีเซ็ตเมื่อสำเร็จ
         showMessage('เข้าสู่ระบบสำเร็จ!', false);
         setTimeout(() => { window.location.href = 'index.html'; }, 500);
+
     } catch (error) {
         console.error('Login error:', error);
-        if (error.message && error.message.includes('Invalid login credentials')) {
+        if (error.message.includes('Invalid login credentials')) {
             showMessage('อีเมลหรือรหัสผ่านไม่ถูกต้อง', true);
         } else {
             showMessage(error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่', true);
@@ -129,32 +118,36 @@ async function handleLogin() {
     }
 }
 
-async function handleSignUp() {
-    if (!emailInput || !passwordInput) return;
+async function handleSignUp(event) {
+    event.preventDefault(); // ป้องกันการ refresh หน้า
     setLoading(true);
-    if (messageDiv) messageDiv.style.display = 'none';
+    messageDiv.style.display = 'none';
 
     const email = emailInput.value.trim();
     const password = passwordInput.value;
 
-    if (!validateCredentials(email, password, true)) {
+    if (!validateCredentials(email, password)) {
         setLoading(false);
         return;
     }
 
     try {
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        if (data?.user?.identities?.length === 0) {
-            showMessage('อีเมลนี้ถูกใช้งานแล้ว', true);
-            return;
+        
+        // ตรวจสอบเพิ่มเติมว่า user ถูกสร้างจริงหรือไม่
+        if (data?.user && data.user.identities && data.user.identities.length === 0) {
+             showMessage('อีเมลนี้ถูกใช้งานแล้วโดยไม่มีการยืนยันตัวตน', true);
+             return;
         }
+
         showMessage('ลงทะเบียนสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี', false);
         emailInput.value = '';
         passwordInput.value = '';
+
     } catch (error) {
         console.error('Sign up error:', error);
-        if (error.message && error.message.includes('already registered')) {
+        if (error.message.includes('User already registered')) {
             showMessage('อีเมลนี้ถูกใช้งานแล้ว', true);
         } else {
             showMessage(error.message || 'เกิดข้อผิดพลาดในการลงทะเบียน', true);
@@ -164,25 +157,32 @@ async function handleSignUp() {
     }
 }
 
-// --- 8. Session Management & Initialization ---
+// --- 7. Session Management & Initialization ---
 async function checkExistingSession() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     if (session) {
         window.location.href = 'index.html';
     }
 }
 
-// 🔴 CRITICAL FIX: รอให้ DOM โหลดเสร็จก่อนเริ่มทำงาน
+// --- Initialization ---
+// ใช้ Event Listener เพื่อให้แน่ใจว่า DOM โหลดเสร็จสมบูรณ์ก่อนเริ่มทำงาน
 document.addEventListener('DOMContentLoaded', () => {
-    emailInput = document.getElementById('email');
-    passwordInput = document.getElementById('password');
-    loginBtn = document.getElementById('loginBtn');
-    messageDiv = document.getElementById('message');
-
+    // ตรวจสอบ session ก่อน
     checkExistingSession();
+    
+    // ตั้งค่า Event Listeners
+    if (loginBtn) {
+        loginBtn.addEventListener('click', handleLogin);
+    }
+    if (signUpLink) {
+        signUpLink.addEventListener('click', handleSignUp);
+    }
+    if (togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', togglePasswordVisibility);
+    }
 
-    if (emailInput) emailInput.focus();
-
+    // จัดการการกด Enter
     if (passwordInput) {
         passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleLogin();
@@ -192,5 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
         emailInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && passwordInput) passwordInput.focus();
         });
+        emailInput.focus(); // Focus ที่ช่อง email เมื่อหน้าโหลด
     }
 });
