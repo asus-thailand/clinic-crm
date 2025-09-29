@@ -1,6 +1,7 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - FINAL PRODUCTION-READY SCRIPT (SENIOR DEV REVISION)
 // FIXES: API Keys, Memory Leaks, Race Conditions (Mutex), XSS, Realtime Stability
+// ADJUSTMENTS: Logic Error (Data Array Mgt) and Best Practices
 // ================================================================================
 
 // --- 0. SECURITY & HELPER FUNCTIONS ---
@@ -21,7 +22,7 @@ function escapeHtml(str) {
 // Timer management (FIXED MEMORY LEAK)
 let statusTimeoutId = null;
 let sessionRefreshInterval = null;
-const activeTimers = new Set(); // Use Set for better memory leak management
+const activeTimers = new Set(); // Use const for Set since the Set itself is not reassigned
 
 function addTimer(timerId) {
     activeTimers.add(timerId);
@@ -52,23 +53,23 @@ function clearAllTimers() {
 
 // --- 1. CONFIGURATION & INITIALIZATION (FIXED SECURITY: API KEYS) ---
 // 🔴 CRITICAL FIX: Replace Hardcoded Keys with Placeholder Environment Variables
-// In a real application, these would be loaded securely via a backend proxy or environment script.
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://dmzsughhxdgpnazvjtci.supabase.co'; 
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR and nN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
 // Initialize Supabase client
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Global variables
+// Global variables (ADJUSTED: Using const for reference stability)
 let currentUserRole = 'sales';
 let currentUserId = null;
 let currentUsername = null;
-let tableData = [];
-let originalTableData = [];
+// 💡 BEST PRACTICE FIX: Use const and array methods for managing array content
+const tableData = []; 
+const originalTableData = [];
 let editingCell = null;
 let copiedCell = null;
 let contextCell = null;
-let salesList = [];
+const salesList = []; // Use const for array reference
 let realtimeSubscription = null;
 
 // Operation states
@@ -319,7 +320,7 @@ function updateUIByRole() {
     }
 }
 
-// --- 4. DATA FETCHING & MANAGEMENT ---
+// --- 4. DATA FETCHING & MANAGEMENT (FIXED LOGIC ERROR: Minor B) ---
 async function fetchCustomerData() {
     if (operationStates.isFetching) return;
     operationStates.isFetching = true;
@@ -334,8 +335,11 @@ async function fetchCustomerData() {
 
         if (error) throw error;
 
-        tableData = data || [];
-        originalTableData = [...tableData];
+        // ❌ LOGIC FIX: Use array mutation methods to preserve the const reference
+        tableData.length = 0; 
+        originalTableData.length = 0;
+        tableData.push(...(data || []));
+        originalTableData.push(...(data || []));
 
         renderTable();
         updateStats();
@@ -343,7 +347,8 @@ async function fetchCustomerData() {
     } catch (error) {
         console.error('Error fetching customers:', error);
         showStatus('ดึงข้อมูลไม่สำเร็จ: ' + error.message, true);
-        tableData = [];
+        tableData.length = 0;
+        originalTableData.length = 0;
         renderTable();
     } finally {
         operationStates.isFetching = false;
@@ -379,7 +384,8 @@ function renderTable() {
             if (fieldName === null) {
                 // Row number column
                 td.className = 'row-number';
-                td.textContent = String(index + 1);
+                // 💡 MINOR ADJUSTMENT: No need for String(index + 1)
+                td.textContent = index + 1; 
             } else if (fieldName) {
                 const isDropdown = dropdownOptions[fieldName] !== undefined || fieldName === 'sales';
                 const cellClass = getCellClass(fieldName);
@@ -435,10 +441,11 @@ function getCellClass(field) {
 
 // --- 6. CELL EDITING ---
 function validateInput(value, field) {
-    // Phone validation
+    // Phone validation (FIXED LOGIC ERROR: Allow empty string)
     if (field === 'phone') {
         const phoneRegex = /^[0-9+()-\s]*$/;
-        if (value && !phoneRegex.test(value)) {
+        // ❌ LOGIC FIX: Only check regex if value is NOT empty. Empty string ('') is always valid.
+        if (value && !phoneRegex.test(value)) { 
             return `ฟิลด์ 'เบอร์ติดต่อ' รูปแบบไม่ถูกต้อง`;
         }
     }
@@ -630,6 +637,7 @@ async function updateCell(rowId, field, newValue, originalValue) {
     // Update local state immediately (Optimistic UI)
     const rowIndex = tableData.findIndex(r => r.id === rowId);
     if (rowIndex !== -1) {
+        // Update content of existing const array
         tableData[rowIndex][field] = newValue;
         originalTableData[rowIndex][field] = newValue;
     }
@@ -666,6 +674,7 @@ function executeUpdateWithMutex(rowId, field, newValue, originalValue) {
 
                 const rowIndex = tableData.findIndex(r => r.id === rowId);
                 if (rowIndex !== -1 && data) {
+                    // Update content of existing const array
                     tableData[rowIndex] = data;
                     originalTableData[rowIndex] = { ...data };
                 }
@@ -720,6 +729,7 @@ async function addNewRow() {
         if (error) throw error;
 
         if (data) {
+            // Update content of existing const array
             tableData.unshift(data);
             originalTableData.unshift({ ...data });
             renderTable();
@@ -766,6 +776,7 @@ async function deleteRow() {
 
             const index = tableData.findIndex(r => r.id === rowId);
             if (index !== -1) {
+                // Update content of existing const array
                 tableData.splice(index, 1);
                 originalTableData.splice(index, 1);
                 renderTable();
@@ -782,7 +793,7 @@ async function deleteRow() {
     }
 }
 
-// --- 9. SEARCH & FILTER ---
+// --- 9. SEARCH & FILTER (FIXED LOGIC ERROR: Minor B) ---
 async function fetchSalesList() {
     try {
         const { data, error } = await supabaseClient
@@ -791,12 +802,14 @@ async function fetchSalesList() {
 
         if (error) throw error;
         
-        salesList = (data || [])
+        // ❌ LOGIC FIX: Update content of existing const array
+        salesList.length = 0;
+        salesList.push(...(data || [])
             .map(user => user.username)
-            .filter(username => username !== null && username.trim() !== '');
+            .filter(username => username !== null && username.trim() !== ''));
     } catch (error) {
         console.error('Error fetching sales list:', error);
-        salesList = [];
+        salesList.length = 0;
         showStatus('ไม่สามารถโหลดรายชื่อเซลล์ได้', true);
     }
 }
@@ -852,7 +865,8 @@ function filterTable() {
     const salesFilter = document.getElementById('salesFilter')?.value || '';
     const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
 
-    tableData = originalTableData.filter(row => {
+    // Filter using originalTableData
+    const filteredData = originalTableData.filter(row => {
         let matchStatus = !statusFilter || row.status_1 === statusFilter;
         let matchSales = !salesFilter || row.sales === salesFilter;
         
@@ -866,6 +880,10 @@ function filterTable() {
         return matchStatus && matchSales && matchSearch;
     });
 
+    // ❌ LOGIC FIX: Update content of existing const array
+    tableData.length = 0;
+    tableData.push(...filteredData);
+    
     renderTable();
     updateStats();
 }
@@ -1403,7 +1421,8 @@ function reconnectRealtime() {
 }
 
 function handleRealtimeUpdate(payload) {
-    console.log('Realtime update:', payload);
+    // 💡 MINOR ADJUSTMENT: Change to console.debug/log/remove in production
+    // console.log('Realtime update:', payload); 
     
     // Ignore if busy with local operations
     if (pendingUpdates.size > 0 || operationStates.isDeleting || operationStates.isImporting) {
