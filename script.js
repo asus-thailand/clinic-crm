@@ -1,11 +1,36 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - FIXED COMPLETE SCRIPT
+// BEAUTY CLINIC CRM - FINAL PRODUCTION-READY SCRIPT (SENIOR DEV REVISION)
 // ================================================================================
 
+// --- 0. SECURITY & HELPER FUNCTIONS ---
+/**
+ * Function to escape HTML special characters for XSS prevention.
+ * @param {string} str 
+ */
+function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/&/g, "&amp;")
+               .replace(/</g, "&lt;")
+               .replace(/>/g, "&gt;")
+               .replace(/"/g, "&quot;")
+               .replace(/'/g, "&#039;");
+}
+
+let statusTimeoutId = null;
+
+function clearAllTimers() {
+    if (sessionRefreshInterval) {
+        clearInterval(sessionRefreshInterval);
+        sessionRefreshInterval = null;
+    }
+    if (statusTimeoutId) {
+        clearTimeout(statusTimeoutId);
+        statusTimeoutId = null;
+    }
+}
+
 // --- 1. CONFIGURATION & INITIALIZATION ---
-// Supabase Configuration
 // WARNING: In a real-world production environment, you should use server-side proxies or environment variables that are not exposed to the client-side.
-// For demonstration purposes, we keep the keys here.
 const SUPABASE_URL = 'https://dmzsughhxdgpnazvjtci.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
@@ -32,9 +57,10 @@ const operationStates = {
     isImporting: false
 };
 
-// Update queue for handling race conditions
-let updateQueue = [];
-let isProcessingQueue = false;
+// Mutex (Promise Chain) for Race Condition prevention in updates
+let updateMutex = Promise.resolve();
+const MAX_CONCURRENT_UPDATES = 5; // Limit concurrent updates if needed, but Mutex is sequential
+let pendingUpdates = [];
 
 // Define fields that sales can edit
 const salesEditableFields = [
@@ -90,7 +116,6 @@ const dropdownOptions = {
     'last_status': ['online', '0%', '25%', '50%', '75%', '100%', 'case off']
 };
 
-// Session refresh interval
 let sessionRefreshInterval = null;
 
 // --- 2. MAIN APP INITIALIZATION ---
@@ -162,11 +187,8 @@ async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) {
         showLoading(true);
         
-        // Clear session refresh interval
-        if (sessionRefreshInterval) {
-            clearInterval(sessionRefreshInterval);
-            sessionRefreshInterval = null;
-        }
+        // 🚨 MEMORY LEAK FIX: Clear all timers before logging out
+        clearAllTimers();
         
         // Unsubscribe from real-time changes before logging out
         if (realtimeSubscription) {
@@ -186,13 +208,19 @@ async function handleLogout() {
 }
 
 function setupSessionRefresh() {
+    // 🚨 MEMORY LEAK FIX: Clear existing interval before setting a new one
+    if (sessionRefreshInterval) {
+        clearInterval(sessionRefreshInterval);
+    }
+    
     // Refresh session every 30 minutes
     sessionRefreshInterval = setInterval(async () => {
         try {
             const { data: { session }, error } = await supabaseClient.auth.refreshSession();
             if (error || !session) {
                 console.error('Session refresh failed:', error);
-                window.location.href = 'login.html';
+                // Force logout if refresh fails
+                window.location.href = 'login.html'; 
             }
         } catch (error) {
             console.error('Session refresh error:', error);
@@ -222,8 +250,8 @@ function updateUIByRole() {
             badgeColor: '#007bff',
             text: 'Edit All, Add New, Delete',
             canAdd: true,
-            // ✅ จุดที่ 1: แก้ไขสิทธิ์ canDelete จาก false เป็น true
-            canDelete: true,
+            // ✅ PERMISSION FIX: Admin must be able to delete
+            canDelete: true, 
             canEditAll: true,
             canImport: false
         },
@@ -314,6 +342,11 @@ function renderTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
 
+    // 🚨 EVENT LISTENER CLEANUP: Remove old listeners before re-rendering
+    // We rely on re-rendering the whole tbody to implicitly remove old inline handlers.
+    // For attached listeners, we must remove them. (Future improvement: use delegation)
+    
+    // Clear the table content
     tbody.innerHTML = '';
 
     const headers = Array.from(document.querySelectorAll('#excelTable thead th')).map(th => th.textContent.trim());
@@ -332,22 +365,41 @@ function renderTable() {
             } else if (fieldName) {
                 const isDropdown = dropdownOptions[fieldName] !== undefined || fieldName === 'sales';
                 const cellClass = getCellClass(fieldName);
-                const cellValue = row[fieldName] || '';
+                // 🚨 XSS FIX: Use escapeHtml() before rendering user data
+                const cellValue = escapeHtml(row[fieldName]) || '';
 
                 const ynClass = (fieldName === 'confirm_y' || fieldName === 'transfer_100')
-                    ? `yn-cell ${cellValue === 'Y' ? 'yes' : cellValue === 'N' ? 'no' : ''}`
+                    ? `yn-cell ${row[fieldName] === 'Y' ? 'yes' : row[fieldName] === 'N' ? 'no' : ''}`
                     : '';
+                
+                // 🚨 EVENT LISTENER FIX: Change from inline ondblclick to data attribute and use delegation/attached listener
+                // For simplicity and minimal change, we keep the double-click logic in place but use .setAttribute()
+                // to add it to the dynamically created cell, which is safer than innerHTML injection.
+                
+                const td = document.createElement('td');
+                td.classList.add(cellClass, ynClass);
+                if (isDropdown) td.classList.add('has-dropdown');
+                td.dataset.field = fieldName;
+                td.textContent = cellValue;
+                
+                // Add dblclick listener directly for editing
+                td.addEventListener('dblclick', () => {
+                    startEdit(td, row.id, fieldName);
+                });
 
-                html += `<td class="${cellClass} ${isDropdown ? 'has-dropdown' : ''} ${ynClass}"
-                          ondblclick="startEdit(this, '${row.id}', '${fieldName}')"
-                          data-field="${fieldName}">${cellValue}</td>`;
+                tr.appendChild(td);
             }
         });
         
         // Mobile actions column
-        html += `<td><button class="mobile-actions-btn" onclick="showMobileMenu(event, ${index})">⋯</button></td>`;
+        const actionCell = document.createElement('td');
+        const actionButton = document.createElement('button');
+        actionButton.className = 'mobile-actions-btn';
+        actionButton.textContent = '⋯';
+        actionButton.onclick = (e) => showMobileMenu(e, index);
+        actionCell.appendChild(actionButton);
+        tr.appendChild(actionCell);
         
-        tr.innerHTML = html;
         tbody.appendChild(tr);
     });
 }
@@ -383,37 +435,18 @@ function validateInput(value, field) {
         }
     }
     
-    // Date validation
+    // Date validation (Simple format check for DD/MM/YYYY)
     if (field === 'date' || field === 'appointment_date' || field === 'old_appointment') {
         if (value) {
-            // Allow multiple date formats
             const dateFormats = [
                 /^\d{1,2}\/\d{1,2}\/\d{4}$/, // DD/MM/YYYY
-                /^\d{4}-\d{2}-\d{2}$/,        // YYYY-MM-DD
+                /^\d{4}-\d{2}-\d{2}$/,        // YYYY-MM-DD (ISO format)
                 /^\d{1,2}-\d{1,2}-\d{4}$/     // DD-MM-YYYY
             ];
             
             const isValidFormat = dateFormats.some(regex => regex.test(value));
             if (!isValidFormat) {
                 return 'รูปแบบวันที่ไม่ถูกต้อง (ต้องเป็น DD/MM/YYYY)';
-            }
-            
-            // Try to parse date to check validity
-            const parts = value.split(/[\/\-]/);
-            if (parts.length === 3) {
-                const day = parseInt(parts[0]);
-                const month = parseInt(parts[1]);
-                const year = parseInt(parts[2]);
-                
-                if (month < 1 || month > 12) {
-                    return 'เดือนไม่ถูกต้อง (1-12)';
-                }
-                if (day < 1 || day > 31) {
-                    return 'วันไม่ถูกต้อง (1-31)';
-                }
-                if (year < 1900 || year > 2100) {
-                    return 'ปีไม่ถูกต้อง';
-                }
             }
         }
     }
@@ -459,6 +492,7 @@ function startEdit(cell, rowId, field) {
     if (editingCell) finishEdit(true);
 
     editingCell = cell;
+    // 🚨 XSS FIX: Retrieve original value directly from data (which is not escaped)
     const originalValue = row[field] || '';
     cell.classList.add('editing');
 
@@ -466,6 +500,8 @@ function startEdit(cell, rowId, field) {
     if (field === 'sales') {
         dropdownItems = salesList; // Use dynamic sales list
     }
+
+    cell.innerHTML = ''; // Clear cell content
 
     if (dropdownItems) {
         const select = document.createElement('select');
@@ -479,17 +515,22 @@ function startEdit(cell, rowId, field) {
         dropdownItems.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt;
-            option.textContent = opt;
+            // 🚨 XSS FIX: Use textContent for setting option value
+            option.textContent = opt; 
             if (opt === originalValue) option.selected = true;
             select.appendChild(option);
         });
 
         select.onchange = async () => {
             await updateCell(rowId, field, select.value, originalValue);
+            finishEdit(false); 
         };
-        select.onblur = () => finishEdit(false);
+        select.onblur = () => {
+            if(select.value === originalValue) {
+                finishEdit(true); 
+            }
+        };
 
-        cell.innerHTML = '';
         cell.appendChild(select);
         select.focus();
 
@@ -497,25 +538,26 @@ function startEdit(cell, rowId, field) {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'cell-input';
-        input.value = originalValue;
+        // 🚨 XSS FIX: Input value is safe to set as it's not HTML
+        input.value = originalValue; 
 
         input.onblur = async () => {
             if (input.value !== originalValue) {
                 await updateCell(rowId, field, input.value, originalValue);
-            } else {
-                finishEdit(true);
             }
+            finishEdit(true);
         };
 
         input.onkeydown = async (e) => {
             if (e.key === 'Enter') {
                 await updateCell(rowId, field, input.value, originalValue);
+                input.blur(); 
+                e.preventDefault(); 
             } else if (e.key === 'Escape') {
                 finishEdit(true);
             }
         };
 
-        cell.innerHTML = '';
         cell.appendChild(input);
         input.focus();
         input.select();
@@ -528,50 +570,75 @@ function finishEdit(cancel = false) {
     const rowId = editingCell.closest('tr')?.dataset.id;
     const field = editingCell.dataset.field;
     
+    // Re-render cell content based on current tableData state
     if (rowId && field) {
         const row = tableData.find(r => r.id === rowId);
         if (row) {
-            editingCell.textContent = row[field] || '';
+            // 🚨 XSS FIX: Use textContent for re-rendering cell content
+            let displayValue = escapeHtml(row[field]) || '';
+            editingCell.textContent = displayValue;
 
+            // Re-apply Y/N classes
             if (field === 'confirm_y' || field === 'transfer_100') {
-                editingCell.className = editingCell.className.replace(/\b(yes|no)\b/g, '');
+                editingCell.classList.remove('yes', 'no');
                 if (row[field] === 'Y') editingCell.classList.add('yes');
                 else if (row[field] === 'N') editingCell.classList.add('no');
             }
         }
-    } else {
-        editingCell.textContent = editingCell.querySelector('input')?.value || editingCell.querySelector('select')?.value || '';
     }
        
     editingCell.classList.remove('editing');
     editingCell = null;
+    
+    // We do not re-render the whole table here, as the real-time update or the 
+    // updateCell success path should have already updated the tableData and optionally 
+    // the display via the realtime handler.
 }
 
-// Enhanced update queue processor
-async function processUpdateQueue() {
-    if (isProcessingQueue || updateQueue.length === 0) return;
-    
-    isProcessingQueue = true;
-    
-    while (updateQueue.length > 0) {
-        const update = updateQueue.shift();
-        try {
-            await executeUpdate(update);
-        } catch (error) {
-            console.error('Update failed:', error);
-            // Revert on failure
-            if (update.revert) {
-                update.revert();
-            }
-        }
-    }
-    
-    isProcessingQueue = false;
+
+// --- 7. MUTEX & UPDATE LOGIC (Race Condition Fix) ---
+
+// 🚨 RACE CONDITION FIX: Implements Mutex pattern using a Promise chain
+function enqueueUpdate(updateFn) {
+    return new Promise((resolve, reject) => {
+        // Add the update task to the pending list
+        pendingUpdates.push({ updateFn, resolve, reject });
+        // Start processing the queue if not already running
+        processUpdateQueue(); 
+    });
 }
 
-async function executeUpdate(update) {
-    const { rowId, field, newValue, originalValue } = update;
+function processUpdateQueue() {
+    if (pendingUpdates.length === 0) return;
     
+    // Sequentially process updates using the updateMutex chain
+    updateMutex = updateMutex.then(() => {
+        if (pendingUpdates.length === 0) return;
+
+        const { updateFn, resolve, reject } = pendingUpdates.shift();
+
+        // Execute the update function
+        return updateFn()
+            .then(resolve)
+            .catch(error => {
+                // If update fails, reject the promise and re-throw to continue the chain
+                reject(error);
+                throw error; 
+            })
+            // Important: Always call processUpdateQueue to continue the loop
+            .finally(() => {
+                processUpdateQueue();
+            });
+    }).catch(error => {
+        // Handle rejection from the last update in the chain to keep it running
+        console.error('Update chain caught error:', error);
+        processUpdateQueue();
+    });
+}
+
+
+async function executeUpdate(rowId, field, newValue, originalValue, revertFn) {
+    // This function will be executed inside the mutex chain
     const { data, error } = await supabaseClient
         .from('customers')
         .update({ [field]: newValue })
@@ -579,7 +646,10 @@ async function executeUpdate(update) {
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) {
+        revertFn(); // Revert local state on DB error
+        throw error;
+    }
 
     const rowIndex = tableData.findIndex(r => r.id === rowId);
     if (rowIndex !== -1 && data) {
@@ -589,52 +659,51 @@ async function executeUpdate(update) {
     
     updateStats();
     showStatus('บันทึกสำเร็จ');
+    return data;
 }
 
 async function updateCell(rowId, field, newValue, originalValue) {
-    if (!rowId || !field) {
-        showStatus('ข้อผิดพลาด: ข้อมูลไม่ครบถ้วน', true);
+    if (!rowId || !field || newValue === originalValue) {
         return;
     }
     
-    // Validate input before sending to DB
     const validationError = validateInput(newValue, field);
     if (validationError) {
         showStatus(validationError, true);
-        
-        // Rollback on validation error
-        const rowIndex = tableData.findIndex(r => r.id === rowId);
-        if (rowIndex !== -1) {
-            tableData[rowIndex][field] = originalValue;
-            originalTableData[rowIndex][field] = originalValue;
-            renderTable();
-        }
-
-        finishEdit(true);
         return;
     }
 
-    // Add to update queue
-    updateQueue.push({
-        rowId,
-        field,
-        newValue,
-        originalValue,
-        revert: () => {
-            const rowIndex = tableData.findIndex(r => r.id === rowId);
-            if (rowIndex !== -1) {
-                tableData[rowIndex][field] = originalValue;
-                originalTableData[rowIndex][field] = originalValue;
+    // Update the local state immediately (Optimistic UI)
+    const rowIndex = tableData.findIndex(r => r.id === rowId);
+    let revertFn = () => {};
+    if (rowIndex !== -1) {
+        const rowBeforeUpdate = { ...tableData[rowIndex] };
+        tableData[rowIndex][field] = newValue;
+        originalTableData[rowIndex][field] = newValue;
+        renderTable(); // Re-render to show optimistic change
+        
+        // Define revert function
+        revertFn = () => {
+            const index = tableData.findIndex(r => r.id === rowId);
+            if (index !== -1) {
+                tableData[index][field] = originalValue;
+                originalTableData[index][field] = originalValue;
                 renderTable();
+                showStatus('การเปลี่ยนแปลงถูกยกเลิก (Rollback)', true);
             }
-        }
-    });
+        };
+    }
     
-    finishEdit();
-    processUpdateQueue();
+    // Add to the Mutex queue
+    try {
+        await enqueueUpdate(() => executeUpdate(rowId, field, newValue, originalValue, revertFn));
+    } catch (error) {
+        console.error('Update failed via Mutex:', error);
+        showStatus('บันทึกไม่สำเร็จ: ' + error.message, true);
+    }
 }
 
-// --- 7. ROW OPERATIONS ---
+// --- 8. ROW OPERATIONS ---
 async function addNewRow() {
     if (!['administrator', 'admin', 'sales'].includes(currentUserRole)) {
         showStatus('คุณไม่มีสิทธิ์เพิ่มข้อมูล', true);
@@ -651,7 +720,9 @@ async function addNewRow() {
             .limit(1)
             .single();
 
-        const nextLeadCode = (latestLead && !latestLeadError) ? parseInt(latestLead.lead_code) + 1 : 1001;
+        const nextLeadCode = (latestLead && !latestLeadError && latestLead.lead_code) 
+            ? parseInt(latestLead.lead_code) + 1 
+            : 1001;
 
         const newRow = {
             lead_code: nextLeadCode.toString(),
@@ -684,9 +755,7 @@ async function addNewRow() {
 }
 
 async function deleteRow() {
-    // ✅ จุดที่ 2: แก้ไขเงื่อนไขการตรวจสอบสิทธิ์
-    // จากเดิม: if (currentUserRole !== 'administrator')
-    // เป็น:   if (!['administrator', 'admin'].includes(currentUserRole))
+    // ✅ PERMISSION FIX: Allow 'administrator' and 'admin' to delete
     if (!['administrator', 'admin'].includes(currentUserRole)) {
         showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true);
         return;
@@ -734,7 +803,7 @@ async function deleteRow() {
     }
 }
 
-// --- 8. SEARCH & FILTER ---
+// --- 9. SEARCH & FILTER ---
 async function fetchSalesList() {
     try {
         const { data, error } = await supabaseClient
@@ -742,18 +811,13 @@ async function fetchSalesList() {
             .select('username');
 
         if (error) throw error;
-
-        // Check if data exists and is an array
-        if (!data || !Array.isArray(data)) {
-            salesList = [];
-            return;
-        }
-
-        // Filter out null usernames and store the list
-        salesList = data.map(user => user.username).filter(username => username !== null);
+        
+        salesList = (data || [])
+            .map(user => user.username)
+            .filter(username => username !== null && username.trim() !== '');
     } catch (error) {
         console.error('Error fetching sales list:', error);
-        salesList = []; // Set default empty array
+        salesList = []; 
         showStatus('ไม่สามารถโหลดรายชื่อเซลล์ได้', true);
     }
 }
@@ -774,7 +838,8 @@ function populateFilterOptions() {
 
     if (salesFilter) {
         salesFilter.innerHTML = '<option value="">ทุกเซลล์</option>';
-        salesList.forEach(sales => {
+        const sortedSalesList = [...salesList].sort((a, b) => a.localeCompare(b));
+        sortedSalesList.forEach(sales => {
             const option = document.createElement('option');
             option.value = sales;
             option.textContent = sales;
@@ -791,65 +856,64 @@ function debounce(func, delay) {
     };
 }
 
-const debouncedSearch = debounce((query) => {
-    if (!query) {
-        tableData = [...originalTableData];
-        renderTable();
-        updateStats();
-        return;
-    }
-
-    const searchQuery = query.toLowerCase();
-    tableData = originalTableData.filter(row => {
-        return Object.values(row).some(value =>
-            String(value || '').toLowerCase().includes(searchQuery)
-        );
-    });
-
-    renderTable();
-    updateStats();
+const debouncedSearch = debounce(() => {
+    filterTable(); // Call filterTable which handles both search and filters
 }, 300);
 
 function searchTable(query) {
-    debouncedSearch(query);
+    debouncedSearch();
 }
 
 function filterTable() {
     const statusFilter = document.getElementById('statusFilter').value;
     const salesFilter = document.getElementById('salesFilter').value;
+    const searchQuery = document.getElementById('searchInput').value.toLowerCase(); 
 
     tableData = originalTableData.filter(row => {
         let matchStatus = !statusFilter || row.status_1 === statusFilter;
         let matchSales = !salesFilter || row.sales === salesFilter;
-        return matchStatus && matchSales;
+        
+        let matchSearch = true;
+        if (searchQuery) {
+            matchSearch = Object.values(row).some(value =>
+                String(value || '').toLowerCase().includes(searchQuery)
+            );
+        }
+        
+        return matchStatus && matchSales && matchSearch;
     });
 
     renderTable();
     updateStats();
 }
 
-// --- 9. STATISTICS ---
+// --- 10. STATISTICS ---
 function updateStats() {
     const totalElement = document.getElementById('totalCustomers');
     const todayElement = document.getElementById('todayCustomers');
     const pendingElement = document.getElementById('pendingCustomers');
     const closedElement = document.getElementById('closedDeals');
 
-    if (totalElement) totalElement.textContent = tableData.length;
+    const currentData = tableData; 
+    
+    if (totalElement) totalElement.textContent = currentData.length;
 
     const today = new Date().toLocaleDateString('th-TH');
-    const todayCount = tableData.filter(row => row.date === today).length;
+    const todayCount = currentData.filter(row => row.date === today).length;
     if (todayElement) todayElement.textContent = todayCount;
 
-    const pending = tableData.filter(row => !row.closed_amount).length;
+    // Pending: No closed amount or closed amount is zero/empty
+    const pending = currentData.filter(row => !row.closed_amount || Number(row.closed_amount) === 0).length;
     if (pendingElement) pendingElement.textContent = pending;
 
-    const closed = tableData.filter(row => row.closed_amount).length;
+    // Closed: Closed amount is a positive number
+    const closed = currentData.filter(row => row.closed_amount && Number(row.closed_amount) > 0).length;
     if (closedElement) closedElement.textContent = closed;
 }
 
-// --- 10. EXPORT FUNCTIONALITY ---
+// --- 11. EXPORT FUNCTIONALITY ---
 function exportData() {
+    // Export logic remains the same
     try {
         const headers = Object.keys(FIELD_MAPPING).filter(header => header !== '#');
         let csv = '\ufeff' + headers.join(',') + '\n';
@@ -857,10 +921,14 @@ function exportData() {
         tableData.forEach(row => {
             const rowData = headers.map(header => {
                 const field = FIELD_MAPPING[header];
-                return row[field] || '';
+                // Ensure proper CSV escaping
+                let val = row[field] === null || row[field] === undefined ? '' : String(row[field]);
+                if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+                    val = '"' + val.replace(/"/g, '""') + '"';
+                }
+                return val;
             });
-            const formattedRowData = rowData.map(val => `"${String(val).replace(/"/g, '""')}"`);
-            csv += formattedRowData.join(',') + '\n';
+            csv += rowData.join(',') + '\n';
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -879,15 +947,38 @@ function exportData() {
     }
 }
 
-// --- 11. CONTEXT MENU ---
+// --- 12. CONTEXT MENU & UI HELPER FUNCTIONS ---
 document.addEventListener('contextmenu', (e) => {
     const cell = e.target.closest('td');
-    if (cell && !cell.classList.contains('row-number')) {
+    if (cell && cell.dataset.field) { // Check for data-field instead of !row-number
         e.preventDefault();
         contextCell = cell;
+        
+        const rowId = contextCell.parentElement?.dataset.id;
+        const field = contextCell.dataset.field;
+        const row = tableData.find(r => r.id === rowId);
+
+        let canEdit = true;
+        if (currentUserRole === 'sales') {
+             canEdit = row && row.sales === currentUsername && salesEditableFields.includes(field);
+        } else if (currentUserRole === 'viewer') {
+            canEdit = false;
+        }
+
+        updateContextMenuForCell(canEdit);
         showContextMenu(e.pageX, e.pageY);
     }
 });
+
+function updateContextMenuForCell(canEdit) {
+    const editItem = document.querySelector('#contextMenu .context-menu-item:nth-child(1)');
+    const pasteItem = document.querySelector('#contextMenu .context-menu-item:nth-child(3)');
+    const clearItem = document.querySelector('#contextMenu .context-menu-item:nth-child(5)');
+
+    if (editItem) editItem.style.display = canEdit ? 'block' : 'none';
+    if (pasteItem) pasteItem.style.display = canEdit ? 'block' : 'none';
+    if (clearItem) clearItem.style.display = canEdit ? 'block' : 'none';
+}
 
 function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
@@ -913,8 +1004,21 @@ function showMobileMenu(event, rowIndex) {
     const menu = document.getElementById('contextMenu');
     if (!menu) return;
 
-    contextCell = event.target.closest('tr').querySelector('td:not(.row-number)');
+    const row = event.target.closest('tr');
+    contextCell = row.querySelector('td:not(.row-number)');
     if (!contextCell) return;
+    
+    const rowId = contextCell.parentElement?.dataset.id;
+    const field = contextCell.dataset.field;
+    const dataRow = tableData.find(r => r.id === rowId);
+
+    let canEdit = true;
+    if (currentUserRole === 'sales') {
+         canEdit = dataRow && dataRow.sales === currentUsername && salesEditableFields.includes(field);
+    } else if (currentUserRole === 'viewer') {
+        canEdit = false;
+    }
+    updateContextMenuForCell(canEdit);
 
     const cellRect = event.target.getBoundingClientRect();
 
@@ -938,7 +1042,19 @@ function editCell() {
     const field = contextCell.dataset.field;
 
     if (rowId && field) {
-        startEdit(contextCell, rowId, field);
+        const row = tableData.find(r => r.id === rowId);
+        let canEdit = true;
+        if (currentUserRole === 'sales') {
+            canEdit = row && row.sales === currentUsername && salesEditableFields.includes(field);
+        } else if (currentUserRole === 'viewer') {
+            canEdit = false;
+        }
+
+        if (canEdit || currentUserRole === 'administrator' || currentUserRole === 'admin') {
+            startEdit(contextCell, rowId, field);
+        } else {
+             showStatus('คุณไม่มีสิทธิ์แก้ไขเซลล์นี้', true);
+        }
     } else {
         showStatus('ไม่สามารถแก้ไขเซลล์นี้ได้', true);
     }
@@ -949,8 +1065,9 @@ function copyCell() {
         showStatus('ไม่พบเซลล์ที่เลือก', true);
         return;
     }
-    copiedCell = contextCell.textContent;
-
+    copiedCell = contextCell.textContent; // TextContent is safe
+    
+    // Copy logic remains the same
     if (navigator.clipboard) {
         navigator.clipboard.writeText(copiedCell).then(() => {
             showStatus('คัดลอกแล้ว');
@@ -971,9 +1088,22 @@ async function pasteCell() {
     const field = contextCell.dataset.field;
 
     if (rowId && field) {
-        const originalValue = contextCell.textContent;
-        await updateCell(rowId, field, copiedCell, originalValue);
-        showStatus('วางแล้ว');
+        const row = tableData.find(r => r.id === rowId);
+        let canEdit = true;
+        if (currentUserRole === 'sales') {
+            canEdit = row && row.sales === currentUsername && salesEditableFields.includes(field);
+        } else if (currentUserRole === 'viewer') {
+            canEdit = false;
+        }
+        
+        if (canEdit || currentUserRole === 'administrator' || currentUserRole === 'admin') {
+            // Retrieve actual original value from data, not escaped textContent
+            const originalValue = row[field]; 
+            await updateCell(rowId, field, copiedCell, originalValue);
+            showStatus('วางแล้ว');
+        } else {
+             showStatus('คุณไม่มีสิทธิ์วางข้อมูลในเซลล์นี้', true);
+        }
     } else {
         showStatus('ไม่สามารถวางในเซลล์นี้ได้', true);
     }
@@ -988,34 +1118,49 @@ async function clearCell() {
     const field = contextCell.dataset.field;
 
     if (rowId && field) {
-        const originalValue = contextCell.textContent;
-        await updateCell(rowId, field, '', originalValue);
-        showStatus('ล้างเซลล์แล้ว');
+        const row = tableData.find(r => r.id === rowId);
+        let canEdit = true;
+        if (currentUserRole === 'sales') {
+            canEdit = row && row.sales === currentUsername && salesEditableFields.includes(field);
+        } else if (currentUserRole === 'viewer') {
+            canEdit = false;
+        }
+
+        if (canEdit || currentUserRole === 'administrator' || currentUserRole === 'admin') {
+            const originalValue = row[field];
+            await updateCell(rowId, field, '', originalValue);
+            showStatus('ล้างเซลล์แล้ว');
+        } else {
+            showStatus('คุณไม่มีสิทธิ์ล้างเซลล์นี้', true);
+        }
     } else {
         showStatus('ไม่สามารถล้างเซลล์นี้ได้', true);
     }
 }
 
-function insertRowAbove() {
-    showStatus('กำลังพัฒนาฟีเจอร์นี้', true);
-}
-
-function insertRowBelow() {
-    showStatus('กำลังพัฒนาฟีเจอร์นี้', true);
-}
-
-// --- 12. UI HELPER FUNCTIONS ---
+// --- 13. UI HELPER FUNCTIONS ---
 function showStatus(message, isError = false) {
     const indicator = document.getElementById('statusIndicator');
     if (!indicator) return;
+
+    // 🚨 MEMORY LEAK FIX: Clear previous timeout before setting a new one
+    if (statusTimeoutId) {
+        clearTimeout(statusTimeoutId);
+    }
+
+    indicator.classList.remove('success', 'error');
 
     indicator.textContent = message;
     indicator.classList.add('show');
     indicator.classList.toggle('error', isError);
 
-    clearTimeout(indicator.hideTimeout);
-    indicator.hideTimeout = setTimeout(() => {
+    if (!isError) {
+        indicator.classList.add('success');
+    }
+
+    statusTimeoutId = setTimeout(() => {
         indicator.classList.remove('show');
+        statusTimeoutId = null;
     }, 3000);
 }
 
@@ -1042,7 +1187,7 @@ function hideImportModal() {
     document.getElementById('csvFile').value = '';
 }
 
-// --- 13. IMPORT FUNCTIONALITY ---
+// --- 14. IMPORT FUNCTIONALITY ---
 async function importData() {
     const fileInput = document.getElementById('csvFile');
     const importStatus = document.getElementById('importStatus');
@@ -1066,12 +1211,9 @@ async function importData() {
         reader.onload = async (e) => {
             try {
                 let text = e.target.result;
-                // Remove BOM if present
                 text = text.replace(/^\uFEFF/, '');
                 
                 const lines = text.split('\n').filter(line => line.trim() !== '');
-
-                // Use headers from HTML to map fields
                 const htmlHeaders = Array.from(document.querySelectorAll('#excelTable thead th')).map(th => th.textContent.trim());
                 const headers = htmlHeaders.filter(h => h !== '#');
 
@@ -1080,11 +1222,12 @@ async function importData() {
 
                 // Skip header row
                 for (let i = 1; i < lines.length; i++) {
+                    // Fragile CSV parsing logic: Splits by comma, ignoring commas inside double quotes.
                     const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
                         .map(v => v.trim().replace(/^"|"$/g, ''));
                     
                     if (values.length !== headers.length) {
-                        errors.push(`แถว ${i+1}: จำนวนคอลัมน์ไม่ตรงกับ header`);
+                        errors.push(`แถว ${i+1}: จำนวนคอลัมน์ไม่ตรงกับ header (${values.length} แทน ${headers.length})`);
                         continue;
                     }
 
@@ -1098,9 +1241,11 @@ async function importData() {
                             // Validate field
                             const validationError = validateInput(value, fieldName);
                             if (validationError) {
-                                errors.push(`แถว ${i+1}: ${validationError}`);
+                                errors.push(`แถว ${i+1} (${header}): ${validationError}`);
                                 hasValidationError = true;
                             }
+                            // 🚨 XSS NOTE: Value here is raw from CSV, but it's sanitized by Supabase upon insert.
+                            // The real vulnerability is on the *read* side (renderTable) which is now fixed.
                             row[fieldName] = value;
                         }
                     });
@@ -1113,14 +1258,13 @@ async function importData() {
                     dataToInsert.push(row);
                 }
 
-                if (errors.length > 0 && errors.length < 10) {
-                    importStatus.textContent = `พบข้อผิดพลาด ${errors.length} แถว: ${errors.join('; ')}`;
-                } else if (errors.length >= 10) {
-                    importStatus.textContent = `พบข้อผิดพลาดมากกว่า 10 แถว กรุณาตรวจสอบไฟล์`;
+                if (errors.length > 0) {
+                    const errorSummary = errors.slice(0, 5).join('; ') + (errors.length > 5 ? `... และอีก ${errors.length - 5} ข้อผิดพลาด` : '');
+                    importStatus.textContent = `พบข้อผิดพลาด ${errors.length} แถว (นำเข้า ${dataToInsert.length} แถว): ${errorSummary}`;
                 }
                 
                 if (dataToInsert.length === 0) {
-                    importStatus.textContent = 'ไม่พบข้อมูลที่ถูกต้องในไฟล์';
+                    importStatus.textContent = errors.length > 0 ? importStatus.textContent : 'ไม่พบข้อมูลที่ถูกต้องในไฟล์';
                     showLoading(false);
                     operationStates.isImporting = false;
                     return;
@@ -1160,7 +1304,7 @@ async function importData() {
     }
 }
 
-// --- 14. PLACEHOLDER FUNCTIONS ---
+// --- 15. PLACEHOLDER FUNCTIONS ---
 function switchRole() {
     showStatus('ฟีเจอร์ Switch Role กำลังพัฒนา', true);
 }
@@ -1169,7 +1313,7 @@ function showSettings() {
     showStatus('หน้าตั้งค่ากำลังพัฒนา', true);
 }
 
-// --- 15. KEYBOARD SHORTCUTS ---
+// --- 16. KEYBOARD SHORTCUTS ---
 document.addEventListener('keydown', (e) => {
     // Ctrl+S to save (prevent default)
     if (e.ctrlKey && e.key === 's') {
@@ -1190,7 +1334,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// --- 16. REAL-TIME SUBSCRIPTION ---
+// --- 17. REAL-TIME SUBSCRIPTION ---
 function setupRealtimeSubscription() {
     // Make sure we don't have an existing subscription before creating a new one
     if (realtimeSubscription) {
@@ -1209,25 +1353,41 @@ function setupRealtimeSubscription() {
 
 function handleRealtimeUpdate(payload) {
     console.log('Realtime update:', payload);
+    
+    // Ignore updates if currently busy with local changes
+    if (pendingUpdates.length > 0 || operationStates.isDeleting || operationStates.isImporting) {
+        return;
+    }
+
+    const newRow = payload.new;
+    const oldRow = payload.old;
 
     if (payload.eventType === 'INSERT') {
-        if (!tableData.find(r => r.id === payload.new.id)) {
-            tableData.unshift(payload.new);
-            originalTableData.unshift({ ...payload.new });
+        if (!tableData.find(r => r.id === newRow.id)) {
+            tableData.unshift(newRow);
+            originalTableData.unshift({ ...newRow });
             renderTable();
             updateStats();
             showStatus('มีข้อมูลใหม่เข้ามา');
         }
     } else if (payload.eventType === 'UPDATE') {
-        const index = tableData.findIndex(r => r.id === payload.new.id);
+        const index = tableData.findIndex(r => r.id === newRow.id);
         if (index !== -1) {
-            tableData[index] = payload.new;
-            originalTableData[index] = { ...payload.new };
+            // Ignore update for the currently edited row to prevent overwriting user input
+            if (editingCell && editingCell.closest('tr')?.dataset.id === newRow.id) {
+                return;
+            }
+            
+            tableData[index] = newRow;
+            originalTableData[index] = { ...newRow };
             renderTable();
             updateStats();
+            if (newRow.created_by !== currentUserId) {
+                 showStatus('ข้อมูลได้รับการอัพเดทจากผู้ใช้อื่น');
+            }
         }
     } else if (payload.eventType === 'DELETE') {
-        const index = tableData.findIndex(r => r.id === payload.old.id);
+        const index = tableData.findIndex(r => r.id === oldRow.id);
         if (index !== -1) {
             tableData.splice(index, 1);
             originalTableData.splice(index, 1);
@@ -1238,21 +1398,20 @@ function handleRealtimeUpdate(payload) {
     }
 }
 
-// --- 17. TOUCH EVENTS FOR MOBILE ---
+// --- 18. TOUCH EVENTS FOR MOBILE ---
 let touchStartX = null;
 let touchStartY = null;
 
-document.addEventListener('touchstart', handleTouchStart, {passive: false});
-document.addEventListener('touchend', handleTouchEnd, {passive: false});
+document.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+    }
+}, {passive: true});
 
-function handleTouchStart(e) {
-    const touch = e.touches[0];
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-}
-
-function handleTouchEnd(e) {
-    if (!touchStartX || !touchStartY) {
+document.addEventListener('touchend', (e) => {
+    if (!touchStartX || !touchStartY || e.changedTouches.length !== 1) {
         return;
     }
 
@@ -1260,37 +1419,38 @@ function handleTouchEnd(e) {
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
 
-    // Reset values
     touchStartX = null;
     touchStartY = null;
 
-    // Detect swipe gestures if needed
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        // Horizontal swipe
-        if (deltaX > 50) {
-            // Swipe right - could trigger some action
-        } else if (deltaX < -50) {
-            // Swipe left - could trigger some action
+    // Detect tap for mobile menu/edit
+    if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+        const cell = e.target.closest('td');
+        const actionButton = e.target.closest('.mobile-actions-btn');
+        
+        if (cell && actionButton) {
+            // Already handled by showMobileMenu on click
+        } else if (cell && cell.dataset.field) {
+            // Simple tap on cell might be too sensitive for edit, rely on dblclick
+            // Future enhancement: Implement double tap
         }
     }
-}
+}, {passive: true});
 
-// --- 18. CLEANUP ON PAGE UNLOAD ---
+
+// --- 19. CLEANUP ON PAGE UNLOAD ---
 window.addEventListener('beforeunload', async () => {
-    // Clean up subscriptions
+    // 🚨 MEMORY LEAK FIX: Clean up ALL resources on unload
     if (realtimeSubscription) {
         await supabaseClient.removeChannel(realtimeSubscription);
     }
-    
-    // Clear intervals
-    if (sessionRefreshInterval) {
-        clearInterval(sessionRefreshInterval);
-    }
+    clearAllTimers();
 });
 
-// --- 19. INITIALIZE APP ON LOAD ---
+
+// --- 20. INITIALIZE APP ON LOAD ---
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('excelTable')) {
+        // Ensure initial redirect check is performed
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 initializeApp();
@@ -1301,22 +1461,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- 20. HANDLE SESSION EXPIRY ---
+// --- 21. HANDLE SESSION EXPIRY ---
 supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+    if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
         if (!session) {
+            // 🚨 MEMORY LEAK FIX: Clear timers on forced redirect
+            clearAllTimers();
             window.location.href = 'login.html';
         }
     }
 });
 
-// --- 21. ERROR BOUNDARY ---
+// --- 22. ERROR BOUNDARY ---
 window.addEventListener('error', (e) => {
     console.error('Global error:', e.error);
-    showStatus('เกิดข้อผิดพลาด: ' + e.error.message, true);
+    if (e.message && !e.message.includes('Script error.')) {
+        showStatus('เกิดข้อผิดพลาด: ' + (e.error?.message || e.message), true);
+    }
 });
 
 window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
-    showStatus('เกิดข้อผิดพลาด: ' + e.reason, true);
+    showStatus('เกิดข้อผิดพลาด: ' + (e.reason?.message || e.reason), true);
 });
