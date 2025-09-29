@@ -2,6 +2,7 @@
 // BEAUTY CLINIC CRM - FINAL PRODUCTION-READY SCRIPT (SENIOR DEV REVISION)
 // FIXES: CRITICAL BUG (process.env) and Best Practices
 // REFACTORED: Data Handling, Real-time, and Export Logic
+// 🟢 NEW FEATURE: Status Update History Modal
 // ================================================================================
 
 // --- 0. SECURITY & HELPER FUNCTIONS ---
@@ -380,11 +381,8 @@ function renderTable() {
             const fieldName = FIELD_MAPPING[headerText];
             const td = document.createElement('td');
             
-            if (fieldName === null) {
-                // เลขลำดับแถวในมุมมองปัจจุบัน
-                td.className = 'row-number';
-                td.textContent = index + 1; 
-            } else if (fieldName) {
+            // ส่วนนี้จะจัดการกับคอลัมน์ที่มีข้อมูล
+            if (fieldName) {
                 const isDropdown = dropdownOptions[fieldName] !== undefined || fieldName === 'sales';
                 const cellClass = getCellClass(fieldName);
                 const cellValue = row[fieldName] || '';
@@ -406,25 +404,42 @@ function renderTable() {
                 td.addEventListener('dblclick', function() {
                     startEdit(this, row.id, fieldName);
                 });
-            }
+            } else if (headerText === '#') {
+                // เลขลำดับแถว
+                td.className = 'row-number';
+                td.textContent = index + 1; 
+            }
             
             tr.appendChild(td);
         });
-        
-        // Mobile actions column
-        const actionCell = document.createElement('td');
-        const actionButton = document.createElement('button');
-        actionButton.className = 'mobile-actions-btn';
-        actionButton.textContent = '⋯';
-        actionButton.addEventListener('click', function(e) {
-            showMobileMenu(e, index);
-        });
-        actionCell.appendChild(actionButton);
-        tr.appendChild(actionCell);
+
+        // 🟢 MODIFIED: เพิ่มคอลัมน์ "จัดการ" และปุ่ม "อัปเดต"
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'actions-cell';
+        
+        const updateButton = document.createElement('button');
+        updateButton.className = 'btn-update';
+        updateButton.textContent = 'อัปเดต';
+        
+        // กำหนด event listener ให้ปุ่ม
+        updateButton.onclick = () => {
+            // ป้องกัน XSS โดยการ escape ชื่อลูกค้าก่อนแสดงผล
+            const safeCustomerName = escapeHtml(row.name || 'N/A');
+            showStatusUpdateModal(row.id, safeCustomerName);
+        };
+        
+        // ซ่อนปุ่มถ้าเป็น Viewer
+        if (currentUserRole === 'viewer') {
+            updateButton.style.display = 'none';
+        }
+
+        actionsCell.appendChild(updateButton);
+        tr.appendChild(actionsCell);
         
         tbody.appendChild(tr);
     });
 }
+
 
 function getCellClass(field) {
     const adminFields = ['date', 'lead_code', 'name', 'phone', 'channel', 'procedure', 'deposit', 'confirm_y', 'transfer_100', 'cs_confirm', 'sales'];
@@ -493,7 +508,7 @@ function startEdit(cell, rowId, field) {
         const isOwner = row.sales === currentUsername;
         const isEditableField = salesEditableFields.includes(field);
 
-        if (!isOwner) {
+        if (!isOwner && field !== 'sales') { // Allow sales to assign themselves if cell is empty
             showStatus('คุณสามารถแก้ไขได้เฉพาะลูกค้าของคุณเท่านั้น', true);
             return;
         }
@@ -948,7 +963,6 @@ function exportData() {
         showStatus('Export ไม่สำเร็จ', true);
     }
 }
-
 
 // --- 12. CONTEXT MENU & UI HELPER FUNCTIONS ---
 document.addEventListener('contextmenu', (e) => {
@@ -1543,3 +1557,120 @@ window.addEventListener('unhandledrejection', (e) => {
     console.error('Unhandled promise rejection:', e.reason);
     showStatus('เกิดข้อผิดพลาด: ' + (e.reason?.message || e.reason), true);
 });
+
+// ================================================================================
+// 🟢 START: NEW FUNCTIONS FOR STATUS UPDATE MODAL
+// ================================================================================
+
+/**
+ * แสดงหน้าต่าง (Modal) สำหรับอัปเดตสถานะ
+ * @param {string} customerId - ID ของลูกค้าที่ต้องการอัปเดต
+ * @param {string} customerName - ชื่อของลูกค้าที่จะแสดงบน Modal
+ */
+function showStatusUpdateModal(customerId, customerName) {
+    const modal = document.getElementById('statusUpdateModal');
+    const nameElement = document.getElementById('modalCustomerName');
+    const idInput = document.getElementById('modalCustomerId');
+
+    if (modal && nameElement && idInput) {
+        nameElement.textContent = customerName || 'N/A';
+        idInput.value = customerId;
+        modal.style.display = 'flex';
+    }
+}
+
+/**
+ * ซ่อนและรีเซ็ตหน้าต่าง (Modal) อัปเดตสถานะ
+ */
+function hideStatusUpdateModal() {
+    const modal = document.getElementById('statusUpdateModal');
+    const statusSelect = document.getElementById('modalStatusSelect');
+    const notesText = document.getElementById('modalNotesText');
+    const idInput = document.getElementById('modalCustomerId');
+
+    if (modal) {
+        modal.style.display = 'none';
+        // รีเซ็ตค่าในฟอร์ม
+        if (statusSelect) statusSelect.value = '';
+        if (notesText) notesText.value = '';
+        if (idInput) idInput.value = '';
+    }
+}
+
+/**
+ * ฟังก์ชันที่ถูกเรียกเมื่อผู้ใช้กด 'บันทึก' ใน Modal
+ * ทำหน้าที่รวบรวมข้อมูลและส่งไปให้ฟังก์ชัน addStatusUpdate
+ */
+async function submitStatusUpdate() {
+    const customerId = document.getElementById('modalCustomerId').value;
+    const newStatus = document.getElementById('modalStatusSelect').value;
+    const notes = document.getElementById('modalNotesText').value.trim();
+
+    if (!newStatus) {
+        showStatus('กรุณาเลือกสถานะ', true);
+        return;
+    }
+
+    await addStatusUpdate(customerId, newStatus, notes);
+}
+
+/**
+ * Logic หลักในการบันทึกประวัติสถานะใหม่ และอัปเดตข้อมูลลูกค้า
+ * @param {string} customerId - ID ของลูกค้า
+ * @param {string} newStatus - สถานะใหม่
+ * @param {string} notes - บันทึกเพิ่มเติม
+ */
+async function addStatusUpdate(customerId, newStatus, notes) {
+    if (!customerId || !newStatus) {
+        showStatus('ข้อมูลสำหรับอัปเดตไม่ครบถ้วน', true);
+        return;
+    }
+
+    showLoading(true);
+
+    try {
+        // 1. เพิ่มข้อมูลใหม่ลงในตาราง customer_status_history
+        const { error: historyError } = await supabaseClient
+            .from('customer_status_history')
+            .insert({
+                customer_id: customerId,
+                status: newStatus,
+                notes: notes,
+                created_by: currentUserId 
+            });
+
+        if (historyError) throw historyError;
+
+        // 2. อัปเดตคอลัมน์ 'last_status' ในตาราง customers เพื่อให้ข้อมูลในตารางหลักทันสมัยเสมอ
+        const { data: updatedCustomer, error: customerError } = await supabaseClient
+            .from('customers')
+            .update({ last_status: newStatus })
+            .eq('id', customerId)
+            .select()
+            .single();
+
+        if (customerError) throw customerError;
+
+        // 3. อัปเดตข้อมูลใน State (originalTableData) เพื่อให้ UI สอดคล้องกันทันที
+        const originalIndex = originalTableData.findIndex(r => r.id === customerId);
+        if (originalIndex !== -1) {
+            originalTableData[originalIndex] = { ...originalTableData[originalIndex], ...updatedCustomer };
+        }
+        
+        // 4. เรียก filterTable() เพื่อ re-render UI ใหม่ทั้งหมด
+        filterTable();
+
+        showStatus('อัปเดตสถานะสำเร็จ');
+        hideStatusUpdateModal();
+
+    } catch (error) {
+        console.error('Error adding status update:', error);
+        showStatus('เกิดข้อผิดพลาดในการอัปเดต: ' + error.message, true);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ================================================================================
+// 🟢 END: NEW FUNCTIONS FOR STATUS UPDATE MODAL
+// ================================================================================
