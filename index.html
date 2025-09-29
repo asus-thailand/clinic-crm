@@ -95,7 +95,7 @@
                         <th class="etc-header">DR.</th>
                         <th class="etc-header">ยอดที่ปิดได้</th>
                         <th class="etc-header">วันที่นัดทำหัตถการ</th>
-                    </tr>
+                        <th class="actions-header">จัดการ</th> </tr>
                 </thead>
                 <tbody id="tableBody">
                     </tbody>
@@ -129,6 +129,34 @@
             <input type="file" id="csvFile" accept=".csv">
             <button class="btn btn-primary" id="importBtn" onclick="importData()">นำเข้าข้อมูล</button>
             <p id="importStatus" class="import-status"></p>
+        </div>
+    </div>
+
+    <div class="modal" id="statusUpdateModal">
+        <div class="modal-content">
+            <span class="close-button" onclick="hideStatusUpdateModal()">&times;</span>
+            <h2>อัปเดตสถานะลูกค้า</h2>
+            <p>ลูกค้า: <strong id="modalCustomerName"></strong></p>
+            
+            <div class="modal-input-group">
+                <label for="modalStatusSelect">สถานะใหม่:</label>
+                <select id="modalStatusSelect">
+                    <option value="">-- เลือกสถานะ --</option>
+                    <option value="ตามต่อ">ตามต่อ</option>
+                    <option value="ปิดการขาย">ปิดการขาย</option>
+                    <option value="ไม่สนใจ">ไม่สนใจ</option>
+                    <option value="รอตัดสินใจ">รอตัดสินใจ</option>
+                    <option value="ติดต่อไม่ได้">ติดต่อไม่ได้</option>
+                </select>
+            </div>
+    
+            <div class="modal-input-group">
+                <label for="modalNotesText">บันทึกเพิ่มเติม:</label>
+                <textarea id="modalNotesText" rows="4" placeholder="กรอกรายละเอียดการติดต่อที่นี่..."></textarea>
+            </div>
+    
+            <button class="btn btn-primary" onclick="submitStatusUpdate()">บันทึกสถานะ</button>
+            <input type="hidden" id="modalCustomerId">
         </div>
     </div>
 
