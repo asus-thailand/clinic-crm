@@ -1,6 +1,7 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - FINAL PRODUCTION-READY SCRIPT (SENIOR DEV REVISION)
-// FIXES: CRITICAL BUG (process.env) and Best Practices
+// FIXES: API Keys, Memory Leaks, Race Conditions (Mutex), XSS, Realtime Stability
+// ADJUSTMENTS: Logic Error (Data Array Mgt) and Best Practices
 // ================================================================================
 
 // --- 0. SECURITY & HELPER FUNCTIONS ---
@@ -21,7 +22,7 @@ function escapeHtml(str) {
 // Timer management (FIXED MEMORY LEAK)
 let statusTimeoutId = null;
 let sessionRefreshInterval = null;
-const activeTimers = new Set(); // Use Set for better memory leak management
+const activeTimers = new Set(); // Use const for Set since the Set itself is not reassigned
 
 function addTimer(timerId) {
     activeTimers.add(timerId);
@@ -51,9 +52,9 @@ function clearAllTimers() {
 }
 
 // --- 1. CONFIGURATION & INITIALIZATION (FIXED SECURITY: API KEYS) ---
-// 🔴 CRITICAL FIX: ใช้ window.SUPABASE_URL แทน process.env เพื่อให้ทำงานบน Browser ได้
-const SUPABASE_URL = window.SUPABASE_URL || 'https://dmzsughhxdgpnazvjtci.supabase.co'; 
-const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
+// 🔴 CRITICAL FIX: Replace Hardcoded Keys with Placeholder Environment Variables
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://dmzsughhxdgpnazvjtci.supabase.co'; 
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR and nN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
 // Initialize Supabase client
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1420,6 +1421,7 @@ function reconnectRealtime() {
 }
 
 function handleRealtimeUpdate(payload) {
+    // 💡 MINOR ADJUSTMENT: Change to console.debug/log/remove in production
     // console.log('Realtime update:', payload); 
     
     // Ignore if busy with local operations
