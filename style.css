@@ -29,6 +29,7 @@
     --status-header-bg: #ff00ff;
     --status1-header-bg: #92d050;
     --etc-header-bg: #ffc000;
+    --actions-header-bg: #4f81bd; /* 🟢 ADDED: สีสำหรับ Header 'จัดการ' */
 
     --admin-cell-bg: #e2efda;
     --status-cell-bg: #fce4ec;
@@ -154,6 +155,22 @@ body {
     background: #0056b3;
 }
 
+/* 🟢 ADDED: สไตล์สำหรับปุ่มอัปเดตในตาราง */
+.btn-update {
+    padding: 4px 8px;
+    font-size: 10px;
+    background-color: var(--info-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-update:hover {
+    background-color: #0056b3;
+}
+
 .search-input, .filter-select {
     padding: 10px 15px;
     border: 2px solid var(--border-color-light);
@@ -255,7 +272,7 @@ body {
     border-collapse: collapse;
     font-size: 11px;
     font-family: var(--font-family-calibri);
-    min-width: 2200px;
+    min-width: 2300px; /* 🟢 ADJUSTED: เพิ่มความกว้างรองรับคอลัมน์ใหม่ */
 }
 
 .excel-table thead th {
@@ -290,6 +307,7 @@ body {
 .status-header { background: var(--status-header-bg) !important; }
 .status1-header { background: var(--status1-header-bg) !important; }
 .etc-header { background: var(--etc-header-bg) !important; color: var(--text-color-black) !important; }
+.actions-header { background: var(--actions-header-bg) !important; } /* 🟢 ADDED: สไตล์ Header 'จัดการ' */
 
 /* Cell Styles */
 .excel-table td {
@@ -302,12 +320,18 @@ body {
     font-size: 11px;
 }
 
+/* 🟢 ADDED: สไตล์สำหรับเซลล์ Actions */
+.actions-cell {
+    text-align: center;
+    padding: 2px !important;
+}
+
 /* Cell Backgrounds */
 .admin-cell { background: var(--admin-cell-bg); }
 .status-cell { background: var(--status-cell-bg); }
 .etc-cell { background: var(--etc-cell-bg); }
 
-.excel-table td:not(.row-number):hover {
+.excel-table td:not(.row-number):not(.actions-cell):hover {
     border: 2px solid #217346;
     cursor: cell;
 }
@@ -460,6 +484,28 @@ body {
     margin-top: 15px;
     font-size: 14px;
     color: var(--text-color-primary);
+}
+
+/* 🟢 ADDED: สไตล์สำหรับ Input Group ใน Modal ใหม่ */
+.modal-input-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.modal-input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #555;
+}
+
+.modal-input-group select,
+.modal-input-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius-small);
+    font-size: 14px;
 }
 
 @keyframes fadeIn {
