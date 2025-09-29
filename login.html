@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Beauty Clinic CRM</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -68,18 +67,19 @@
         <div class="input-group">
             <label for="password">รหัสผ่าน:</label>
             <input type="password" id="password" required>
-            <span class="toggle-password" onclick="togglePasswordVisibility()">👁️</span>
+            <span id="togglePasswordBtn" class="toggle-password">👁️</span>
         </div>
-        <button id="loginBtn" class="btn-login" onclick="handleLogin()">
+        <button id="loginBtn" class="btn-login">
             <span>เข้าสู่ระบบ</span>
             <div class="loader"></div>
         </button>
         <div id="message" class="message"></div>
         <div class="signup-link">
-            ยังไม่มีบัญชี? <a href="#" onclick="handleSignUp()">สมัครสมาชิก</a>
+            ยังไม่มีบัญชี? <a href="#" id="signUpLink">สมัครสมาชิก</a>
         </div>
     </div>
 
-    <script src="login-script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="js/login.js"></script>
 </body>
 </html>
