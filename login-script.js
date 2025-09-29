@@ -1,41 +1,55 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT (SENIOR DEV REVISION)
-// FIXES: API Keys (Placeholder), Magic Number
+// BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT (FINAL FIX: BUGS & BEST PRACTICE)
+// FIXES: CRITICAL BUGS (process.env, TDZ, DOM Access) and Magic Number
 // ================================================================================
 
 // --- 1. Supabase Configuration (FIXED SECURITY: API KEYS) ---
-// 🔴 CRITICAL FIX: Replace Hardcoded Keys with Placeholder Environment Variables
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://dmzsughhxdgpnazvjtci.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
+// 🔴 CRITICAL FIX: ใช้ window object เป็น Placeholder สำหรับ Environment Variables
+const SUPABASE_URL = window.SUPABASE_URL || 'https://dmzsughhxdgpnazvjtci.supabase.co';
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtenN1Z2hoeGRncG5henZqdGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1Nzk4NDIsImV4cCI6MjA3MzE1NTg0Mn0.eeWTW871ork6ZH43U_ergJ7rb1ePMT7ztPOdh5hgqLM';
 
 // Initialize Supabase client
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// --- 2. UI Element References ---
-const emailInput = document.getElementById('email');
-const passwordInput = document.getElementById('password');
-const loginBtn = document.getElementById('loginBtn');
-const messageDiv = document.getElementById('message');
+// --- 2. UI Element References (ADJUSTED: ประกาศเป็น null เพื่อแก้ปัญหา DOM Access/TDZ) ---
+let emailInput = null;
+let passwordInput = null;
+let loginBtn = null;
+let messageDiv = null;
 
-// --- 3. Rate Limiting for Security ---
+// --- 3. Rate Limiting for Security (ADJUSTED: ประกาศก่อนฟังก์ชันเพื่อแก้ปัญหา TDZ) ---
 let loginAttempts = 0;
 let lastAttemptTime = 0;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_TIME_MS = 5 * 60 * 1000; // 5 minutes
 
+// 💡 BEST PRACTICE FIX: Define constant for redirect delay
+const REDIRECT_DELAY_MS = 500; 
+
 // --- 4. UI Helper Functions ---
+// 💡 FIX: เพิ่มการตรวจสอบ null check
 function setLoading(isLoading) {
-    loginBtn.disabled = isLoading;
-    loginBtn.classList.toggle('loading', isLoading);
+    if (loginBtn) {
+        loginBtn.disabled = isLoading;
+        loginBtn.classList.toggle('loading', isLoading);
+    }
 }
 
+// 💡 FIX: เพิ่มการตรวจสอบ null check
 function showMessage(msg, isError = false) {
-    messageDiv.style.display = 'block';
-    messageDiv.textContent = msg;
-    messageDiv.className = isError ? 'message error' : 'message success';
+    if (messageDiv) {
+        messageDiv.style.display = 'block';
+        messageDiv.textContent = msg;
+        messageDiv.className = isError ? 'message error' : 'message success';
+    }
 }
 
+// 💡 FIX: เพิ่มการตรวจสอบ null check
 function togglePasswordVisibility() {
+    // แก้ไขปัญหา Cannot access 'passwordInput' before initialization
+    if (!passwordInput) {
+        return; 
+    }
     const icon = document.querySelector('.toggle-password');
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
@@ -79,6 +93,7 @@ function validateCredentials(email, password, isSigningUp = false) {
 }
 
 // --- 6. Rate Limit Logic ---
+// 💡 FIX: ปลอดภัยจาก TDZ แล้ว
 function checkRateLimit() {
     const now = Date.now();
     if (now - lastAttemptTime > LOCKOUT_TIME_MS) {
@@ -93,15 +108,18 @@ function checkRateLimit() {
     return true;
 }
 
-// 💡 BEST PRACTICE FIX: Define constant for redirect delay
-const REDIRECT_DELAY_MS = 500; 
-
 // --- 7. Core Authentication Functions ---
 async function handleLogin() {
+    // 💡 FIX: ตรวจสอบว่า DOM โหลดเสร็จก่อน
+    if (!emailInput || !passwordInput) {
+        showMessage('ระบบยังโหลดไม่สมบูรณ์ กรุณาลองใหม่', true);
+        return;
+    }
+    
     if (!checkRateLimit()) return;
     
     setLoading(true);
-    messageDiv.style.display = 'none';
+    if (messageDiv) messageDiv.style.display = 'none';
 
     const email = emailInput.value.trim();
     const password = passwordInput.value;
@@ -126,7 +144,7 @@ async function handleLogin() {
         
     } catch (error) {
         console.error('Login error:', error);
-        if (error.message.includes('Invalid login credentials')) {
+        if (error.message && error.message.includes('Invalid login credentials')) {
             showMessage('อีเมลหรือรหัสผ่านไม่ถูกต้อง', true);
         } else {
             showMessage(error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่', true);
@@ -137,8 +155,14 @@ async function handleLogin() {
 }
 
 async function handleSignUp() {
+    // 💡 FIX: ตรวจสอบว่า DOM โหลดเสร็จก่อน
+    if (!emailInput || !passwordInput) {
+        showMessage('ระบบยังโหลดไม่สมบูรณ์ กรุณาลองใหม่', true);
+        return;
+    }
+    
     setLoading(true);
-    messageDiv.style.display = 'none';
+    if (messageDiv) messageDiv.style.display = 'none';
 
     const email = emailInput.value.trim();
     const password = passwordInput.value;
@@ -163,7 +187,7 @@ async function handleSignUp() {
 
     } catch (error) {
         console.error('Sign up error:', error);
-        if (error.message.includes('already registered')) {
+        if (error.message && error.message.includes('already registered')) {
             showMessage('อีเมลนี้ถูกใช้งานแล้ว', true);
         } else {
             showMessage(error.message || 'เกิดข้อผิดพลาดในการลงทะเบียน', true);
@@ -182,15 +206,26 @@ async function checkExistingSession() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 💡 FIX: กำหนดค่าตัวแปร DOM References ภายใน DOMContentLoaded เพื่อแก้ปัญหา DOM Access Error
+    emailInput = document.getElementById('email');
+    passwordInput = document.getElementById('password');
+    loginBtn = document.getElementById('loginBtn');
+    messageDiv = document.getElementById('message');
+    
     checkExistingSession();
     
-    emailInput.focus();
+    if (emailInput) emailInput.focus();
     
-    passwordInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleLogin();
-    });
+    // 💡 FIX: เพิ่มการตรวจสอบ null check ก่อน addEventListener
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+    }
         
-    emailInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') passwordInput.focus();
-    });
+    if (emailInput) {
+        emailInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && passwordInput) passwordInput.focus();
+        });
+    }
 });
