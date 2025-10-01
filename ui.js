@@ -2,6 +2,9 @@
 // BEAUTY CLINIC CRM - UI LAYER (FINAL FIX)
 // ================================================================================
 
+// สร้าง object สำหรับเก็บฟังก์ชัน UI ทั้งหมด
+const ui = {};
+
 // ---- Helper Functions ----
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -14,13 +17,13 @@ function escapeHtml(str) {
 }
 
 // ---- Main UI Functions ----
-export function showLoading(isLoading) {
+ui.showLoading = function(isLoading) {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) overlay.classList.toggle('show', isLoading);
 }
 
 let statusTimeoutId = null;
-export function showStatus(message, isError = false) {
+ui.showStatus = function(message, isError = false) {
     const indicator = document.getElementById('statusIndicator');
     if (!indicator) return;
 
@@ -35,8 +38,8 @@ export function showStatus(message, isError = false) {
     }, 3000);
 }
 
-// 🔴 FIX: เพิ่มฟังก์ชันที่หายไปกลับเข้ามา
-export function updateUIAfterLogin(user) {
+// ฟังก์ชันอัพเดท UI หลัง login
+ui.updateUIAfterLogin = function(user) {
     const userBadge = document.querySelector('.user-badge');
     if (userBadge && user) {
         // แปลง role ให้สวยงาม (ตัวพิมพ์ใหญ่ตัวแรก)
@@ -52,7 +55,6 @@ export function updateUIAfterLogin(user) {
         userBadge.style.backgroundColor = roleColors[user.role] || '#6c757d';
     }
 }
-
 
 // ---- Table Rendering Functions ----
 const FIELD_MAPPING = {
@@ -117,7 +119,7 @@ function createRowElement(row, index) {
     return tr;
 }
 
-export function renderTable(customers) {
+ui.renderTable = function(customers) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
 
@@ -129,39 +131,46 @@ export function renderTable(customers) {
     tbody.appendChild(fragment);
 }
 
-// ... (โค้ดส่วน Modal เหมือนเดิม) ...
-export function showModal(modalId, context = {}) {
+// Modal Functions
+ui.showModal = function(modalId, context = {}) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
     
     if (modalId === 'statusUpdateModal' || modalId === 'historyModal') {
-        modal.querySelector(`#${modalId.replace('Modal','')}CustomerName`).textContent = escapeHtml(context.customerName);
+        const nameElement = modal.querySelector(`#${modalId.replace('Modal','')}CustomerName`);
+        if (nameElement) {
+            nameElement.textContent = context.customerName || 'N/A';
+        }
         if(modalId === 'statusUpdateModal') {
-            modal.querySelector('#modalCustomerId').value = context.customerId;
+            const customerIdElement = modal.querySelector('#modalCustomerId');
+            if (customerIdElement) {
+                customerIdElement.value = context.customerId || '';
+            }
         }
     }
     
     modal.style.display = 'flex';
 }
 
-export function hideModal(modalId) {
+ui.hideModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'none';
         const form = modal.querySelector('form');
         if (form) form.reset();
         if (modalId === 'historyModal') {
-             document.getElementById('historyTimelineContainer').innerHTML = '';
+            const container = document.getElementById('historyTimelineContainer');
+            if (container) container.innerHTML = '';
         }
     }
 }
 
-export function renderHistoryTimeline(historyData) {
+ui.renderHistoryTimeline = function(historyData) {
     const container = document.getElementById('historyTimelineContainer');
     if (!container) return;
     
     container.innerHTML = '';
-    if (historyData.length === 0) {
+    if (!historyData || historyData.length === 0) {
         container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>';
         return;
     }
@@ -175,7 +184,7 @@ export function renderHistoryTimeline(historyData) {
                 <div class="timeline-icon">✓</div>
                 <div class="timeline-content">
                     <div class="timeline-status">${escapeHtml(item.status)}</div>
-                    <div class="timeline-notes">${escapeHtml(item.notes)}</div>
+                    <div class="timeline-notes">${escapeHtml(item.notes || '')}</div>
                     <div class="timeline-footer">โดย: ${escapeHtml(userName)} | ${eventDate}</div>
                 </div>
             </div>
@@ -183,3 +192,6 @@ export function renderHistoryTimeline(historyData) {
         container.innerHTML += itemHtml;
     });
 }
+
+// ทำให้ UI พร้อมใช้งานแบบ global
+window.ui = ui;
