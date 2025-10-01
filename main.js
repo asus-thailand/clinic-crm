@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + MOBILE EDIT FORM)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + AUTO-LOGGING & PERMISSIONS)
 // ================================================================================
 
 const state = {
@@ -9,7 +9,7 @@ const state = {
     activeFilters: { search: '', status: '', sales: '' },
     editingCell: null,
     contextMenuRowId: null,
-    editingCustomerId: null // ID ของลูกค้าที่กำลังแก้ไข
+    editingCustomerId: null
 };
 
 const DROPDOWN_OPTIONS = {
@@ -70,8 +70,6 @@ function applyFiltersAndRender() {
     ui.renderTable(filteredCustomers, state.currentUser, SALES_EDITABLE_FIELDS);
 }
 
-// --- LOGIC สำหรับฟอร์มแก้ไขข้อมูลบนมือถือ ---
-
 function showEditModal(customerId) {
     const customer = state.customers.find(c => c.id == customerId);
     if (!customer) {
@@ -81,11 +79,10 @@ function showEditModal(customerId) {
     state.editingCustomerId = customerId;
 
     const form = document.getElementById('editCustomerForm');
-    form.innerHTML = ''; // Clear previous form
+    form.innerHTML = ''; 
 
-    // สร้างฟอร์มแบบไดนามิกจาก FIELD_MAPPING ใน ui.js
     Object.entries(ui.FIELD_MAPPING).forEach(([header, field]) => {
-        if (!field) return; // ข้ามคอลัมน์ที่ไม่มี field (เช่น จัดการ, #)
+        if (!field) return; 
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? state.salesList : DROPDOWN_OPTIONS[field];
@@ -123,12 +120,23 @@ async function handleSaveEditForm(event) {
     const form = event.target;
     const formData = new FormData(form);
     const updatedData = {};
+    const originalCustomer = state.customers.find(c => c.id == state.editingCustomerId);
+    
     for (const [key, value] of formData.entries()) {
         updatedData[key] = value;
     }
 
     try {
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
+        
+        // บันทึกประวัติการเปลี่ยนแปลงทั้งหมด
+        for (const key in updatedData) {
+            if (originalCustomer[key] !== updatedData[key]) {
+                const fieldLabel = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h] === key) || key;
+                const logNote = `แก้ไข '${fieldLabel}' จาก '${originalCustomer[key] || ''}' เป็น '${updatedData[key]}'`;
+                await api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id);
+            }
+        }
         
         const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
         if (index !== -1) {
@@ -146,7 +154,6 @@ async function handleSaveEditForm(event) {
     }
 }
 
-// --- CORE ACTION HANDLERS ---
 
 async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) {
@@ -161,7 +168,6 @@ async function handleAddCustomer() {
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A');
         state.customers.unshift(newCustomer);
         applyFiltersAndRender();
-        // เปิดฟอร์มแก้ไขสำหรับลูกค้าใหม่ทันที
         showEditModal(newCustomer.id);
         ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
     } catch (error) {
@@ -171,17 +177,53 @@ async function handleAddCustomer() {
     }
 }
 
-// --- Event Handlers for Table actions ---
+async function handleCellEditSave(cell, originalValue) {
+    if (!state.editingCell) return;
+    
+    const editor = cell.querySelector('input, select');
+    const newValue = editor.value.trim();
+    state.editingCell = null;
+
+    if (newValue === originalValue) {
+        ui.revertCellToText(cell, originalValue);
+        return;
+    }
+
+    const rowId = cell.parentElement.dataset.id;
+    const field = cell.dataset.field;
+
+    ui.showLoading(true);
+    try {
+        await api.updateCustomerCell(rowId, field, newValue);
+        
+        const fieldLabel = Object.keys(ui.FIELD_MAPPING).find(key => ui.FIELD_MAPPING[key] === field) || field;
+        const logNote = `แก้ไขข้อมูล '${fieldLabel}' จาก '${originalValue}' เป็น '${newValue}'`;
+        await api.addStatusUpdate(rowId, 'แก้ไขข้อมูล', logNote, state.currentUser.id);
+
+        const customerIndex = state.customers.findIndex(c => c.id == rowId);
+        if (customerIndex !== -1) {
+            state.customers[customerIndex][field] = newValue;
+        }
+        ui.revertCellToText(cell, newValue);
+        ui.showStatus('แก้ไขข้อมูลสำเร็จ', false);
+    } catch (error) {
+        ui.showStatus(error.message, true);
+        ui.revertCellToText(cell, originalValue);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
 function handleTableClick(event) {
     const target = event.target;
     const action = target.dataset.action;
     if (!action) return;
 
-    // หา id จาก element ที่ใกล้ที่สุดที่มี data-id
     const id = target.closest('[data-id]')?.dataset.id;
     if (!id) return;
 
-    const name = target.dataset.name;
+    const customer = state.customers.find(c => c.id == id);
+    const name = customer ? (customer.name || customer.lead_code || customer.phone || 'N/A') : 'N/A';
     
     if (action === 'edit-customer') {
         showEditModal(id);
@@ -196,8 +238,15 @@ function handleTableClick(event) {
 
 async function handleViewHistory(customerId, customerName) {
     ui.showModal('historyModal', { customerName });
-    const historyData = await api.fetchStatusHistory(customerId);
-    ui.renderHistoryTimeline(historyData);
+    ui.showLoading(true);
+    try {
+        const historyData = await api.fetchStatusHistory(customerId);
+        ui.renderHistoryTimeline(historyData);
+    } catch (error) {
+        ui.showStatus(error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
 }
 
 async function handleSubmitStatusUpdate() {
@@ -210,8 +259,11 @@ async function handleSubmitStatusUpdate() {
     try {
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
         const updatedCustomer = await api.updateCustomerCell(customerId, 'last_status', newStatus);
+        
         const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
-        if (index !== -1) state.customers[index] = { ...state.customers[index], ...updatedCustomer };
+        if (index !== -1) {
+            state.customers[index].last_status = newStatus;
+        }
         applyFiltersAndRender();
         ui.hideModal('statusUpdateModal');
         ui.showStatus('อัปเดตสถานะสำเร็จ', false);
@@ -222,6 +274,49 @@ async function handleSubmitStatusUpdate() {
     }
 }
 
+function handleContextMenu(event) {
+    const row = event.target.closest('tr');
+    if (!row || !row.dataset.id) return;
+
+    if (state.currentUser.role === 'sales') {
+        ui.showStatus('คุณไม่มีสิทธิ์ใช้งานเมนูนี้', true);
+        event.preventDefault();
+        return;
+    }
+    
+    event.preventDefault();
+    state.contextMenuRowId = row.dataset.id;
+    ui.showContextMenu(event);
+}
+
+async function handleContextMenuItemClick(event) {
+    const action = event.target.dataset.action;
+    if (!action || !state.contextMenuRowId) return;
+    ui.hideContextMenu();
+
+    if (action === 'delete') {
+        if (state.currentUser.role === 'sales') {
+            ui.showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true);
+            return;
+        }
+        const customerToDelete = state.customers.find(c => c.id == state.contextMenuRowId);
+        if (confirm(`คุณต้องการลบลูกค้า "${customerToDelete?.name || 'รายนี้'}" ใช่หรือไม่?`)) {
+            ui.showLoading(true);
+            try {
+                await api.deleteCustomer(state.contextMenuRowId);
+                state.customers = state.customers.filter(c => c.id != state.contextMenuRowId);
+                applyFiltersAndRender();
+                ui.showStatus('ลบข้อมูลสำเร็จ', false);
+            } catch (error) {
+                ui.showStatus(error.message, true);
+            } finally {
+                ui.showLoading(false);
+            }
+        }
+    }
+    state.contextMenuRowId = null;
+}
+
 function setupEventListeners() {
     const tableBody = document.getElementById('tableBody');
     const contextMenu = document.getElementById('contextMenu');
@@ -230,15 +325,20 @@ function setupEventListeners() {
     document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
     document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
     
-    // Listeners for Mobile Edit Form
     document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
     document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
 
-    // Main table event listener
     tableBody?.addEventListener('click', handleTableClick);
-
-    // Other listeners
+    tableBody?.addEventListener('dblclick', handleCellDoubleClick);
+    tableBody?.addEventListener('contextmenu', handleContextMenu);
+    contextMenu?.addEventListener('click', handleContextMenuItemClick);
+    window.addEventListener('click', (event) => {
+        if (contextMenu && !contextMenu.contains(event.target)) {
+            ui.hideContextMenu();
+        }
+    });
+    
     document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', () => ui.hideModal(b.dataset.modalClose)));
     document.getElementById('searchInput')?.addEventListener('input', e => {
         state.activeFilters.search = e.target.value;
