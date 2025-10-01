@@ -2,8 +2,7 @@
 // BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT
 // ================================================================================
 
-// นำเข้า Supabase client ที่สร้างไว้ใน config.js
-import { supabase } from './config.js';
+// ใช้ Supabase client จาก global scope (ไม่ใช้ import แล้ว)
 
 // --- 1. UI Element References ---
 const emailInput = document.getElementById('email');
@@ -80,6 +79,13 @@ function checkRateLimit() {
 
 // --- 6. Core Authentication Functions ---
 async function handleLogin() {
+    // ตรวจสอบว่า Supabase พร้อมใช้งานหรือยัง
+    if (!window.supabaseClient) {
+        showMessage('ระบบยังไม่พร้อม กรุณารอสักครู่', true);
+        console.error('Supabase client not initialized');
+        return;
+    }
+
     if (!checkRateLimit()) return;
 
     setLoading(true);
@@ -96,7 +102,7 @@ async function handleLogin() {
     try {
         loginAttempts++;
         lastAttemptTime = Date.now();
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
 
         if (error) throw error;
 
@@ -118,6 +124,14 @@ async function handleLogin() {
 
 async function handleSignUp(event) {
     event.preventDefault();
+    
+    // ตรวจสอบว่า Supabase พร้อมใช้งานหรือยัง
+    if (!window.supabaseClient) {
+        showMessage('ระบบยังไม่พร้อม กรุณารอสักครู่', true);
+        console.error('Supabase client not initialized');
+        return;
+    }
+
     setLoading(true);
     if(messageDiv) messageDiv.style.display = 'none';
 
@@ -130,7 +144,7 @@ async function handleSignUp(event) {
     }
 
     try {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
         if (error) throw error;
 
         if (data?.user && data.user.identities && data.user.identities.length === 0) {
@@ -156,7 +170,14 @@ async function handleSignUp(event) {
 
 // --- 7. Session Management & Initialization ---
 async function checkExistingSession() {
-    const { data: { session } } = await supabase.auth.getSession();
+    // รอให้ Supabase พร้อมก่อน
+    if (!window.supabaseClient) {
+        console.log('Waiting for Supabase to initialize...');
+        setTimeout(checkExistingSession, 100);
+        return;
+    }
+
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
     if (session) {
         window.location.href = 'index.html';
     }
@@ -164,7 +185,10 @@ async function checkExistingSession() {
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    checkExistingSession();
+    // รอให้ Supabase พร้อมก่อนเริ่มงาน
+    setTimeout(() => {
+        checkExistingSession();
+    }, 100);
 
     if (loginBtn) {
         loginBtn.addEventListener('click', handleLogin);
