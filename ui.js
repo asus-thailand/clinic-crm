@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - UI LAYER (FINAL + EDIT/DELETE/DROPDOWN FEATURES)
+// BEAUTY CLINIC CRM - UI LAYER (CORRECTED VERSION)
 // ================================================================================
 
 const ui = {};
@@ -33,7 +33,7 @@ ui.updateUIAfterLogin = function(user) {
     }
 }
 
-// 🟡 MODIFIED: สลับตำแหน่ง Last Status และ อัพเดทการเข้าถึง
+// 🟡 CORRECTED: แก้ไข Mapping ให้ครบถ้วนและถูกต้อง
 const FIELD_MAPPING = {
     '#': null, 'วัน/เดือน/ปี': 'date', 'ลำดับที่': 'lead_code', 'ชื่อลูกค้า': 'name', 'เบอร์ติดต่อ': 'phone',
     'ช่องทางสื่อ': 'channel', 'ประเภทหัตถการ': 'procedure', 'มัดจำ': 'deposit', 'ขอเบอร์ Y/N': 'confirm_y',
@@ -42,7 +42,8 @@ const FIELD_MAPPING = {
     'Last Status': 'last_status',
     'เวลาโทร': 'call_time', 'Staus Sale': 'status_1', 'เหตุผล': 'reason',
     'ETC': 'etc', 'HN ลูกค้า': 'hn_customer', 'วันที่นัดผ่าเก่าแล้ว': 'old_appointment', 'DR.': 'dr',
-    'ยอดที่ปิดได้': 'closed_amount', 'วันที่นัดทำหัตถการ': 'appointment_date'
+    'ยอดที่ปิดได้': 'closed_amount', 'วันที่นัดทำหัตถการ': 'appointment_date',
+    'จัดการ': null // <-- คอลัมน์นี้ที่ผมทำตกไปในครั้งก่อนครับ
 };
 const HEADERS = Object.keys(FIELD_MAPPING);
 
@@ -70,12 +71,16 @@ function createRowElement(row, index) {
     rowNumberCell.className = 'row-number';
     rowNumberCell.textContent = index + 1;
     tr.appendChild(rowNumberCell);
+
     HEADERS.slice(1).forEach(header => {
         const fieldName = FIELD_MAPPING[header];
         if (fieldName) {
             tr.appendChild(createCell(row, fieldName));
         } else {
-             tr.appendChild(createActionsCell(row));
+             // This condition now correctly targets the 'จัดการ' column
+             if(header === 'จัดการ') {
+                tr.appendChild(createActionsCell(row));
+             }
         }
     });
     return tr;
