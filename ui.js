@@ -1,8 +1,11 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - UI LAYER (CORRECTED VERSION)
+// BEAUTY CLINIC CRM - UI LAYER (FINAL + ROLE PERMISSIONS)
 // ================================================================================
 
 const ui = {};
+
+// 🟢 ADDED: นำรายการฟิลด์ที่ Sales แก้ไขได้มาใช้ใน UI
+const SALES_EDITABLE_FIELDS = ['update_access', 'last_status', 'call_time', 'status_1', 'reason', 'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'];
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -33,72 +36,71 @@ ui.updateUIAfterLogin = function(user) {
     }
 }
 
-// 🟡 CORRECTED: แก้ไข Mapping ให้ครบถ้วนและถูกต้อง
 const FIELD_MAPPING = {
     '#': null, 'วัน/เดือน/ปี': 'date', 'ลำดับที่': 'lead_code', 'ชื่อลูกค้า': 'name', 'เบอร์ติดต่อ': 'phone',
     'ช่องทางสื่อ': 'channel', 'ประเภทหัตถการ': 'procedure', 'มัดจำ': 'deposit', 'ขอเบอร์ Y/N': 'confirm_y',
     'มัดจำออนไลน์ Y/N': 'transfer_100', 'CS ผู้ส่ง Lead': 'cs_confirm', 'เซลล์': 'sales',
-    'อัพเดทการเข้าถึง': 'update_access',
-    'Last Status': 'last_status',
-    'เวลาโทร': 'call_time', 'Staus Sale': 'status_1', 'เหตุผล': 'reason',
-    'ETC': 'etc', 'HN ลูกค้า': 'hn_customer', 'วันที่นัดผ่าเก่าแล้ว': 'old_appointment', 'DR.': 'dr',
-    'ยอดที่ปิดได้': 'closed_amount', 'วันที่นัดทำหัตถการ': 'appointment_date',
-    'จัดการ': null // <-- คอลัมน์นี้ที่ผมทำตกไปในครั้งก่อนครับ
+    'อัพเดทการเข้าถึง': 'update_access', 'Last Status': 'last_status', 'เวลาโทร': 'call_time', 
+    'Staus Sale': 'status_1', 'เหตุผล': 'reason', 'ETC': 'etc', 'HN ลูกค้า': 'hn_customer', 
+    'วันที่นัดผ่าเก่าแล้ว': 'old_appointment', 'DR.': 'dr', 'ยอดที่ปิดได้': 'closed_amount', 
+    'วันที่นัดทำหัตถการ': 'appointment_date', 'จัดการ': null
 };
 const HEADERS = Object.keys(FIELD_MAPPING);
 
-function createCell(row, fieldName) {
+// 🟡 MODIFIED: เพิ่มการตรวจสอบสิทธิ์เพื่อใส่ Style
+function createCell(row, fieldName, currentUser) {
     const td = document.createElement('td');
     td.dataset.field = fieldName;
     td.textContent = row[fieldName] || '';
+    
+    // 🟢 ADDED: ถ้าเป็น sales และฟิลด์นี้แก้ไขไม่ได้ ให้เพิ่ม class non-editable
+    if (currentUser && currentUser.role === 'sales' && !SALES_EDITABLE_FIELDS.includes(fieldName)) {
+        td.classList.add('non-editable');
+    }
+    
     return td;
 }
 
 function createActionsCell(row) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
-    td.innerHTML = `
-        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">อัปเดต</button>
-        <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">ประวัติ</button>
-    `;
+    td.innerHTML = `<button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">อัปเดต</button> <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">ประวัติ</button>`;
     return td;
 }
 
-function createRowElement(row, index) {
+// 🟡 MODIFIED: รับ currentUser มาเพื่อส่งต่อ
+function createRowElement(row, index, currentUser) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
     rowNumberCell.textContent = index + 1;
     tr.appendChild(rowNumberCell);
-
     HEADERS.slice(1).forEach(header => {
         const fieldName = FIELD_MAPPING[header];
         if (fieldName) {
-            tr.appendChild(createCell(row, fieldName));
-        } else {
-             // This condition now correctly targets the 'จัดการ' column
-             if(header === 'จัดการ') {
-                tr.appendChild(createActionsCell(row));
-             }
+            tr.appendChild(createCell(row, fieldName, currentUser));
+        } else if (header === 'จัดการ') {
+            tr.appendChild(createActionsCell(row));
         }
     });
     return tr;
 }
 
-ui.renderTable = function(customers) {
+// 🟡 MODIFIED: รับ currentUser มาเพื่อส่งต่อ
+ui.renderTable = function(customers, currentUser) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     const fragment = document.createDocumentFragment();
-    customers.forEach((row, index) => fragment.appendChild(createRowElement(row, index)));
+    customers.forEach((row, index) => fragment.appendChild(createRowElement(row, index, currentUser)));
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
 }
 
-ui.prependNewRow = function(customer) {
+ui.prependNewRow = function(customer, currentUser) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
-    const newRowElement = createRowElement(customer, 0);
+    const newRowElement = createRowElement(customer, 0, currentUser);
     tbody.prepend(newRowElement);
     const rows = tbody.querySelectorAll('tr');
     rows.forEach((row, index) => {
@@ -109,6 +111,7 @@ ui.prependNewRow = function(customer) {
     setTimeout(() => { newRowElement.style.backgroundColor = ''; }, 2000);
 }
 
+// ... (ส่วนที่เหลือของ ui.js เหมือนเดิม)
 ui.showModal = function(modalId, context = {}) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
@@ -132,9 +135,7 @@ ui.hideModal = function(modalId) {
             modal.querySelector('#modalNotesText').value = '';
             modal.querySelector('#modalCustomerId').value = '';
         }
-        if (modalId === 'historyModal') {
-            document.getElementById('historyTimelineContainer').innerHTML = '';
-        }
+        if (modalId === 'historyModal') document.getElementById('historyTimelineContainer').innerHTML = '';
     }
 }
 
@@ -153,8 +154,7 @@ ui.renderHistoryTimeline = function(historyData) {
                 <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
                 <div class="timeline-footer">โดย: ${escapeHtml(item.users ? item.users.username : 'Unknown')} | ${new Date(item.created_at).toLocaleString('th-TH')}</div>
             </div>
-        </div>
-    `).join('');
+        </div>`).join('');
 }
 
 ui.showContextMenu = function(event) {
@@ -169,26 +169,18 @@ ui.hideContextMenu = function() {
     if (menu) menu.style.display = 'none';
 };
 
-
 ui.createCellEditor = function(cell, value, options) {
     cell.classList.add('editing');
-
     if (options && Array.isArray(options)) {
-        const optionsHtml = options.map(opt => 
-            `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`
-        ).join('');
+        const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('');
         cell.innerHTML = `<select class="cell-select">${optionsHtml}</select>`;
     } else {
         cell.innerHTML = `<input type="text" class="cell-input" value="${escapeHtml(value)}" />`;
     }
-
     const editor = cell.querySelector('input, select');
     editor.focus();
-    if (editor.tagName === 'INPUT') {
-        editor.select();
-    }
+    if (editor.tagName === 'INPUT') editor.select();
 };
-
 
 ui.revertCellToText = function(cell, value) {
     if (cell) {
