@@ -138,7 +138,7 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
 }
 
 api.updateCustomerCell = async function(customerId, field, value) {
-    console.log(`API: Updating customer ${customerId}, field ${field}...`);
+    console.log(`API: Updating customer ${customerId}, field ${field} with value "${value}"...`);
     try {
         const updateData = {};
         updateData[field] = value;
@@ -158,7 +158,6 @@ api.updateCustomerCell = async function(customerId, field, value) {
     }
 }
 
-// 🟢 ฟังก์ชันสำหรับเพิ่มลูกค้าใหม่ที่ขาดหายไป
 api.addCustomer = async function(salesName) {
     console.log("API: Attempting to add a new customer...");
     try {
@@ -177,6 +176,24 @@ api.addCustomer = async function(salesName) {
     } catch (error) {
         console.error("API ERROR in addCustomer:", error);
         throw new Error('Could not add a new customer.');
+    }
+}
+
+// 🟢 ADDED: ฟังก์ชันสำหรับลบข้อมูลลูกค้า
+api.deleteCustomer = async function(customerId) {
+    console.log(`API: Attempting to delete customer ${customerId}...`);
+    try {
+        const { error } = await window.supabaseClient
+            .from('customers')
+            .delete()
+            .eq('id', customerId);
+
+        if (error) throw error;
+        console.log("API: Customer deleted successfully.");
+        return true;
+    } catch (error) {
+        console.error("API ERROR in deleteCustomer:", error);
+        throw new Error('Could not delete customer.');
     }
 }
 
