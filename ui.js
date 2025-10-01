@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - UI LAYER (FINAL FIX + EDIT/DELETE FEATURES)
+// BEAUTY CLINIC CRM - UI LAYER (FINAL + EDIT/DELETE/DROPDOWN FEATURES)
 // ================================================================================
 
 const ui = {};
@@ -149,7 +149,6 @@ ui.renderHistoryTimeline = function(historyData) {
     `).join('');
 }
 
-// 🟢 ADDED: ฟังก์ชันสำหรับจัดการ UI การแก้ไขและลบทั้งหมด
 ui.showContextMenu = function(event) {
     const menu = document.getElementById('contextMenu');
     menu.style.display = 'block';
@@ -158,20 +157,39 @@ ui.showContextMenu = function(event) {
 };
 
 ui.hideContextMenu = function() {
-    document.getElementById('contextMenu').style.display = 'none';
+    const menu = document.getElementById('contextMenu');
+    if (menu) menu.style.display = 'none';
 };
 
-ui.createCellEditor = function(cell, value) {
+
+// 🟡 MODIFIED: อัปเกรดฟังก์ชันให้สร้าง <select> ได้เมื่อมี options ส่งมา
+ui.createCellEditor = function(cell, value, options) {
     cell.classList.add('editing');
-    cell.innerHTML = `<input type="text" class="cell-input" value="${escapeHtml(value)}" />`;
-    const input = cell.querySelector('input');
-    input.focus();
-    input.select();
+
+    if (options && Array.isArray(options)) {
+        // ถ้ามี options ให้สร้างเป็น Dropdown (<select>)
+        const optionsHtml = options.map(opt => 
+            `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+        ).join('');
+        cell.innerHTML = `<select class="cell-select">${optionsHtml}</select>`;
+    } else {
+        // ถ้าไม่มี ให้สร้างเป็นช่องกรอกข้อความปกติ (<input>)
+        cell.innerHTML = `<input type="text" class="cell-input" value="${escapeHtml(value)}" />`;
+    }
+
+    const editor = cell.querySelector('input, select');
+    editor.focus();
+    if (editor.tagName === 'INPUT') {
+        editor.select();
+    }
 };
+
 
 ui.revertCellToText = function(cell, value) {
-    cell.classList.remove('editing');
-    cell.textContent = value;
+    if (cell) {
+        cell.classList.remove('editing');
+        cell.textContent = value;
+    }
 };
 
 ui.removeRow = function(rowId) {
