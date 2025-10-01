@@ -4,9 +4,6 @@
 
 const ui = {};
 
-// 🔴 REMOVED: ลบการประกาศซ้ำซ้อนออกไปจากไฟล์นี้
-// const SALES_EDITABLE_FIELDS = [...]; 
-
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
@@ -45,9 +42,9 @@ const FIELD_MAPPING = {
     'วันที่นัดผ่าเก่าแล้ว': 'old_appointment', 'DR.': 'dr', 'ยอดที่ปิดได้': 'closed_amount', 
     'วันที่นัดทำหัตถการ': 'appointment_date', 'จัดการ': null
 };
+ui.FIELD_MAPPING = FIELD_MAPPING; // Expose for main.js
 const HEADERS = Object.keys(FIELD_MAPPING);
 
-// 🟡 MODIFIED: เราจะใช้ตัวแปรจาก main.js แทน ซึ่งจะถูกส่งเข้ามาผ่าน currentUser
 function createCell(row, fieldName, currentUser, salesEditableFields) {
     const td = document.createElement('td');
     td.dataset.field = fieldName;
@@ -63,7 +60,11 @@ function createCell(row, fieldName, currentUser, salesEditableFields) {
 function createActionsCell(row) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
-    td.innerHTML = `<button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">อัปเดต</button> <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">ประวัติ</button>`;
+    td.innerHTML = `
+        <button class="btn-edit" data-action="edit-customer" data-id="${row.id}">แก้ไข</button>
+        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">อัปเดต</button>
+        <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">ประวัติ</button>
+    `;
     return td;
 }
 
@@ -85,7 +86,6 @@ function createRowElement(row, index, currentUser, salesEditableFields) {
     return tr;
 }
 
-// 🟡 MODIFIED: แก้ไขฟังก์ชัน renderTable ให้รับ salesEditableFields มาด้วย
 ui.renderTable = function(customers, currentUser, salesEditableFields) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
@@ -109,7 +109,6 @@ ui.prependNewRow = function(customer, currentUser, salesEditableFields) {
     setTimeout(() => { newRowElement.style.backgroundColor = ''; }, 2000);
 }
 
-// ... (ส่วนที่เหลือของ ui.js เหมือนเดิม)
 ui.showModal = function(modalId, context = {}) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
@@ -171,7 +170,7 @@ ui.createCellEditor = function(cell, value, options) {
     cell.classList.add('editing');
     if (options && Array.isArray(options)) {
         const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('');
-        cell.innerHTML = `<select class="cell-select">${optionsHtml}</select>`;
+        cell.innerHTML = `<select class="cell-select"><option value="">-- เลือก --</option>${optionsHtml}</select>`;
     } else {
         cell.innerHTML = `<input type="text" class="cell-input" value="${escapeHtml(value)}" />`;
     }
