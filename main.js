@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + EDIT/DELETE FEATURES)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + EDIT/DELETE/DROPDOWN FEATURES)
 // ================================================================================
 
 const state = {
@@ -7,10 +7,24 @@ const state = {
     customers: [],
     salesList: [],
     activeFilters: { search: '', status: '', sales: '' },
-    // 🟢 ADDED: State สำหรับจัดการการแก้ไขและเมนูคลิกขวา
     editingCell: null,
     contextMenuRowId: null
 };
+
+// 🟢 ADDED: กำหนดตัวเลือกสำหรับ Dropdown ที่นี่
+const DROPDOWN_OPTIONS = {
+    channel: [
+        "Facebook", "Google", "Line", "TikTok", "Instagram", "T.O.", "Walk-in", "Other"
+    ],
+    procedure: [
+        "ตาสองชั้น", "เสริมจมูก", "เสริมคาง", "ปากกระจับ", "Botox", "Filler", "ร้อยไหม", "อื่นๆ"
+    ],
+    confirm_y: ["Y", "N"],
+    transfer_100: ["Y", "N"],
+    status_1: ["ตามต่อ", "ปิดการขาย", "ไม่สนใจ", "รอตัดสินใจ", "ติดต่อไม่ได้"]
+    // เพิ่มฟิลด์และตัวเลือกอื่นๆ ได้ที่นี่
+};
+
 
 async function initializeApp() {
     console.log('Starting app initialization...');
@@ -82,7 +96,7 @@ async function handleAddCustomer() {
     }
 }
 
-// 🟢 ADDED: ฟังก์ชันจัดการการแก้ไขข้อมูลในเซลล์ (ดับเบิลคลิก)
+// 🟡 MODIFIED: อัปเกรดฟังก์ชันให้ส่งข้อมูล Dropdown ไปด้วย
 function handleCellDoubleClick(event) {
     const cell = event.target.closest('td');
     if (!cell || cell.classList.contains('actions-cell') || cell.classList.contains('row-number') || state.editingCell) {
@@ -90,21 +104,29 @@ function handleCellDoubleClick(event) {
     }
     state.editingCell = cell;
     const originalValue = cell.textContent;
-    ui.createCellEditor(cell, originalValue);
+    const field = cell.dataset.field;
+    const options = DROPDOWN_OPTIONS[field]; // ดึงตัวเลือกจาก config
 
-    const input = cell.querySelector('input');
-    input.addEventListener('blur', () => handleCellEditSave(cell, originalValue));
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') input.blur();
-        if (e.key === 'Escape') ui.revertCellToText(cell, originalValue);
+    ui.createCellEditor(cell, originalValue, options); // ส่ง options ไปให้ UI function
+
+    const editor = cell.querySelector('input, select'); // Tìm cả input และ select
+    editor.addEventListener('blur', () => handleCellEditSave(cell, originalValue));
+    editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') editor.blur();
+        if (e.key === 'Escape') {
+             state.editingCell = null; // ต้องเคลียร์ state ก่อน revert
+             ui.revertCellToText(cell, originalValue);
+        }
     });
 }
 
+
 async function handleCellEditSave(cell, originalValue) {
     if (!state.editingCell) return;
-    state.editingCell = null;
-    const input = cell.querySelector('input');
-    const newValue = input.value.trim();
+    
+    const editor = cell.querySelector('input, select');
+    const newValue = editor.value.trim();
+    state.editingCell = null; // เคลียร์ state ทันที
 
     if (newValue === originalValue) {
         ui.revertCellToText(cell, originalValue);
@@ -125,13 +147,12 @@ async function handleCellEditSave(cell, originalValue) {
         ui.showStatus('แก้ไขข้อมูลสำเร็จ', false);
     } catch (error) {
         ui.showStatus(error.message, true);
-        ui.revertCellToText(cell, originalValue); // คืนค่าเดิมถ้า error
+        ui.revertCellToText(cell, originalValue);
     } finally {
         ui.showLoading(false);
     }
 }
 
-// 🟢 ADDED: ฟังก์ชันจัดการเมนูคลิกขวา
 function handleContextMenu(event) {
     const row = event.target.closest('tr');
     if (!row || !row.dataset.id) return;
@@ -210,18 +231,20 @@ function setupEventListeners() {
     const tableBody = document.getElementById('tableBody');
     const contextMenu = document.getElementById('contextMenu');
     
-    // Event หลักๆ
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
     document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
     document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
     
-    // 🟢 ADDED: Event Listeners สำหรับการแก้ไขและลบ
     tableBody?.addEventListener('dblclick', handleCellDoubleClick);
     tableBody?.addEventListener('contextmenu', handleContextMenu);
     contextMenu?.addEventListener('click', handleContextMenuItemClick);
-    window.addEventListener('click', ui.hideContextMenu); // ซ่อนเมนูเมื่อคลิกที่อื่น
+    window.addEventListener('click', (event) => {
+        // ซ่อน context menu ถ้าคลิกนอกพื้นที่ของเมนู
+        if (!contextMenu.contains(event.target)) {
+            ui.hideContextMenu();
+        }
+    });
 
-    // Event ทั่วไป
     tableBody?.addEventListener('click', handleTableClick);
     document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', () => ui.hideModal(b.dataset.modalClose)));
     document.getElementById('searchInput')?.addEventListener('input', e => {
