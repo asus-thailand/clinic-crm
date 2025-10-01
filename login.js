@@ -2,8 +2,6 @@
 // BEAUTY CLINIC CRM - REFACTORED LOGIN SCRIPT
 // ================================================================================
 
-// ใช้ Supabase client จาก global scope (ไม่ใช้ import แล้ว)
-
 // --- 1. UI Element References ---
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
@@ -79,7 +77,6 @@ function checkRateLimit() {
 
 // --- 6. Core Authentication Functions ---
 async function handleLogin() {
-    // ตรวจสอบว่า Supabase พร้อมใช้งานหรือยัง
     if (!window.supabaseClient) {
         showMessage('ระบบยังไม่พร้อม กรุณารอสักครู่', true);
         console.error('Supabase client not initialized');
@@ -125,7 +122,6 @@ async function handleLogin() {
 async function handleSignUp(event) {
     event.preventDefault();
     
-    // ตรวจสอบว่า Supabase พร้อมใช้งานหรือยัง
     if (!window.supabaseClient) {
         showMessage('ระบบยังไม่พร้อม กรุณารอสักครู่', true);
         console.error('Supabase client not initialized');
@@ -170,7 +166,6 @@ async function handleSignUp(event) {
 
 // --- 7. Session Management & Initialization ---
 async function checkExistingSession() {
-    // รอให้ Supabase พร้อมก่อน
     if (!window.supabaseClient) {
         console.log('Waiting for Supabase to initialize...');
         setTimeout(checkExistingSession, 100);
@@ -185,7 +180,6 @@ async function checkExistingSession() {
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    // รอให้ Supabase พร้อมก่อนเริ่มงาน
     setTimeout(() => {
         checkExistingSession();
     }, 100);
