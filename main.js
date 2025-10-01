@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + ROLE PERMISSIONS)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + ROLE PERMISSIONS - CORRECTED)
 // ================================================================================
 
 const state = {
@@ -21,19 +21,9 @@ const DROPDOWN_OPTIONS = {
     last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
 };
 
-// 🟢 ADDED: กำหนดฟิลด์ที่ Sales สามารถแก้ไขได้
 const SALES_EDITABLE_FIELDS = [
-    'update_access',
-    'last_status',
-    'call_time',
-    'status_1',
-    'reason',
-    'etc',
-    'hn_customer',
-    'old_appointment',
-    'dr',
-    'closed_amount',
-    'appointment_date'
+    'update_access', 'last_status', 'call_time', 'status_1', 'reason', 
+    'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
 
@@ -71,6 +61,7 @@ async function initializeApp() {
     }
 }
 
+// 🟡 MODIFIED: แก้ไขฟังก์ชันให้ส่ง SALES_EDITABLE_FIELDS ไปด้วย
 function applyFiltersAndRender() {
     const { search, status, sales } = state.activeFilters;
     const lowerCaseSearch = search.toLowerCase();
@@ -80,8 +71,7 @@ function applyFiltersAndRender() {
         const matchesSales = !sales || customer.sales === sales;
         return matchesSearch && matchesStatus && matchesSales;
     });
-    // 🟡 MODIFIED: ส่งข้อมูล user ปัจจุบันเพื่อใช้ตรวจสอบสิทธิ์ใน UI
-    ui.renderTable(filteredCustomers, state.currentUser);
+    ui.renderTable(filteredCustomers, state.currentUser, SALES_EDITABLE_FIELDS);
 }
 
 // --- CORE ACTION HANDLERS ---
@@ -107,16 +97,14 @@ async function handleAddCustomer() {
     }
 }
 
-// 🟡 MODIFIED: เพิ่ม Logic ตรวจสอบสิทธิ์ก่อนอนุญาตให้แก้ไข
 function handleCellDoubleClick(event) {
     const cell = event.target.closest('td');
     
-    // 🟢 ADDED: ตรวจสอบสิทธิ์
     if (state.currentUser.role === 'sales') {
         const field = cell.dataset.field;
         if (!SALES_EDITABLE_FIELDS.includes(field)) {
             ui.showStatus('คุณไม่มีสิทธิ์แก้ไขข้อมูลในส่วนนี้', true);
-            return; // ไม่อนุญาตให้แก้ไข
+            return;
         }
     }
 
