@@ -166,14 +166,25 @@
         </div>
     </div>
 
+    <div class="edit-modal-overlay" id="editCustomerModal">
+        <div class="edit-modal-container">
+            <div class="edit-modal-header">
+                <h2 id="editModalTitle">แก้ไขข้อมูลลูกค้า</h2>
+                <button class="edit-modal-close" id="closeEditModalBtn">&times;</button>
+            </div>
+            <form id="editCustomerForm" class="edit-modal-body">
+                </form>
+            <div class="edit-modal-footer">
+                <button type="button" class="btn-cancel" id="cancelEditBtn">ยกเลิก</button>
+                <button type="submit" class="btn-save" form="editCustomerForm">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <script src="./config.js"></script>
-    
     <script src="./api.js"></script>
-    
     <script src="./ui.js"></script>
-    
     <script src="./main.js"></script>
 </body>
 </html>
