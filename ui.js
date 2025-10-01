@@ -33,11 +33,14 @@ ui.updateUIAfterLogin = function(user) {
     }
 }
 
+// 🟡 MODIFIED: สลับตำแหน่ง Last Status และ อัพเดทการเข้าถึง
 const FIELD_MAPPING = {
     '#': null, 'วัน/เดือน/ปี': 'date', 'ลำดับที่': 'lead_code', 'ชื่อลูกค้า': 'name', 'เบอร์ติดต่อ': 'phone',
     'ช่องทางสื่อ': 'channel', 'ประเภทหัตถการ': 'procedure', 'มัดจำ': 'deposit', 'ขอเบอร์ Y/N': 'confirm_y',
-    'มัดจำออนไลน์ Y/N': 'transfer_100', 'CS ผู้ส่ง Lead': 'cs_confirm', 'เซลล์': 'sales', 'Last Status': 'last_status',
-    'อัพเดทการเข้าถึง': 'update_access', 'เวลาโทร': 'call_time', 'Status SALE': 'status_1', 'เหตุผล': 'reason',
+    'มัดจำออนไลน์ Y/N': 'transfer_100', 'CS ผู้ส่ง Lead': 'cs_confirm', 'เซลล์': 'sales',
+    'อัพเดทการเข้าถึง': 'update_access',
+    'Last Status': 'last_status',
+    'เวลาโทร': 'call_time', 'Staus Sale': 'status_1', 'เหตุผล': 'reason',
     'ETC': 'etc', 'HN ลูกค้า': 'hn_customer', 'วันที่นัดผ่าเก่าแล้ว': 'old_appointment', 'DR.': 'dr',
     'ยอดที่ปิดได้': 'closed_amount', 'วันที่นัดทำหัตถการ': 'appointment_date'
 };
@@ -162,18 +165,15 @@ ui.hideContextMenu = function() {
 };
 
 
-// 🟡 MODIFIED: อัปเกรดฟังก์ชันให้สร้าง <select> ได้เมื่อมี options ส่งมา
 ui.createCellEditor = function(cell, value, options) {
     cell.classList.add('editing');
 
     if (options && Array.isArray(options)) {
-        // ถ้ามี options ให้สร้างเป็น Dropdown (<select>)
         const optionsHtml = options.map(opt => 
             `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`
         ).join('');
         cell.innerHTML = `<select class="cell-select">${optionsHtml}</select>`;
     } else {
-        // ถ้าไม่มี ให้สร้างเป็นช่องกรอกข้อความปกติ (<input>)
         cell.innerHTML = `<input type="text" class="cell-input" value="${escapeHtml(value)}" />`;
     }
 
