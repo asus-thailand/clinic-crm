@@ -11,10 +11,22 @@ const state = {
     contextMenuRowId: null
 };
 
-// 🟢 ADDED: กำหนดตัวเลือกสำหรับ Dropdown ที่นี่
+// 🟡 MODIFIED: อัปเดตรายการ channel ตามที่คุณต้องการ
 const DROPDOWN_OPTIONS = {
     channel: [
-        "Facebook", "Google", "Line", "TikTok", "Instagram", "T.O.", "Walk-in", "Other"
+        "-เพื่อนแนะนำ/",
+        "-Walk-In/",
+        "-PHONE-IN/",
+        "-Line@/",
+        "-Fbc By หมอธีร์ (ปลูกผม)",
+        "-Fbc By หมอธีร์ (หัตถการอื่น)",
+        "-FBC HAIR CLINIC",
+        "-Fbc ตาสองชั้น ยกคิ้ว เสริมจมูก",
+        "-Fbc ปรับรูปหน้า Botox Filler HIFU",
+        "-เว็บไซต์",
+        "-AGENCY",
+        "-IG",
+        "-Tiktok "
     ],
     procedure: [
         "ตาสองชั้น", "เสริมจมูก", "เสริมคาง", "ปากกระจับ", "Botox", "Filler", "ร้อยไหม", "อื่นๆ"
@@ -96,7 +108,6 @@ async function handleAddCustomer() {
     }
 }
 
-// 🟡 MODIFIED: อัปเกรดฟังก์ชันให้ส่งข้อมูล Dropdown ไปด้วย
 function handleCellDoubleClick(event) {
     const cell = event.target.closest('td');
     if (!cell || cell.classList.contains('actions-cell') || cell.classList.contains('row-number') || state.editingCell) {
@@ -239,8 +250,7 @@ function setupEventListeners() {
     tableBody?.addEventListener('contextmenu', handleContextMenu);
     contextMenu?.addEventListener('click', handleContextMenuItemClick);
     window.addEventListener('click', (event) => {
-        // ซ่อน context menu ถ้าคลิกนอกพื้นที่ของเมนู
-        if (!contextMenu.contains(event.target)) {
+        if (contextMenu && !contextMenu.contains(event.target)) {
             ui.hideContextMenu();
         }
     });
