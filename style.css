@@ -155,7 +155,7 @@ body {
     background: #0056b3;
 }
 
-.btn-update, .btn-history {
+.btn-update, .btn-history, .btn-edit {
     padding: 4px 8px;
     font-size: 10px;
     color: white;
@@ -166,6 +166,12 @@ body {
     margin: 0 2px;
 }
 
+.btn-edit {
+    background-color: #ffc107;
+}
+.btn-edit:hover {
+    background-color: #e0a800;
+}
 .btn-update {
     background-color: var(--info-color);
 }
@@ -332,7 +338,7 @@ body {
 .actions-cell {
     text-align: center;
     padding: 2px !important;
-    min-width: 100px;
+    min-width: 160px;
 }
 
 /* Cell Backgrounds */
@@ -516,7 +522,7 @@ body {
     font-size: 14px;
 }
 
-/* 🟢 ADDED: สไตล์สำหรับ History Timeline */
+/* History Timeline Styles */
 .timeline-container {
     max-height: 60vh;
     overflow-y: auto;
@@ -567,7 +573,7 @@ body {
     font-size: 14px;
     color: #333;
     margin-bottom: 6px;
-    white-space: pre-wrap; /* ให้แสดงผลการขึ้นบรรทัดใหม่ */
+    white-space: pre-wrap;
 }
 .timeline-footer {
     font-size: 12px;
@@ -633,6 +639,7 @@ body {
     .excel-table { font-size: 10pt; }
     .excel-table td, .excel-table th { padding: 4px; border: 1px solid var(--text-color-black); }
 }
+
 /* --- 12. Permission Styles --- */
 .non-editable {
     background-color: #f0f0f0 !important; /* สีเทาอ่อน */
@@ -643,4 +650,131 @@ body {
 /* ทำให้ hover effect ไม่มีผลกับช่องที่แก้ไขไม่ได้ */
 .non-editable:hover {
     border: 1px solid var(--border-color-medium) !important;
+}
+
+/* --- 13. Mobile Edit Form (Modal) --- */
+.edit-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 3000;
+}
+
+.edit-modal-overlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.edit-modal-container {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 95%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.edit-modal-overlay.show .edit-modal-container {
+    transform: scale(1);
+}
+
+.edit-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.edit-modal-header h2 {
+    font-size: 18px;
+    color: #1e293b;
+}
+
+.edit-modal-close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #94a3b8;
+    cursor: pointer;
+    border: none;
+    background: none;
+}
+
+.edit-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+@media (min-width: 640px) {
+    .edit-modal-body {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.edit-modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-save {
+    padding: 10px 25px;
+    font-size: 16px;
+    font-weight: 600;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.btn-cancel {
+    padding: 10px 25px;
+    font-size: 16px;
+    font-weight: 600;
+    background: #e2e8f0;
+    color: #1e293b;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
 }
