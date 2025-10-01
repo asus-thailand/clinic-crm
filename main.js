@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + EDIT/DELETE/DROPDOWN FEATURES)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + DYNAMIC DROPDOWNS)
 // ================================================================================
 
 const state = {
@@ -11,7 +11,7 @@ const state = {
     contextMenuRowId: null
 };
 
-// 🟡 MODIFIED: อัปเดตรายการ status_1 ตามที่คุณต้องการ
+// 🟡 MODIFIED: เพิ่ม cs_confirm เข้าไปใน Dropdown
 const DROPDOWN_OPTIONS = {
     channel: [
         "-เพื่อนแนะนำ/",
@@ -59,8 +59,8 @@ const DROPDOWN_OPTIONS = {
         "ไม่สนใจ",
         "ปิดการขาย",
         "ตามต่อ"
-    ]
-    // เพิ่มฟิลด์และตัวเลือกอื่นๆ ได้ที่นี่
+    ],
+    cs_confirm: ["CSX", "CSY"] // เพิ่มตัวเลือกสำหรับ CS ผู้ส่ง Lead
 };
 
 
@@ -88,7 +88,7 @@ async function initializeApp() {
             api.fetchSalesList()
         ]);
         state.customers = customers || [];
-        state.salesList = salesList || [];
+        state.salesList = salesList || []; // ข้อมูล sales ทั้งหมดจะถูกเก็บไว้ที่นี่
         applyFiltersAndRender();
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
     } catch (error) {
@@ -134,6 +134,7 @@ async function handleAddCustomer() {
     }
 }
 
+// 🟡 MODIFIED: อัปเกรดฟังก์ชันให้รองรับ Dynamic Dropdown สำหรับ 'sales'
 function handleCellDoubleClick(event) {
     const cell = event.target.closest('td');
     if (!cell || cell.classList.contains('actions-cell') || cell.classList.contains('row-number') || state.editingCell) {
@@ -142,16 +143,25 @@ function handleCellDoubleClick(event) {
     state.editingCell = cell;
     const originalValue = cell.textContent;
     const field = cell.dataset.field;
-    const options = DROPDOWN_OPTIONS[field]; // ดึงตัวเลือกจาก config
 
-    ui.createCellEditor(cell, originalValue, options); // ส่ง options ไปให้ UI function
+    let options;
+    // ตรวจสอบว่าเป็นฟิลด์ 'sales' หรือไม่
+    if (field === 'sales') {
+        // ถ้าใช่ ให้ใช้ state.salesList ที่ดึงมาจากฐานข้อมูล
+        options = state.salesList;
+    } else {
+        // ถ้าไม่ใช่ ให้ใช้ DROPDOWN_OPTIONS ปกติ
+        options = DROPDOWN_OPTIONS[field];
+    }
 
-    const editor = cell.querySelector('input, select'); // Tìm cả input และ select
+    ui.createCellEditor(cell, originalValue, options);
+
+    const editor = cell.querySelector('input, select');
     editor.addEventListener('blur', () => handleCellEditSave(cell, originalValue));
     editor.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') editor.blur();
         if (e.key === 'Escape') {
-             state.editingCell = null; // ต้องเคลียร์ state ก่อน revert
+             state.editingCell = null;
              ui.revertCellToText(cell, originalValue);
         }
     });
@@ -163,7 +173,7 @@ async function handleCellEditSave(cell, originalValue) {
     
     const editor = cell.querySelector('input, select');
     const newValue = editor.value.trim();
-    state.editingCell = null; // เคลียร์ state ทันที
+    state.editingCell = null;
 
     if (newValue === originalValue) {
         ui.revertCellToText(cell, originalValue);
