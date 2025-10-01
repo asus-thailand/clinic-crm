@@ -1,11 +1,11 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - UI LAYER (FINAL + ROLE PERMISSIONS)
+// BEAUTY CLINIC CRM - UI LAYER (FINAL + ROLE PERMISSIONS - CORRECTED)
 // ================================================================================
 
 const ui = {};
 
-// 🟢 ADDED: นำรายการฟิลด์ที่ Sales แก้ไขได้มาใช้ใน UI
-const SALES_EDITABLE_FIELDS = ['update_access', 'last_status', 'call_time', 'status_1', 'reason', 'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'];
+// 🔴 REMOVED: ลบการประกาศซ้ำซ้อนออกไปจากไฟล์นี้
+// const SALES_EDITABLE_FIELDS = [...]; 
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -47,14 +47,13 @@ const FIELD_MAPPING = {
 };
 const HEADERS = Object.keys(FIELD_MAPPING);
 
-// 🟡 MODIFIED: เพิ่มการตรวจสอบสิทธิ์เพื่อใส่ Style
-function createCell(row, fieldName, currentUser) {
+// 🟡 MODIFIED: เราจะใช้ตัวแปรจาก main.js แทน ซึ่งจะถูกส่งเข้ามาผ่าน currentUser
+function createCell(row, fieldName, currentUser, salesEditableFields) {
     const td = document.createElement('td');
     td.dataset.field = fieldName;
     td.textContent = row[fieldName] || '';
     
-    // 🟢 ADDED: ถ้าเป็น sales และฟิลด์นี้แก้ไขไม่ได้ ให้เพิ่ม class non-editable
-    if (currentUser && currentUser.role === 'sales' && !SALES_EDITABLE_FIELDS.includes(fieldName)) {
+    if (currentUser && currentUser.role === 'sales' && !salesEditableFields.includes(fieldName)) {
         td.classList.add('non-editable');
     }
     
@@ -68,8 +67,7 @@ function createActionsCell(row) {
     return td;
 }
 
-// 🟡 MODIFIED: รับ currentUser มาเพื่อส่งต่อ
-function createRowElement(row, index, currentUser) {
+function createRowElement(row, index, currentUser, salesEditableFields) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
     const rowNumberCell = document.createElement('td');
@@ -79,7 +77,7 @@ function createRowElement(row, index, currentUser) {
     HEADERS.slice(1).forEach(header => {
         const fieldName = FIELD_MAPPING[header];
         if (fieldName) {
-            tr.appendChild(createCell(row, fieldName, currentUser));
+            tr.appendChild(createCell(row, fieldName, currentUser, salesEditableFields));
         } else if (header === 'จัดการ') {
             tr.appendChild(createActionsCell(row));
         }
@@ -87,20 +85,20 @@ function createRowElement(row, index, currentUser) {
     return tr;
 }
 
-// 🟡 MODIFIED: รับ currentUser มาเพื่อส่งต่อ
-ui.renderTable = function(customers, currentUser) {
+// 🟡 MODIFIED: แก้ไขฟังก์ชัน renderTable ให้รับ salesEditableFields มาด้วย
+ui.renderTable = function(customers, currentUser, salesEditableFields) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     const fragment = document.createDocumentFragment();
-    customers.forEach((row, index) => fragment.appendChild(createRowElement(row, index, currentUser)));
+    customers.forEach((row, index) => fragment.appendChild(createRowElement(row, index, currentUser, salesEditableFields)));
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
 }
 
-ui.prependNewRow = function(customer, currentUser) {
+ui.prependNewRow = function(customer, currentUser, salesEditableFields) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
-    const newRowElement = createRowElement(customer, 0, currentUser);
+    const newRowElement = createRowElement(customer, 0, currentUser, salesEditableFields);
     tbody.prepend(newRowElement);
     const rows = tbody.querySelectorAll('tr');
     rows.forEach((row, index) => {
