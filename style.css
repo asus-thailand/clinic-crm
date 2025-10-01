@@ -633,3 +633,14 @@ body {
     .excel-table { font-size: 10pt; }
     .excel-table td, .excel-table th { padding: 4px; border: 1px solid var(--text-color-black); }
 }
+/* --- 12. Permission Styles --- */
+.non-editable {
+    background-color: #f0f0f0 !important; /* สีเทาอ่อน */
+    color: #888; /* สีตัวอักษรเทา */
+    cursor: not-allowed; /* เปลี่ยน cursor เป็นเครื่องหมายห้าม */
+}
+
+/* ทำให้ hover effect ไม่มีผลกับช่องที่แก้ไขไม่ได้ */
+.non-editable:hover {
+    border: 1px solid var(--border-color-medium) !important;
+}
