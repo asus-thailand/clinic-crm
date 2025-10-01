@@ -57,16 +57,18 @@ function createCell(row, fieldName, currentUser, salesEditableFields) {
     return td;
 }
 
+// 🟡 CORRECTED: เพิ่ม data-name ให้กับปุ่ม "ประวัติ"
 function createActionsCell(row) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
     td.innerHTML = `
         <button class="btn-edit" data-action="edit-customer" data-id="${row.id}">แก้ไข</button>
-        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">อัปเดต</button>
-        <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(row.name || '')}">ประวัติ</button>
+        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(row.name || 'N/A')}">อัปเดต</button>
+        <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(row.name || 'N/A')}">ประวัติ</button>
     `;
     return td;
 }
+
 
 function createRowElement(row, index, currentUser, salesEditableFields) {
     const tr = document.createElement('tr');
