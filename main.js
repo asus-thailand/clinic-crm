@@ -211,3 +211,100 @@ function handleContextMenu(event) {
     event.preventDefault();
     state.contextMenuRowId = row.dataset.id;
     ui.showContextMenu(event);
+}
+
+async function handleContextMenuItemClick(event) {
+    const action = event.target.dataset.action;
+    if (!action || !state.contextMenuRowId) return;
+
+    ui.hideContextMenu();
+
+    if (action === 'delete') {
+        const customerToDelete = state.customers.find(c => c.id == state.contextMenuRowId);
+        const confirmMessage = `คุณต้องการลบลูกค้า "${customerToDelete?.name || 'รายนี้'}" ใช่หรือไม่?`;
+
+        if (confirm(confirmMessage)) {
+            ui.showLoading(true);
+            try {
+                await api.deleteCustomer(state.contextMenuRowId);
+                state.customers = state.customers.filter(c => c.id != state.contextMenuRowId);
+                ui.removeRow(state.contextMenuRowId);
+                ui.showStatus('ลบข้อมูลสำเร็จ', false);
+            } catch (error) {
+                ui.showStatus(error.message, true);
+            } finally {
+                ui.showLoading(false);
+            }
+        }
+    }
+    state.contextMenuRowId = null;
+}
+
+// --- SETUP & OTHER HANDLERS ---
+
+function handleTableClick(event) {
+    const action = event.target.dataset.action;
+    if (!action) return;
+    const id = event.target.dataset.id;
+    const name = event.target.dataset.name;
+    if (action === 'update-status') ui.showModal('statusUpdateModal', { customerId: id, customerName: name });
+    if (action === 'view-history') handleViewHistory(id, name);
+}
+
+async function handleViewHistory(customerId, customerName) {
+    ui.showModal('historyModal', { customerName });
+    const historyData = await api.fetchStatusHistory(customerId);
+    ui.renderHistoryTimeline(historyData);
+}
+
+async function handleSubmitStatusUpdate() {
+    const customerId = document.getElementById('modalCustomerId').value;
+    const newStatus = document.getElementById('modalStatusSelect').value;
+    const notes = document.getElementById('modalNotesText').value.trim();
+    if (!newStatus) return ui.showStatus('กรุณาเลือกสถานะ', true);
+
+    ui.showLoading(true);
+    try {
+        await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
+        const updatedCustomer = await api.updateCustomerCell(customerId, 'last_status', newStatus);
+        const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
+        if (index !== -1) state.customers[index] = { ...state.customers[index], ...updatedCustomer };
+        applyFiltersAndRender();
+        ui.hideModal('statusUpdateModal');
+        ui.showStatus('อัปเดตสถานะสำเร็จ', false);
+    } catch (error) {
+        ui.showStatus(error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+function setupEventListeners() {
+    const tableBody = document.getElementById('tableBody');
+    const contextMenu = document.getElementById('contextMenu');
+    
+    document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
+    document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
+    document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
+    
+    tableBody?.addEventListener('dblclick', handleCellDoubleClick);
+    tableBody?.addEventListener('contextmenu', handleContextMenu);
+    contextMenu?.addEventListener('click', handleContextMenuItemClick);
+    window.addEventListener('click', (event) => {
+        if (contextMenu && !contextMenu.contains(event.target)) {
+            ui.hideContextMenu();
+        }
+    });
+
+    tableBody?.addEventListener('click', handleTableClick);
+    document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', () => ui.hideModal(b.dataset.modalClose)));
+    document.getElementById('searchInput')?.addEventListener('input', e => {
+        state.activeFilters.search = e.target.value;
+        applyFiltersAndRender();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    setupEventListeners();
+});
