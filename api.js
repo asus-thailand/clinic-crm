@@ -1,12 +1,14 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - API LAYER (ADVANCED DEBUG VERSION)
 // ================================================================================
-import { supabase } from './config.js';
 
-export async function getSession() {
+// ใช้ตัวแปร global จาก config.js
+const api = {};
+
+api.getSession = async function() {
     console.log("API: Attempting to get session...");
     try {
-        const { data, error } = await supabase.auth.getSession();
+        const { data, error } = await window.supabaseClient.auth.getSession();
         if (error) throw error;
         console.log("API: Get session successful.");
         return data.session;
@@ -16,10 +18,10 @@ export async function getSession() {
     }
 }
 
-export async function getUserProfile(userId) {
+api.getUserProfile = async function(userId) {
     console.log(`API: Attempting to get profile for user ${userId}...`);
     try {
-        const { data, error } = await supabase
+        const { data, error } = await window.supabaseClient
             .from('users')
             .select('role, username, full_name')
             .eq('id', userId)
@@ -33,11 +35,11 @@ export async function getUserProfile(userId) {
     }
 }
 
-export async function createDefaultUserProfile(user) {
+api.createDefaultUserProfile = async function(user) {
     console.log("API: Attempting to create default profile...");
     try {
         const username = user.email.split('@')[0];
-        const { data, error } = await supabase
+        const { data, error } = await window.supabaseClient
             .from('users')
             .insert({ id: user.id, username, full_name: username, role: 'sales' })
             .select()
@@ -51,10 +53,10 @@ export async function createDefaultUserProfile(user) {
     }
 }
 
-export async function signOut() {
+api.signOut = async function() {
     console.log("API: Attempting to sign out...");
     try {
-        const { error } = await supabase.auth.signOut();
+        const { error } = await window.supabaseClient.auth.signOut();
         if (error) throw error;
         console.log("API: Sign out successful.");
     } catch (error) {
@@ -63,10 +65,10 @@ export async function signOut() {
     }
 }
 
-export async function fetchAllCustomers() {
+api.fetchAllCustomers = async function() {
     console.log("API: Attempting to fetch all customers...");
     try {
-        const { data, error } = await supabase
+        const { data, error } = await window.supabaseClient
             .from('customers')
             .select('*')
             .order('created_at', { ascending: false });
@@ -79,10 +81,10 @@ export async function fetchAllCustomers() {
     }
 }
 
-export async function fetchSalesList() {
+api.fetchSalesList = async function() {
     console.log("API: Attempting to fetch sales list...");
     try {
-        const { data, error } = await supabase
+        const { data, error } = await window.supabaseClient
             .from('users')
             .select('username')
             .not('username', 'is', null);
@@ -95,4 +97,65 @@ export async function fetchSalesList() {
     }
 }
 
-// ... (ฟังก์ชันอื่น ๆ ใน api.js ก็ควรจะมี try...catch ในลักษณะเดียวกัน) ...
+api.fetchStatusHistory = async function(customerId) {
+    console.log(`API: Fetching status history for customer ${customerId}...`);
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('status_history')
+            .select('*')
+            .eq('customer_id', customerId)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        console.log(`API: Fetched ${data ? data.length : 0} history records.`);
+        return data || [];
+    } catch (error) {
+        console.error("API ERROR in fetchStatusHistory:", error);
+        throw new Error('Could not fetch status history.');
+    }
+}
+
+api.addStatusUpdate = async function(customerId, status, notes, userId) {
+    console.log("API: Adding status update...");
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('status_history')
+            .insert({
+                customer_id: customerId,
+                status: status,
+                notes: notes,
+                updated_by: userId
+            })
+            .select()
+            .single();
+        if (error) throw error;
+        console.log("API: Status update added successfully.");
+        return data;
+    } catch (error) {
+        console.error("API ERROR in addStatusUpdate:", error);
+        throw new Error('Could not add status update.');
+    }
+}
+
+api.updateCustomerCell = async function(customerId, field, value) {
+    console.log(`API: Updating customer ${customerId}, field ${field}...`);
+    try {
+        const updateData = {};
+        updateData[field] = value;
+        
+        const { data, error } = await window.supabaseClient
+            .from('customers')
+            .update(updateData)
+            .eq('id', customerId)
+            .select()
+            .single();
+        if (error) throw error;
+        console.log("API: Customer updated successfully.");
+        return data;
+    } catch (error) {
+        console.error("API ERROR in updateCustomerCell:", error);
+        throw new Error('Could not update customer.');
+    }
+}
+
+// ทำให้ API พร้อมใช้งานแบบ global
+window.api = api;
