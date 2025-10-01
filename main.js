@@ -72,17 +72,14 @@ async function initializeApp() {
         console.error('Initialization failed:', error);
         ui.showStatus('เกิดข้อผิดพลาด: ' + error.message, true);
         
-        // ซ่อน loading แม้จะ error
         ui.showLoading(false);
         
-        // ถ้า error เกี่ยวกับ authentication ให้ไปหน้า login
         if (error.message && error.message.includes('auth')) {
             setTimeout(() => {
                 window.location.replace('login.html');
             }, 2000);
         }
     } finally {
-        // ต้องซ่อน loading เสมอ ไม่ว่าจะสำเร็จหรือไม่
         ui.showLoading(false);
         console.log('Initialization complete');
     }
@@ -99,6 +96,8 @@ function applyFiltersAndRender() {
             );
             const matchesStatus = !status || customer.status_1 === status;
             const matchesSales = !sales || customer.sales === sales;
+            
+            // 🔴 BUG FIX: แก้ไขเงื่อนไขจาก 'sales' เป็น 'matchesSales'
             return matchesSearch && matchesStatus && matchesSales;
         });
         
@@ -118,6 +117,28 @@ async function handleLogout() {
     }
 }
 
+async function handleAddCustomer() {
+    console.log("Add customer button clicked.");
+    ui.showLoading(true);
+    try {
+        const salesName = state.currentUser?.username || 'N/A';
+        const newCustomer = await api.addCustomer(salesName);
+        
+        state.customers.unshift(newCustomer);
+        
+        // Render ตารางใหม่ทั้งหมดเพื่อให้ filter ทำงานถูกต้อง
+        applyFiltersAndRender();
+        
+        ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ', false);
+    } catch (error) {
+        console.error('Failed to add customer:', error);
+        ui.showStatus(error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+
 function handleTableClick(event) {
     const action = event.target.dataset.action;
     const id = event.target.dataset.id;
@@ -132,11 +153,15 @@ function handleTableClick(event) {
 
 async function handleViewHistory(customerId, customerName) {
     ui.showModal('historyModal', { customerName });
+    ui.showLoading(true);
     try {
         const historyData = await api.fetchStatusHistory(customerId);
         ui.renderHistoryTimeline(historyData);
     } catch (error) {
         ui.showStatus(error.message, true);
+        ui.hideModal('historyModal');
+    } finally {
+        ui.showLoading(false);
     }
 }
 
@@ -154,11 +179,12 @@ async function handleSubmitStatusUpdate() {
     ui.showLoading(true);
     try {
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
+        
         const updatedCustomer = await api.updateCustomerCell(customerId, 'last_status', newStatus);
 
-        const index = state.customers.findIndex(c => c.id === customerId);
+        const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
         if (index !== -1) {
-            state.customers[index] = updatedCustomer;
+            state.customers[index] = Object.assign(state.customers[index], updatedCustomer);
         }
 
         applyFiltersAndRender();
@@ -175,9 +201,10 @@ function setupEventListeners() {
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
     document.getElementById('tableBody')?.addEventListener('click', handleTableClick);
     document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
-    
+    document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
+
     document.querySelectorAll('[data-modal-close]').forEach(button => {
-        button.addEventListener('click', () => ui.hideModal(button.dataset.modalClose));
+        button.addEventListener('click', () => ui.hideModal(button.getAttribute('data-modal-close')));
     });
 
     document.getElementById('searchInput')?.addEventListener('input', (e) => {
@@ -186,11 +213,9 @@ function setupEventListeners() {
     });
 }
 
-// เริ่มต้นเมื่อหน้าเว็บโหลดเสร็จ
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, waiting for dependencies...');
     
-    // รอให้ทุกอย่างพร้อมก่อนเริ่ม
     setTimeout(() => {
         initializeApp();
         setupEventListeners();
