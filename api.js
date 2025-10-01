@@ -102,7 +102,7 @@ api.fetchStatusHistory = async function(customerId) {
     try {
         const { data, error } = await window.supabaseClient
             .from('status_history')
-            .select('*')
+            .select('*, users(username)')
             .eq('customer_id', customerId)
             .order('created_at', { ascending: false });
         if (error) throw error;
@@ -113,6 +113,7 @@ api.fetchStatusHistory = async function(customerId) {
         throw new Error('Could not fetch status history.');
     }
 }
+
 
 api.addStatusUpdate = async function(customerId, status, notes, userId) {
     console.log("API: Adding status update...");
@@ -154,6 +155,28 @@ api.updateCustomerCell = async function(customerId, field, value) {
     } catch (error) {
         console.error("API ERROR in updateCustomerCell:", error);
         throw new Error('Could not update customer.');
+    }
+}
+
+// 🟢 ฟังก์ชันสำหรับเพิ่มลูกค้าใหม่ที่ขาดหายไป
+api.addCustomer = async function(salesName) {
+    console.log("API: Attempting to add a new customer...");
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('customers')
+            .insert({
+                sales: salesName,
+                date: new Date().toISOString().split('T')[0]
+            })
+            .select()
+            .single();
+        
+        if (error) throw error;
+        console.log("API: New customer added successfully.", data);
+        return data;
+    } catch (error) {
+        console.error("API ERROR in addCustomer:", error);
+        throw new Error('Could not add a new customer.');
     }
 }
 
