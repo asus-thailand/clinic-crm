@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PRODUCTION READY)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PRODUCTION READY + DEBUG MODE)
 // ================================================================================
 
 // ไม่ใช้ import แล้ว เพราะเราโหลด script แบบปกติ
@@ -15,7 +15,6 @@ const state = {
 async function initializeApp() {
     console.log('Starting app initialization...');
     
-    // ตรวจสอบว่า dependencies พร้อมหรือยัง
     if (!window.supabaseClient) {
         console.error('Supabase client not initialized!');
         alert('ระบบยังไม่พร้อม กรุณารีเฟรชหน้าใหม่');
@@ -51,6 +50,8 @@ async function initializeApp() {
             state.currentUser = { id: session.user.id, ...newProfile };
         }
         
+        // 🐞 DEBUG: แสดงข้อมูล user ปัจจุบัน
+        console.log('🐞 Current User:', state.currentUser);
         ui.updateUIAfterLogin(state.currentUser);
 
         console.log('Fetching customers and sales list...');
@@ -62,23 +63,18 @@ async function initializeApp() {
         state.customers = customers || [];
         state.salesList = salesList || [];
 
-        console.log(`Loaded ${state.customers.length} customers`);
+        // 🐞 DEBUG: แสดงจำนวนข้อมูลที่ดึงมาได้
+        console.log(`🐞 Loaded ${state.customers.length} customers from API.`);
         
         applyFiltersAndRender();
         
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
 
     } catch (error) {
-        console.error('Initialization failed:', error);
+        // 🐞 DEBUG: แสดง Error ที่เกิดขึ้นระหว่าง init
+        console.error('🐞 ERROR during initialization:', error);
         ui.showStatus('เกิดข้อผิดพลาด: ' + error.message, true);
         
-        ui.showLoading(false);
-        
-        if (error.message && error.message.includes('auth')) {
-            setTimeout(() => {
-                window.location.replace('login.html');
-            }, 2000);
-        }
     } finally {
         ui.showLoading(false);
         console.log('Initialization complete');
@@ -86,6 +82,8 @@ async function initializeApp() {
 }
 
 function applyFiltersAndRender() {
+    // 🐞 DEBUG: แสดง state ของ customers ก่อนการกรอง
+    console.log('🐞 Running applyFiltersAndRender. Total customers in state:', state.customers.length);
     try {
         const { search, status, sales } = state.activeFilters;
         const lowerCaseSearch = search.toLowerCase();
@@ -97,13 +95,15 @@ function applyFiltersAndRender() {
             const matchesStatus = !status || customer.status_1 === status;
             const matchesSales = !sales || customer.sales === sales;
             
-            // 🔴 BUG FIX: แก้ไขเงื่อนไขจาก 'sales' เป็น 'matchesSales'
             return matchesSearch && matchesStatus && matchesSales;
         });
         
+        // 🐞 DEBUG: แสดงจำนวนลูกค้าหลังจากการกรอง
+        console.log(`🐞 Filtering complete. Customers to render: ${filteredCustomers.length}`);
+        
         ui.renderTable(filteredCustomers);
     } catch (error) {
-        console.error('Error applying filters:', error);
+        console.error('🐞 Error applying filters:', error);
     }
 }
 
@@ -118,21 +118,25 @@ async function handleLogout() {
 }
 
 async function handleAddCustomer() {
-    console.log("Add customer button clicked.");
+    console.log("🐞 Add customer button clicked.");
     ui.showLoading(true);
     try {
         const salesName = state.currentUser?.username || 'N/A';
+        console.log(`🐞 Attempting to add customer with sales name: ${salesName}`);
+        
         const newCustomer = await api.addCustomer(salesName);
         
-        state.customers.unshift(newCustomer);
+        console.log('🐞 Successfully added customer to database:', newCustomer);
         
-        // Render ตารางใหม่ทั้งหมดเพื่อให้ filter ทำงานถูกต้อง
+        state.customers.unshift(newCustomer);
+        console.log(`🐞 Customer added to local state. Total customers now: ${state.customers.length}`);
+        
         applyFiltersAndRender();
         
         ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ', false);
     } catch (error) {
-        console.error('Failed to add customer:', error);
-        ui.showStatus(error.message, true);
+        console.error('🐞 FAILED to add customer:', error);
+        ui.showStatus('ผิดพลาด: ไม่สามารถเพิ่มลูกค้าได้ - ' + error.message, true);
     } finally {
         ui.showLoading(false);
     }
@@ -179,7 +183,6 @@ async function handleSubmitStatusUpdate() {
     ui.showLoading(true);
     try {
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
-        
         const updatedCustomer = await api.updateCustomerCell(customerId, 'last_status', newStatus);
 
         const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
@@ -215,7 +218,6 @@ function setupEventListeners() {
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, waiting for dependencies...');
-    
     setTimeout(() => {
         initializeApp();
         setupEventListeners();
