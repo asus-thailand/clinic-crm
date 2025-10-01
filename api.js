@@ -1,8 +1,7 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - API LAYER (ADVANCED DEBUG VERSION)
+// BEAUTY CLINIC CRM - API LAYER (FINAL + FULL UPDATE)
 // ================================================================================
 
-// ใช้ตัวแปร global จาก config.js
 const api = {};
 
 api.getSession = async function() {
@@ -179,7 +178,6 @@ api.addCustomer = async function(salesName) {
     }
 }
 
-// 🟢 ADDED: ฟังก์ชันสำหรับลบข้อมูลลูกค้า
 api.deleteCustomer = async function(customerId) {
     console.log(`API: Attempting to delete customer ${customerId}...`);
     try {
@@ -194,6 +192,29 @@ api.deleteCustomer = async function(customerId) {
     } catch (error) {
         console.error("API ERROR in deleteCustomer:", error);
         throw new Error('Could not delete customer.');
+    }
+}
+
+api.updateCustomer = async function(customerId, customerData) {
+    console.log(`API: Updating full data for customer ${customerId}...`);
+    try {
+        // ไม่ควรอัปเดต id, created_at
+        delete customerData.id;
+        delete customerData.created_at;
+
+        const { data, error } = await window.supabaseClient
+            .from('customers')
+            .update(customerData)
+            .eq('id', customerId)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        console.log("API: Customer full data updated successfully.");
+        return data;
+    } catch (error) {
+        console.error("API ERROR in updateCustomer:", error);
+        throw new Error('Could not update customer data.');
     }
 }
 
