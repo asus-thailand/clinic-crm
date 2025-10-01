@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - UI LAYER (FINAL + ROLE PERMISSIONS - CORRECTED)
+// BEAUTY CLINIC CRM - UI LAYER (FINAL + CORRECT HISTORY FIX)
 // ================================================================================
 
 const ui = {};
@@ -57,14 +57,18 @@ function createCell(row, fieldName, currentUser, salesEditableFields) {
     return td;
 }
 
-// 🟡 CORRECTED: เพิ่ม data-name ให้กับปุ่ม "ประวัติ"
+// 🟡 CORRECTED: ปรับปรุง Logic การดึงชื่อให้ฉลาดขึ้น
 function createActionsCell(row) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
+    
+    // สร้าง Logic การแสดงผลสำรอง: ถ้าไม่มีชื่อ ให้ใช้ lead_code หรือ phone แทน
+    const displayName = row.name || row.lead_code || row.phone || 'N/A';
+
     td.innerHTML = `
         <button class="btn-edit" data-action="edit-customer" data-id="${row.id}">แก้ไข</button>
-        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(row.name || 'N/A')}">อัปเดต</button>
-        <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(row.name || 'N/A')}">ประวัติ</button>
+        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(displayName)}">อัปเดต</button>
+        <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(displayName)}">ประวัติ</button>
     `;
     return td;
 }
