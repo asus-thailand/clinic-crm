@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL + AUTO-LOGGING & PERMISSIONS)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (COMPLETE FIXED VERSION 100%)
 // ================================================================================
 
 const state = {
@@ -27,18 +27,29 @@ const SALES_EDITABLE_FIELDS = [
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
+// ================================================================================
+// INITIALIZATION
+// ================================================================================
+
 async function initializeApp() {
     console.log('Starting app initialization...');
     ui.showLoading(true);
     try {
-        if (!window.supabaseClient || !window.api || !window.ui) throw new Error('Dependencies not loaded');
+        if (!window.supabaseClient || !window.api || !window.ui) {
+            throw new Error('Dependencies not loaded');
+        }
+        
         const session = await api.getSession();
         if (!session) {
             window.location.replace('login.html');
             return;
         }
+        
         let userProfile = await api.getUserProfile(session.user.id);
-        if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
+        if (!userProfile) {
+            userProfile = await api.createDefaultUserProfile(session.user);
+        }
+        
         state.currentUser = { id: session.user.id, ...userProfile };
         ui.updateUIAfterLogin(state.currentUser);
 
@@ -46,8 +57,10 @@ async function initializeApp() {
             api.fetchAllCustomers(),
             api.fetchSalesList()
         ]);
+        
         state.customers = customers || [];
         state.salesList = salesList || [];
+        
         applyFiltersAndRender();
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
     } catch (error) {
@@ -58,17 +71,29 @@ async function initializeApp() {
     }
 }
 
+// ================================================================================
+// FILTERING & RENDERING
+// ================================================================================
+
 function applyFiltersAndRender() {
     const { search, status, sales } = state.activeFilters;
     const lowerCaseSearch = search.toLowerCase();
+    
     const filteredCustomers = state.customers.filter(customer => {
-        const matchesSearch = !search || Object.values(customer).some(val => String(val).toLowerCase().includes(lowerCaseSearch));
+        const matchesSearch = !search || Object.values(customer).some(val => 
+            String(val).toLowerCase().includes(lowerCaseSearch)
+        );
         const matchesStatus = !status || customer.status_1 === status;
         const matchesSales = !sales || customer.sales === sales;
         return matchesSearch && matchesStatus && matchesSales;
     });
+    
     ui.renderTable(filteredCustomers, state.currentUser, SALES_EDITABLE_FIELDS);
 }
+
+// ================================================================================
+// EDIT MODAL HANDLERS
+// ================================================================================
 
 function showEditModal(customerId) {
     const customer = state.customers.find(c => c.id == customerId);
@@ -76,8 +101,8 @@ function showEditModal(customerId) {
         ui.showStatus('ไม่พบข้อมูลลูกค้า', true);
         return;
     }
+    
     state.editingCustomerId = customerId;
-
     const form = document.getElementById('editCustomerForm');
     form.innerHTML = ''; 
 
@@ -94,7 +119,12 @@ function showEditModal(customerId) {
         
         let inputHtml = '';
         if (options) {
-            inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${options.map(opt => `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
+            const optionsHtml = options.map(opt => 
+                `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`
+            ).join('');
+            inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}>
+                <option value="">-- เลือก --</option>${optionsHtml}
+            </select>`;
         } else {
             inputHtml = `<input type="text" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
         }
@@ -112,6 +142,18 @@ function hideEditModal() {
     document.getElementById('editCustomerModal').classList.remove('show');
 }
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    })[m]);
+}
+
+// ✅ FIXED: ปรับปรุง async loop ให้ทำงานเร็วขึ้นด้วย Promise.all
 async function handleSaveEditForm(event) {
     event.preventDefault();
     if (!state.editingCustomerId) return;
@@ -129,13 +171,21 @@ async function handleSaveEditForm(event) {
     try {
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
         
-        // บันทึกประวัติการเปลี่ยนแปลงทั้งหมด
+        // ✅ FIXED: ใช้ Promise.all แทนการ await ในลูป เพิ่มความเร็วมากขึ้น
+        const historyPromises = [];
         for (const key in updatedData) {
             if (originalCustomer[key] !== updatedData[key]) {
                 const fieldLabel = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h] === key) || key;
                 const logNote = `แก้ไข '${fieldLabel}' จาก '${originalCustomer[key] || ''}' เป็น '${updatedData[key]}'`;
-                await api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id);
+                historyPromises.push(
+                    api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id)
+                );
             }
+        }
+        
+        // รอให้ history ทั้งหมดบันทึกเสร็จพร้อมกัน
+        if (historyPromises.length > 0) {
+            await Promise.all(historyPromises);
         }
         
         const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
@@ -154,6 +204,9 @@ async function handleSaveEditForm(event) {
     }
 }
 
+// ================================================================================
+// USER ACTIONS
+// ================================================================================
 
 async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) {
@@ -175,6 +228,71 @@ async function handleAddCustomer() {
     } finally {
         ui.showLoading(false);
     }
+}
+
+// ================================================================================
+// ✅ FIXED: เพิ่มฟังก์ชันที่หายไป - INLINE CELL EDITING
+// ================================================================================
+
+async function handleCellDoubleClick(event) {
+    const cell = event.target.closest('td');
+    
+    // ไม่ให้แก้ไข cell พิเศษ
+    if (!cell || cell.classList.contains('row-number') || cell.classList.contains('actions-cell')) {
+        return;
+    }
+
+    // ตรวจสอบว่า cell นี้แก้ไขได้หรือไม่ (สำหรับ Sales)
+    if (cell.classList.contains('non-editable')) {
+        ui.showStatus('คุณไม่มีสิทธิ์แก้ไขฟิลด์นี้', true);
+        return;
+    }
+
+    // ถ้ามี cell อื่นกำลังแก้ไขอยู่ ให้ยกเลิกก่อน
+    if (state.editingCell && state.editingCell !== cell) {
+        const oldValue = state.editingCell.dataset.originalValue;
+        ui.revertCellToText(state.editingCell, oldValue);
+        state.editingCell = null;
+    }
+
+    const field = cell.dataset.field;
+    const currentValue = cell.textContent.trim();
+    
+    // เก็บค่าเดิมไว้สำหรับการยกเลิก
+    cell.dataset.originalValue = currentValue;
+    state.editingCell = cell;
+
+    // สร้าง editor ตามประเภทของ field
+    const options = (field === 'sales') ? state.salesList : DROPDOWN_OPTIONS[field];
+    ui.createCellEditor(cell, currentValue, options);
+
+    const editor = cell.querySelector('input, select');
+    if (!editor) return;
+
+    // จัดการเมื่อกด Enter หรือ blur
+    const handleSave = () => {
+        if (state.editingCell === cell) {
+            handleCellEditSave(cell, currentValue);
+        }
+    };
+
+    const handleCancel = () => {
+        if (state.editingCell === cell) {
+            ui.revertCellToText(cell, currentValue);
+            state.editingCell = null;
+        }
+    };
+
+    editor.addEventListener('blur', handleSave);
+    editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSave();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+        }
+    });
 }
 
 async function handleCellEditSave(cell, originalValue) {
@@ -204,6 +322,7 @@ async function handleCellEditSave(cell, originalValue) {
         if (customerIndex !== -1) {
             state.customers[customerIndex][field] = newValue;
         }
+        
         ui.revertCellToText(cell, newValue);
         ui.showStatus('แก้ไขข้อมูลสำเร็จ', false);
     } catch (error) {
@@ -213,6 +332,10 @@ async function handleCellEditSave(cell, originalValue) {
         ui.showLoading(false);
     }
 }
+
+// ================================================================================
+// TABLE INTERACTIONS
+// ================================================================================
 
 function handleTableClick(event) {
     const target = event.target;
@@ -253,7 +376,10 @@ async function handleSubmitStatusUpdate() {
     const customerId = document.getElementById('modalCustomerId').value;
     const newStatus = document.getElementById('modalStatusSelect').value;
     const notes = document.getElementById('modalNotesText').value.trim();
-    if (!newStatus) return ui.showStatus('กรุณาเลือกสถานะ', true);
+    
+    if (!newStatus) {
+        return ui.showStatus('กรุณาเลือกสถานะ', true);
+    }
 
     ui.showLoading(true);
     try {
@@ -264,6 +390,7 @@ async function handleSubmitStatusUpdate() {
         if (index !== -1) {
             state.customers[index].last_status = newStatus;
         }
+        
         applyFiltersAndRender();
         ui.hideModal('statusUpdateModal');
         ui.showStatus('อัปเดตสถานะสำเร็จ', false);
@@ -273,6 +400,10 @@ async function handleSubmitStatusUpdate() {
         ui.showLoading(false);
     }
 }
+
+// ================================================================================
+// CONTEXT MENU
+// ================================================================================
 
 function handleContextMenu(event) {
     const row = event.target.closest('tr');
@@ -299,6 +430,7 @@ async function handleContextMenuItemClick(event) {
             ui.showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true);
             return;
         }
+        
         const customerToDelete = state.customers.find(c => c.id == state.contextMenuRowId);
         if (confirm(`คุณต้องการลบลูกค้า "${customerToDelete?.name || 'รายนี้'}" ใช่หรือไม่?`)) {
             ui.showLoading(true);
@@ -317,21 +449,30 @@ async function handleContextMenuItemClick(event) {
     state.contextMenuRowId = null;
 }
 
+// ================================================================================
+// EVENT LISTENERS SETUP
+// ================================================================================
+
 function setupEventListeners() {
     const tableBody = document.getElementById('tableBody');
     const contextMenu = document.getElementById('contextMenu');
     
+    // Header buttons
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
     document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
     document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
     
+    // Edit modal
     document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
     document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
 
+    // Table interactions
     tableBody?.addEventListener('click', handleTableClick);
     tableBody?.addEventListener('dblclick', handleCellDoubleClick);
     tableBody?.addEventListener('contextmenu', handleContextMenu);
+    
+    // Context menu
     contextMenu?.addEventListener('click', handleContextMenuItemClick);
     window.addEventListener('click', (event) => {
         if (contextMenu && !contextMenu.contains(event.target)) {
@@ -339,12 +480,21 @@ function setupEventListeners() {
         }
     });
     
-    document.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', () => ui.hideModal(b.dataset.modalClose)));
+    // Modal close buttons
+    document.querySelectorAll('[data-modal-close]').forEach(btn => {
+        btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose));
+    });
+    
+    // Search input
     document.getElementById('searchInput')?.addEventListener('input', e => {
         state.activeFilters.search = e.target.value;
         applyFiltersAndRender();
     });
 }
+
+// ================================================================================
+// APPLICATION START
+// ================================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
