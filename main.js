@@ -153,7 +153,7 @@ function escapeHtml(str) {
     })[m]);
 }
 
-// ✅ FIXED: ปรับปรุง async loop ให้ทำงานเร็วขึ้นด้วย Promise.all
+// ✅ FIXED: ปรับปรุง async loop และให้ refresh UI แม้ history ล้มเหลว
 async function handleSaveEditForm(event) {
     event.preventDefault();
     if (!state.editingCustomerId) return;
@@ -169,9 +169,16 @@ async function handleSaveEditForm(event) {
     }
 
     try {
+        // อัปเดตข้อมูลลูกค้าก่อน
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
         
-        // ✅ FIXED: ใช้ Promise.all แทนการ await ในลูป เพิ่มความเร็วมากขึ้น
+        // อัปเดต state ทันที
+        const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
+        if (index !== -1) {
+            state.customers[index] = updatedCustomer;
+        }
+        
+        // ✅ FIXED: บันทึก history แบบไม่บล็อก - ถ้า error ก็ไม่เป็นไร
         const historyPromises = [];
         for (const key in updatedData) {
             if (originalCustomer[key] !== updatedData[key]) {
@@ -183,19 +190,21 @@ async function handleSaveEditForm(event) {
             }
         }
         
-        // รอให้ history ทั้งหมดบันทึกเสร็จพร้อมกัน
+        // พยายามบันทึก history แต่ไม่ throw error ถ้าล้มเหลว
         if (historyPromises.length > 0) {
-            await Promise.all(historyPromises);
+            try {
+                await Promise.all(historyPromises);
+            } catch (historyError) {
+                console.warn('Could not save history:', historyError);
+                // ไม่แสดง error ให้ user เพราะข้อมูลหลักบันทึกสำเร็จแล้ว
+            }
         }
         
-        const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
-        if (index !== -1) {
-            state.customers[index] = updatedCustomer;
-        }
-        
+        // ✅ ปิด modal และ refresh UI เสมอ
         hideEditModal();
         applyFiltersAndRender();
         ui.showStatus('บันทึกข้อมูลสำเร็จ', false);
+        
     } catch (error) {
         console.error('Save failed:', error);
         ui.showStatus('บันทึกข้อมูลไม่สำเร็จ: ' + error.message, true);
