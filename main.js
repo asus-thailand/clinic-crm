@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (HYBRID EDITING + NEW PERMISSION)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (HYBRID EDITING + FINAL VALIDATION)
 // ================================================================================
 
 const state = {
@@ -22,7 +22,6 @@ const DROPDOWN_OPTIONS = {
     last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
 };
 
-// ✅ RULE UPDATED: ลบ 'update_access' ออกจากรายการที่เซลล์แก้ไขได้
 const SALES_EDITABLE_FIELDS = [
     'last_status', 'call_time', 'status_1', 'reason', 
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
@@ -161,7 +160,6 @@ async function handleSaveEditForm(event) {
     event.preventDefault();
     if (!state.editingCustomerId) return;
     
-    ui.showLoading(true);
     const form = event.target;
     const formData = new FormData(form);
     const updatedData = {};
@@ -171,6 +169,15 @@ async function handleSaveEditForm(event) {
         updatedData[key] = value;
     }
 
+    // ✅ RULE UPDATED: ตรวจสอบเงื่อนไขใหม่ก่อนบันทึก
+    if (updatedData.status_1 === 'ปิดการขาย') {
+        if (!updatedData.last_status || !updatedData.closed_amount) {
+            ui.showStatus("สำหรับสถานะ 'ปิดการขาย' กรุณากรอก Last Status และ ยอดที่ปิดได้ ให้ครบถ้วน", true);
+            return; // หยุดการทำงาน ไม่ให้บันทึก
+        }
+    }
+
+    ui.showLoading(true);
     try {
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
         
@@ -230,7 +237,7 @@ async function handleAddCustomer() {
 }
 
 // ================================================================================
-// ✅ RE-IMPLEMENTED: INLINE CELL EDITING FUNCTIONS
+// INLINE CELL EDITING FUNCTIONS
 // ================================================================================
 
 async function handleCellDoubleClick(event) {
@@ -279,15 +286,28 @@ async function handleCellEditSave(cell, originalValue) {
     
     const editor = cell.querySelector('input, select');
     const newValue = editor.value.trim();
-    state.editingCell = null;
+    
+    const rowId = cell.parentElement.dataset.id;
+    const field = cell.dataset.field;
+    
+    // ✅ RULE UPDATED: ตรวจสอบเงื่อนไขใหม่สำหรับการแก้ไขในตาราง
+    if (field === 'status_1' && newValue === 'ปิดการขาย') {
+        const rowData = state.customers.find(c => c.id == rowId);
+        // We can only check the fields we have. We assume last_status might be changed in a different cell.
+        // For inline editing, the most crucial check is the closed_amount.
+        if (!rowData.closed_amount) {
+            ui.showStatus("สำหรับสถานะ 'ปิดการขาย' กรุณาใส่ 'ยอดที่ปิดได้' ก่อน", true);
+            ui.revertCellToText(cell, originalValue);
+            state.editingCell = null;
+            return;
+        }
+    }
 
+    state.editingCell = null;
     if (newValue === originalValue) {
         ui.revertCellToText(cell, originalValue);
         return;
     }
-
-    const rowId = cell.parentElement.dataset.id;
-    const field = cell.dataset.field;
 
     ui.showLoading(true);
     try {
@@ -443,7 +463,7 @@ function setupEventListeners() {
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
 
     tableBody?.addEventListener('click', handleTableClick);
-    tableBody?.addEventListener('dblclick', handleCellDoubleClick); // ✅ RE-IMPLEMENTED
+    tableBody?.addEventListener('dblclick', handleCellDoubleClick);
     tableBody?.addEventListener('contextmenu', handleContextMenu);
     
     contextMenu?.addEventListener('click', handleContextMenuItemClick);
