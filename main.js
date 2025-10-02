@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (COMPLETE FIXED VERSION 100%)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (HYBRID EDITING + NEW PERMISSION)
 // ================================================================================
 
 const state = {
@@ -22,10 +22,32 @@ const DROPDOWN_OPTIONS = {
     last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
 };
 
+// ✅ RULE UPDATED: ลบ 'update_access' ออกจากรายการที่เซลล์แก้ไขได้
 const SALES_EDITABLE_FIELDS = [
-    'update_access', 'last_status', 'call_time', 'status_1', 'reason', 
+    'last_status', 'call_time', 'status_1', 'reason', 
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
+
+// ================================================================================
+// DASHBOARD STATISTICS CALCULATION
+// ================================================================================
+
+function updateDashboardStats() {
+    const customers = state.customers;
+    if (!customers) return;
+
+    document.getElementById('totalCustomers').textContent = customers.length;
+
+    const today = new Date().toISOString().split('T')[0];
+    const todayCustomers = customers.filter(c => c.date === today).length;
+    document.getElementById('todayCustomers').textContent = todayCustomers;
+
+    const pendingCustomers = customers.filter(c => c.status_1 === 'ตามต่อ').length;
+    document.getElementById('pendingCustomers').textContent = pendingCustomers;
+
+    const closedDeals = customers.filter(c => c.status_1 === 'ปิดการขาย').length;
+    document.getElementById('closedDeals').textContent = closedDeals;
+}
 
 // ================================================================================
 // INITIALIZATION
@@ -35,9 +57,7 @@ async function initializeApp() {
     console.log('Starting app initialization...');
     ui.showLoading(true);
     try {
-        if (!window.supabaseClient || !window.api || !window.ui) {
-            throw new Error('Dependencies not loaded');
-        }
+        if (!window.supabaseClient || !window.api || !window.ui) throw new Error('Dependencies not loaded');
         
         const session = await api.getSession();
         if (!session) {
@@ -46,9 +66,7 @@ async function initializeApp() {
         }
         
         let userProfile = await api.getUserProfile(session.user.id);
-        if (!userProfile) {
-            userProfile = await api.createDefaultUserProfile(session.user);
-        }
+        if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
         
         state.currentUser = { id: session.user.id, ...userProfile };
         ui.updateUIAfterLogin(state.currentUser);
@@ -89,6 +107,7 @@ function applyFiltersAndRender() {
     });
     
     ui.renderTable(filteredCustomers, state.currentUser, SALES_EDITABLE_FIELDS);
+    updateDashboardStats();
 }
 
 // ================================================================================
@@ -119,14 +138,10 @@ function showEditModal(customerId) {
         
         let inputHtml = '';
         if (options) {
-            const optionsHtml = options.map(opt => 
-                `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`
-            ).join('');
-            inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}>
-                <option value="">-- เลือก --</option>${optionsHtml}
-            </select>`;
+            const optionsHtml = options.map(opt => `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`).join('');
+            inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
         } else {
-            inputHtml = `<input type="text" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
+            inputHtml = `<input type="text" name="${field}" value="${ui.escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
         }
         
         formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
@@ -142,18 +157,6 @@ function hideEditModal() {
     document.getElementById('editCustomerModal').classList.remove('show');
 }
 
-function escapeHtml(str) {
-    if (str === null || str === undefined) return '';
-    return String(str).replace(/[&<>"']/g, m => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    })[m]);
-}
-
-// ✅ FIXED: ปรับปรุง async loop และให้ refresh UI แม้ history ล้มเหลว
 async function handleSaveEditForm(event) {
     event.preventDefault();
     if (!state.editingCustomerId) return;
@@ -169,42 +172,29 @@ async function handleSaveEditForm(event) {
     }
 
     try {
-        // อัปเดตข้อมูลลูกค้าก่อน
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
         
-        // อัปเดต state ทันที
-        const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
-        if (index !== -1) {
-            state.customers[index] = updatedCustomer;
-        }
-        
-        // ✅ FIXED: บันทึก history แบบไม่บล็อก - ถ้า error ก็ไม่เป็นไร
         const historyPromises = [];
         for (const key in updatedData) {
             if (originalCustomer[key] !== updatedData[key]) {
                 const fieldLabel = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h] === key) || key;
                 const logNote = `แก้ไข '${fieldLabel}' จาก '${originalCustomer[key] || ''}' เป็น '${updatedData[key]}'`;
-                historyPromises.push(
-                    api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id)
-                );
+                historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
             }
         }
         
-        // พยายามบันทึก history แต่ไม่ throw error ถ้าล้มเหลว
         if (historyPromises.length > 0) {
-            try {
-                await Promise.all(historyPromises);
-            } catch (historyError) {
-                console.warn('Could not save history:', historyError);
-                // ไม่แสดง error ให้ user เพราะข้อมูลหลักบันทึกสำเร็จแล้ว
-            }
+            await Promise.all(historyPromises);
         }
         
-        // ✅ ปิด modal และ refresh UI เสมอ
+        const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
+        if (index !== -1) {
+            state.customers[index] = updatedCustomer;
+        }
+        
         hideEditModal();
         applyFiltersAndRender();
         ui.showStatus('บันทึกข้อมูลสำเร็จ', false);
-        
     } catch (error) {
         console.error('Save failed:', error);
         ui.showStatus('บันทึกข้อมูลไม่สำเร็จ: ' + error.message, true);
@@ -240,51 +230,36 @@ async function handleAddCustomer() {
 }
 
 // ================================================================================
-// ✅ FIXED: เพิ่มฟังก์ชันที่หายไป - INLINE CELL EDITING
+// ✅ RE-IMPLEMENTED: INLINE CELL EDITING FUNCTIONS
 // ================================================================================
 
 async function handleCellDoubleClick(event) {
     const cell = event.target.closest('td');
     
-    // ไม่ให้แก้ไข cell พิเศษ
-    if (!cell || cell.classList.contains('row-number') || cell.classList.contains('actions-cell')) {
-        return;
-    }
-
-    // ตรวจสอบว่า cell นี้แก้ไขได้หรือไม่ (สำหรับ Sales)
+    if (!cell || cell.classList.contains('row-number') || cell.classList.contains('actions-cell')) return;
     if (cell.classList.contains('non-editable')) {
         ui.showStatus('คุณไม่มีสิทธิ์แก้ไขฟิลด์นี้', true);
         return;
     }
-
-    // ถ้ามี cell อื่นกำลังแก้ไขอยู่ ให้ยกเลิกก่อน
     if (state.editingCell && state.editingCell !== cell) {
         const oldValue = state.editingCell.dataset.originalValue;
         ui.revertCellToText(state.editingCell, oldValue);
-        state.editingCell = null;
     }
 
+    state.editingCell = cell;
     const field = cell.dataset.field;
     const currentValue = cell.textContent.trim();
-    
-    // เก็บค่าเดิมไว้สำหรับการยกเลิก
     cell.dataset.originalValue = currentValue;
-    state.editingCell = cell;
 
-    // สร้าง editor ตามประเภทของ field
     const options = (field === 'sales') ? state.salesList : DROPDOWN_OPTIONS[field];
     ui.createCellEditor(cell, currentValue, options);
 
     const editor = cell.querySelector('input, select');
     if (!editor) return;
 
-    // จัดการเมื่อกด Enter หรือ blur
     const handleSave = () => {
-        if (state.editingCell === cell) {
-            handleCellEditSave(cell, currentValue);
-        }
+        if (state.editingCell === cell) handleCellEditSave(cell, currentValue);
     };
-
     const handleCancel = () => {
         if (state.editingCell === cell) {
             ui.revertCellToText(cell, currentValue);
@@ -294,13 +269,8 @@ async function handleCellDoubleClick(event) {
 
     editor.addEventListener('blur', handleSave);
     editor.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleSave();
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            handleCancel();
-        }
+        if (e.key === 'Enter') { e.preventDefault(); handleSave(); } 
+        else if (e.key === 'Escape') { e.preventDefault(); handleCancel(); }
     });
 }
 
@@ -386,9 +356,7 @@ async function handleSubmitStatusUpdate() {
     const newStatus = document.getElementById('modalStatusSelect').value;
     const notes = document.getElementById('modalNotesText').value.trim();
     
-    if (!newStatus) {
-        return ui.showStatus('กรุณาเลือกสถานะ', true);
-    }
+    if (!newStatus) return ui.showStatus('กรุณาเลือกสถานะ', true);
 
     ui.showLoading(true);
     try {
@@ -466,22 +434,18 @@ function setupEventListeners() {
     const tableBody = document.getElementById('tableBody');
     const contextMenu = document.getElementById('contextMenu');
     
-    // Header buttons
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
     document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
     document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
     
-    // Edit modal
     document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
     document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
 
-    // Table interactions
     tableBody?.addEventListener('click', handleTableClick);
-    tableBody?.addEventListener('dblclick', handleCellDoubleClick);
+    tableBody?.addEventListener('dblclick', handleCellDoubleClick); // ✅ RE-IMPLEMENTED
     tableBody?.addEventListener('contextmenu', handleContextMenu);
     
-    // Context menu
     contextMenu?.addEventListener('click', handleContextMenuItemClick);
     window.addEventListener('click', (event) => {
         if (contextMenu && !contextMenu.contains(event.target)) {
@@ -489,12 +453,10 @@ function setupEventListeners() {
         }
     });
     
-    // Modal close buttons
     document.querySelectorAll('[data-modal-close]').forEach(btn => {
         btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose));
     });
     
-    // Search input
     document.getElementById('searchInput')?.addEventListener('input', e => {
         state.activeFilters.search = e.target.value;
         applyFiltersAndRender();
