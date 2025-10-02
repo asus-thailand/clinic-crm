@@ -100,7 +100,7 @@ api.fetchStatusHistory = async function(customerId) {
     console.log(`API: Fetching status history for customer ${customerId}...`);
     try {
         const { data, error } = await window.supabaseClient
-            .from('status_history')
+            .from('customer_status_history') // ✅ FIXED: แก้ไขชื่อตารางให้ถูกต้อง
             .select('*, users(username)')
             .eq('customer_id', customerId)
             .order('created_at', { ascending: false });
@@ -118,7 +118,7 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
     console.log("API: Adding status update...");
     try {
         const { data, error } = await window.supabaseClient
-            .from('status_history')
+            .from('customer_status_history') // ✅ FIXED: แก้ไขชื่อตารางให้ถูกต้อง
             .insert({
                 customer_id: customerId,
                 status: status,
