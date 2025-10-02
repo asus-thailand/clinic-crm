@@ -81,7 +81,7 @@ const FIELD_MAPPING = {
     'เหตุผล': 'reason',
     'ETC': 'etc',
     'HN ลูกค้า': 'hn_customer',
-    'วันที่นัดผ่าเก่าแล้ว': 'old_appointment',
+    'วันที่นัด CS': 'old_appointment',
     'DR.': 'dr',
     'ยอดที่ปิดได้': 'closed_amount',
     'วันที่นัดทำหัตถการ': 'appointment_date',
@@ -334,3 +334,4 @@ ui.removeRow = function(rowId) {
 // ================================================================================
 
 window.ui = ui;
+
