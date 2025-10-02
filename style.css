@@ -25,11 +25,9 @@
     --error-color: #dc3545;
     --info-color: #007bff;
     
-    --admin-header-bg: #70ad47;
-    --status-header-bg: #ff00ff;
-    --status1-header-bg: #92d050;
-    --etc-header-bg: #ffc000;
-    --actions-header-bg: #4f81bd;
+    /* ✅ UPDATED: Header color variables simplified */
+    --header-bg-admin: #70ad47; /* Green for Admin Section */
+    --header-bg-sales: #ffc000;  /* Yellow for Sales Section */
 
     --admin-cell-bg: #e2efda;
     --status-cell-bg: #fce4ec;
@@ -317,12 +315,16 @@ body {
     z-index: 50;
 }
 
-/* Header Colors */
-.admin-header { background: var(--admin-header-bg) !important; }
-.status-header { background: var(--status-header-bg) !important; }
-.status1-header { background: var(--status1-header-bg) !important; }
-.etc-header { background: var(--etc-header-bg) !important; color: var(--text-color-black) !important; }
-.actions-header { background: var(--actions-header-bg) !important; }
+/* ✅ UPDATED: Header Colors simplified to 2 sections */
+.header-admin-section { 
+    background: var(--header-bg-admin) !important; 
+    color: var(--text-color-white) !important;
+}
+.header-sales-section { 
+    background: var(--header-bg-sales) !important; 
+    color: var(--text-color-black) !important; /* Yellow works better with black text */
+}
+
 
 /* Cell Styles */
 .excel-table td {
@@ -346,9 +348,9 @@ body {
 .status-cell { background: var(--status-cell-bg); }
 .etc-cell { background: var(--etc-cell-bg); }
 
-.excel-table td:not(.row-number):not(.actions-cell):hover {
-    border: 2px solid #217346;
-    cursor: cell;
+/* Removed hover effect for read-only view */
+.excel-table td:not(.row-number):not(.actions-cell) {
+    cursor: default;
 }
 
 .excel-table td.editing {
@@ -642,14 +644,9 @@ body {
 
 /* --- 12. Permission Styles --- */
 .non-editable {
-    background-color: #f0f0f0 !important; /* สีเทาอ่อน */
-    color: #888; /* สีตัวอักษรเทา */
-    cursor: not-allowed; /* เปลี่ยน cursor เป็นเครื่องหมายห้าม */
-}
-
-/* ทำให้ hover effect ไม่มีผลกับช่องที่แก้ไขไม่ได้ */
-.non-editable:hover {
-    border: 1px solid var(--border-color-medium) !important;
+    background-color: #f0f0f0 !important; 
+    color: #888; 
+    cursor: not-allowed; 
 }
 
 /* --- 13. Mobile Edit Form (Modal) --- */
