@@ -1,8 +1,12 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - API LAYER (FINAL + FULL UPDATE)
+// BEAUTY CLINIC CRM - API LAYER (COMPLETE FIXED VERSION 100%)
 // ================================================================================
 
 const api = {};
+
+// ================================================================================
+// AUTHENTICATION APIs
+// ================================================================================
 
 api.getSession = async function() {
     console.log("API: Attempting to get session...");
@@ -16,6 +20,22 @@ api.getSession = async function() {
         throw new Error('Could not get session.');
     }
 }
+
+api.signOut = async function() {
+    console.log("API: Attempting to sign out...");
+    try {
+        const { error } = await window.supabaseClient.auth.signOut();
+        if (error) throw error;
+        console.log("API: Sign out successful.");
+    } catch (error) {
+        console.error("API ERROR in signOut:", error);
+        throw new Error('Failed to sign out.');
+    }
+}
+
+// ================================================================================
+// USER PROFILE APIs
+// ================================================================================
 
 api.getUserProfile = async function(userId) {
     console.log(`API: Attempting to get profile for user ${userId}...`);
@@ -40,7 +60,12 @@ api.createDefaultUserProfile = async function(user) {
         const username = user.email.split('@')[0];
         const { data, error } = await window.supabaseClient
             .from('users')
-            .insert({ id: user.id, username, full_name: username, role: 'sales' })
+            .insert({ 
+                id: user.id, 
+                username, 
+                full_name: username, 
+                role: 'sales' 
+            })
             .select()
             .single();
         if (error) throw error;
@@ -49,34 +74,6 @@ api.createDefaultUserProfile = async function(user) {
     } catch (error) {
         console.error("API ERROR in createDefaultUserProfile:", error);
         throw new Error('Failed to create user profile.');
-    }
-}
-
-api.signOut = async function() {
-    console.log("API: Attempting to sign out...");
-    try {
-        const { error } = await window.supabaseClient.auth.signOut();
-        if (error) throw error;
-        console.log("API: Sign out successful.");
-    } catch (error) {
-        console.error("API ERROR in signOut:", error);
-        throw new Error('Failed to sign out.');
-    }
-}
-
-api.fetchAllCustomers = async function() {
-    console.log("API: Attempting to fetch all customers...");
-    try {
-        const { data, error } = await window.supabaseClient
-            .from('customers')
-            .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        console.log(`API: Fetched ${data ? data.length : 0} customers successfully.`);
-        return data || [];
-    } catch (error) {
-        console.error("API ERROR in fetchAllCustomers:", error);
-        throw new Error('Could not fetch customer data.');
     }
 }
 
@@ -96,64 +93,23 @@ api.fetchSalesList = async function() {
     }
 }
 
-api.fetchStatusHistory = async function(customerId) {
-    console.log(`API: Fetching status history for customer ${customerId}...`);
-    try {
-        const { data, error } = await window.supabaseClient
-            .from('customer_status_history') // ✅ FIXED: แก้ไขชื่อตารางให้ถูกต้อง
-            .select('*, users(username)')
-            .eq('customer_id', customerId)
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        console.log(`API: Fetched ${data ? data.length : 0} history records.`);
-        return data || [];
-    } catch (error) {
-        console.error("API ERROR in fetchStatusHistory:", error);
-        throw new Error('Could not fetch status history.');
-    }
-}
+// ================================================================================
+// CUSTOMER APIs
+// ================================================================================
 
-
-api.addStatusUpdate = async function(customerId, status, notes, userId) {
-    console.log("API: Adding status update...");
+api.fetchAllCustomers = async function() {
+    console.log("API: Attempting to fetch all customers...");
     try {
-        const { data, error } = await window.supabaseClient
-            .from('customer_status_history') // ✅ FIXED: แก้ไขชื่อตารางให้ถูกต้อง
-            .insert({
-                customer_id: customerId,
-                status: status,
-                notes: notes,
-                updated_by: userId
-            })
-            .select()
-            .single();
-        if (error) throw error;
-        console.log("API: Status update added successfully.");
-        return data;
-    } catch (error) {
-        console.error("API ERROR in addStatusUpdate:", error);
-        throw new Error('Could not add status update.');
-    }
-}
-
-api.updateCustomerCell = async function(customerId, field, value) {
-    console.log(`API: Updating customer ${customerId}, field ${field} with value "${value}"...`);
-    try {
-        const updateData = {};
-        updateData[field] = value;
-        
         const { data, error } = await window.supabaseClient
             .from('customers')
-            .update(updateData)
-            .eq('id', customerId)
-            .select()
-            .single();
+            .select('*')
+            .order('created_at', { ascending: false });
         if (error) throw error;
-        console.log("API: Customer updated successfully.");
-        return data;
+        console.log(`API: Fetched ${data ? data.length : 0} customers successfully.`);
+        return data || [];
     } catch (error) {
-        console.error("API ERROR in updateCustomerCell:", error);
-        throw new Error('Could not update customer.');
+        console.error("API ERROR in fetchAllCustomers:", error);
+        throw new Error('Could not fetch customer data.');
     }
 }
 
@@ -178,20 +134,24 @@ api.addCustomer = async function(salesName) {
     }
 }
 
-api.deleteCustomer = async function(customerId) {
-    console.log(`API: Attempting to delete customer ${customerId}...`);
+api.updateCustomerCell = async function(customerId, field, value) {
+    console.log(`API: Updating customer ${customerId}, field ${field} with value "${value}"...`);
     try {
-        const { error } = await window.supabaseClient
+        const updateData = {};
+        updateData[field] = value;
+        
+        const { data, error } = await window.supabaseClient
             .from('customers')
-            .delete()
-            .eq('id', customerId);
-
+            .update(updateData)
+            .eq('id', customerId)
+            .select()
+            .single();
         if (error) throw error;
-        console.log("API: Customer deleted successfully.");
-        return true;
+        console.log("API: Customer updated successfully.");
+        return data;
     } catch (error) {
-        console.error("API ERROR in deleteCustomer:", error);
-        throw new Error('Could not delete customer.');
+        console.error("API ERROR in updateCustomerCell:", error);
+        throw new Error('Could not update customer.');
     }
 }
 
@@ -218,5 +178,68 @@ api.updateCustomer = async function(customerId, customerData) {
     }
 }
 
-// ทำให้ API พร้อมใช้งานแบบ global
+api.deleteCustomer = async function(customerId) {
+    console.log(`API: Attempting to delete customer ${customerId}...`);
+    try {
+        const { error } = await window.supabaseClient
+            .from('customers')
+            .delete()
+            .eq('id', customerId);
+
+        if (error) throw error;
+        console.log("API: Customer deleted successfully.");
+        return true;
+    } catch (error) {
+        console.error("API ERROR in deleteCustomer:", error);
+        throw new Error('Could not delete customer.');
+    }
+}
+
+// ================================================================================
+// ✅ FIXED: STATUS HISTORY APIs (แก้ไขชื่อ table เป็น customer_status_history)
+// ================================================================================
+
+api.fetchStatusHistory = async function(customerId) {
+    console.log(`API: Fetching status history for customer ${customerId}...`);
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('customer_status_history') // ✅ FIXED: ชื่อ table ที่ถูกต้อง
+            .select('*, users(username)')
+            .eq('customer_id', customerId)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        console.log(`API: Fetched ${data ? data.length : 0} history records.`);
+        return data || [];
+    } catch (error) {
+        console.error("API ERROR in fetchStatusHistory:", error);
+        throw new Error('Could not fetch status history.');
+    }
+}
+
+api.addStatusUpdate = async function(customerId, status, notes, userId) {
+    console.log("API: Adding status update...");
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('customer_status_history') // ✅ FIXED: ชื่อ table ที่ถูกต้อง
+            .insert({
+                customer_id: customerId,
+                status: status,
+                notes: notes,
+                updated_by: userId
+            })
+            .select()
+            .single();
+        if (error) throw error;
+        console.log("API: Status update added successfully.");
+        return data;
+    } catch (error) {
+        console.error("API ERROR in addStatusUpdate:", error);
+        throw new Error('Could not add status update.');
+    }
+}
+
+// ================================================================================
+// EXPORT TO GLOBAL SCOPE
+// ================================================================================
+
 window.api = api;
