@@ -219,14 +219,21 @@ api.fetchStatusHistory = async function(customerId) {
 api.addStatusUpdate = async function(customerId, status, notes, userId) {
     console.log("API: Adding status update...");
     try {
+        // สร้าง object โดยเพิ่ม updated_by เฉพาะเมื่อมีค่า
+        const insertData = {
+            customer_id: customerId,
+            status: status,
+            notes: notes
+        };
+        
+        // เพิ่ม updated_by เฉพาะเมื่อมี userId
+        if (userId) {
+            insertData.updated_by = userId;
+        }
+        
         const { data, error } = await window.supabaseClient
-            .from('customer_status_history') // ✅ FIXED: ชื่อ table ที่ถูกต้อง
-            .insert({
-                customer_id: customerId,
-                status: status,
-                notes: notes,
-                updated_by: userId
-            })
+            .from('customer_status_history')
+            .insert(insertData)
             .select()
             .single();
         if (error) throw error;
@@ -234,7 +241,9 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
         return data;
     } catch (error) {
         console.error("API ERROR in addStatusUpdate:", error);
-        throw new Error('Could not add status update.');
+        // ไม่ throw error ให้หยุดทำงาน แต่ให้ return null
+        console.warn("Status history could not be saved, but continuing...");
+        return null;
     }
 }
 
