@@ -1,6 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (HYBRID EDITING + FINAL VALIDATION)
-// REFACTORED AND FIXED BY SENIOR SOFTWARE DEVELOPER
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PERFORMANCE ENHANCED)
 // ================================================================================
 
 const state = {
@@ -71,15 +70,20 @@ async function initializeApp() {
         state.currentUser = { id: session.user.id, ...userProfile };
         ui.updateUIAfterLogin(state.currentUser);
 
-        const [customers, salesList] = await Promise.all([
+        const [customers, salesList, statuses] = await Promise.all([
             api.fetchAllCustomers(),
-            api.fetchSalesList()
+            api.fetchSalesList(),
+            api.fetchDistinctColumn('status_1')
         ]);
         
         state.customers = customers || [];
         state.salesList = salesList || [];
         
-        applyFiltersAndRender();
+        // Render the full table initially
+        renderFullTable();
+        ui.populateFilterDropdown('salesFilter', state.salesList);
+        ui.populateFilterDropdown('statusFilter', statuses);
+
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
     } catch (error) {
         console.error('Initialization failed:', error);
@@ -90,24 +94,55 @@ async function initializeApp() {
 }
 
 // ================================================================================
-// FILTERING & RENDERING
+// ✅ REFACTORED: FILTERING & RENDERING (PERFORMANCE FOCUS)
 // ================================================================================
 
-function applyFiltersAndRender() {
+/**
+ * Renders the entire table from scratch based on the current state.
+ * This function is now used only for major data changes like initial load, add, or delete.
+ */
+function renderFullTable() {
+    ui.renderTable(state.customers, state.currentUser, SALES_EDITABLE_FIELDS);
+    updateDashboardStats();
+    // After a full render, it's good practice to re-apply the current filters
+    applyFilters();
+}
+
+/**
+ * ✅ NEW: High-performance filtering function.
+ * This function iterates through existing DOM rows and toggles a 'hidden' class.
+ * It does NOT rebuild the table, making it extremely fast.
+ */
+function applyFilters() {
     const { search, status, sales } = state.activeFilters;
     const lowerCaseSearch = search.toLowerCase();
-    
-    const filteredCustomers = state.customers.filter(customer => {
-        const matchesSearch = !search || Object.values(customer).some(val => 
-            String(val).toLowerCase().includes(lowerCaseSearch)
-        );
+    const tableBody = document.getElementById('tableBody');
+    if (!tableBody) return;
+
+    const rows = tableBody.querySelectorAll('tr');
+    let visibleRows = 0;
+
+    rows.forEach(row => {
+        const customer = state.customers.find(c => c.id == row.dataset.id);
+        if (!customer) {
+            row.classList.add('hidden');
+            return;
+        }
+
+        const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
+        const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
         const matchesStatus = !status || customer.status_1 === status;
         const matchesSales = !sales || customer.sales === sales;
-        return matchesSearch && matchesStatus && matchesSales;
+
+        if (matchesSearch && matchesStatus && matchesSales) {
+            row.classList.remove('hidden');
+            visibleRows++;
+            const rowNumberCell = row.querySelector('.row-number');
+            if(rowNumberCell) rowNumberCell.textContent = visibleRows;
+        } else {
+            row.classList.add('hidden');
+        }
     });
-    
-    ui.renderTable(filteredCustomers, state.currentUser, SALES_EDITABLE_FIELDS);
-    updateDashboardStats();
 }
 
 // ================================================================================
@@ -122,33 +157,7 @@ function showEditModal(customerId) {
     }
     
     state.editingCustomerId = customerId;
-    const form = document.getElementById('editCustomerForm');
-    form.innerHTML = ''; 
-
-    Object.entries(ui.FIELD_MAPPING).forEach(([header, field]) => {
-        if (!field) return; 
-
-        const value = customer[field] || '';
-        const options = (field === 'sales') ? state.salesList : DROPDOWN_OPTIONS[field];
-        const isSalesUser = state.currentUser.role === 'sales';
-        const isEditable = !isSalesUser || (isSalesUser && SALES_EDITABLE_FIELDS.includes(field));
-
-        const formGroup = document.createElement('div');
-        formGroup.className = 'form-group';
-        
-        let inputHtml = '';
-        if (options) {
-            const optionsHtml = options.map(opt => `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`).join('');
-            inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
-        } else {
-            inputHtml = `<input type="text" name="${field}" value="${ui.escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
-        }
-        
-        formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
-        form.appendChild(formGroup);
-    });
-
-    document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
+    ui.buildEditForm(customer, state.currentUser, SALES_EDITABLE_FIELDS, state.salesList, DROPDOWN_OPTIONS);
     document.getElementById('editCustomerModal').classList.add('show');
 }
 
@@ -170,11 +179,10 @@ async function handleSaveEditForm(event) {
         updatedData[key] = value;
     }
 
-    // ✅ RULE UPDATED: ตรวจสอบเงื่อนไขใหม่ก่อนบันทึก
     if (updatedData.status_1 === 'ปิดการขาย') {
         if (!updatedData.last_status || !updatedData.closed_amount) {
             ui.showStatus("สำหรับสถานะ 'ปิดการขาย' กรุณากรอก Last Status และ ยอดที่ปิดได้ ให้ครบถ้วน", true);
-            return; // หยุดการทำงาน ไม่ให้บันทึก
+            return;
         }
     }
 
@@ -201,7 +209,7 @@ async function handleSaveEditForm(event) {
         }
         
         hideEditModal();
-        applyFiltersAndRender();
+        renderFullTable(); // Data changed, so a full re-render is needed
         ui.showStatus('บันทึกข้อมูลสำเร็จ', false);
     } catch (error) {
         console.error('Save failed:', error);
@@ -222,29 +230,19 @@ async function handleLogout() {
     }
 }
 
-/**
- * ✅ FIXED BUG #1: แก้ไขปัญหาข้อมูลใหม่ไม่แสดงผลเมื่อมี Filter
- * เปลี่ยนจากการ unshift แล้ว render ทันที เป็นการ clear filter ก่อน
- * เพื่อให้แน่ใจว่าข้อมูลใหม่จะถูกแสดงผลเสมอ
- */
 async function handleAddCustomer() {
     ui.showLoading(true);
     try {
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A');
         state.customers.unshift(newCustomer);
 
-        // --- START FIX ---
-        // Clear active filters to ensure the new customer is visible
         state.activeFilters = { search: '', status: '', sales: '' };
-        
-        // Reset filter UI elements
         document.getElementById('searchInput').value = '';
         document.getElementById('statusFilter').value = '';
         document.getElementById('salesFilter').value = '';
-        // --- END FIX ---
-
-        applyFiltersAndRender();
-        showEditModal(newCustomer.id); // Show modal after rendering
+        
+        renderFullTable(); // New data requires a full re-render
+        showEditModal(newCustomer.id);
         ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
     } catch (error) {
         ui.showStatus(error.message, true);
@@ -298,21 +296,14 @@ async function handleCellDoubleClick(event) {
     });
 }
 
-/**
- * ✅ IMPROVEMENT: ปรับปรุงด้วยเทคนิค Optimistic UI
- * ทำให้ UI ตอบสนองทันที และหากเกิดข้อผิดพลาดจึงแจ้งเตือนและคืนค่าเดิม
- * ช่วยให้ประสบการณ์ใช้งานลื่นไหลขึ้น
- */
 async function handleCellEditSave(cell, originalValue) {
     if (!state.editingCell) return;
     
     const editor = cell.querySelector('input, select');
     const newValue = editor.value.trim();
-    
     const rowId = cell.parentElement.dataset.id;
     const field = cell.dataset.field;
     
-    // ✅ RULE UPDATED: ตรวจสอบเงื่อนไขใหม่สำหรับการแก้ไขในตาราง
     if (field === 'status_1' && newValue === 'ปิดการขาย') {
         const rowData = state.customers.find(c => c.id == rowId);
         if (!rowData.closed_amount) {
@@ -329,32 +320,29 @@ async function handleCellEditSave(cell, originalValue) {
         return;
     }
 
-    // --- START OPTIMISTIC UI FIX ---
-    // 1. Update UI immediately
     ui.revertCellToText(cell, newValue);
     
     try {
-        // 2. Send API requests in the background
         const updatedCustomer = await api.updateCustomerCell(rowId, field, newValue);
         
         const fieldLabel = Object.keys(ui.FIELD_MAPPING).find(key => ui.FIELD_MAPPING[key] === field) || field;
         const logNote = `แก้ไขข้อมูล '${fieldLabel}' จาก '${originalValue}' เป็น '${newValue}'`;
         await api.addStatusUpdate(rowId, 'แก้ไขข้อมูล', logNote, state.currentUser.id);
 
-        // 3. Update local state with the source of truth from API
         const customerIndex = state.customers.findIndex(c => c.id == rowId);
         if (customerIndex !== -1) {
             state.customers[customerIndex] = updatedCustomer;
         }
         
+        // After an inline edit, we might need to update row styles or stats.
+        // A full re-render is safest, but we can also just update the specific row.
+        renderFullTable(); 
         ui.showStatus('แก้ไขข้อมูลสำเร็จ', false);
 
     } catch (error) {
-        // 4. If API fails, revert UI and show error
         ui.showStatus(error.message, true);
-        ui.revertCellToText(cell, originalValue); // Revert on failure
+        ui.revertCellToText(cell, originalValue);
     }
-    // --- END OPTIMISTIC UI FIX ---
 }
 
 // ================================================================================
@@ -396,11 +384,6 @@ async function handleViewHistory(customerId, customerName) {
     }
 }
 
-/**
- * ✅ FIXED BUG #2: แก้ไขการอัปเดตสถานะซ้ำซ้อน
- * เปลี่ยนจากการอัปเดต state ด้วยตัวเอง เป็นการใช้ข้อมูลที่ได้รับกลับจาก API
- * เพื่อให้แน่ใจว่าข้อมูลใน state ตรงกับฐานข้อมูลเสมอ (Single Source of Truth)
- */
 async function handleSubmitStatusUpdate() {
     const customerId = document.getElementById('modalCustomerId').value;
     const newStatus = document.getElementById('modalStatusSelect').value;
@@ -410,23 +393,15 @@ async function handleSubmitStatusUpdate() {
 
     ui.showLoading(true);
     try {
-        // Step 1: Add the new status entry to the history table
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
-        
-        // Step 2: Update the 'last_status' on the main customer record
-        // This now returns the full, updated customer object
         const updatedCustomer = await api.updateCustomerCell(customerId, 'last_status', newStatus);
         
-        // --- START FIX ---
-        // Step 3: Find the customer in the local state and replace the entire object
-        // This ensures our local state is a perfect mirror of the database
         const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
         if (index !== -1) {
             state.customers[index] = updatedCustomer;
         }
-        // --- END FIX ---
         
-        applyFiltersAndRender();
+        renderFullTable(); // Re-render to ensure all data is fresh
         ui.hideModal('statusUpdateModal');
         ui.showStatus('อัปเดตสถานะสำเร็จ', false);
     } catch (error) {
@@ -472,7 +447,7 @@ async function handleContextMenuItemClick(event) {
             try {
                 await api.deleteCustomer(state.contextMenuRowId);
                 state.customers = state.customers.filter(c => c.id != state.contextMenuRowId);
-                applyFiltersAndRender();
+                renderFullTable(); // Data deleted, needs a full re-render
                 ui.showStatus('ลบข้อมูลสำเร็จ', false);
             } catch (error) {
                 ui.showStatus(error.message, true);
@@ -489,21 +464,20 @@ async function handleContextMenuItemClick(event) {
 // ================================================================================
 
 function setupEventListeners() {
-    const tableBody = document.getElementById('tableBody');
-    const contextMenu = document.getElementById('contextMenu');
-    
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
     document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
     document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
-    
     document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
     document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
+    document.getElementById('refreshButton')?.addEventListener('click', initializeApp);
 
+    const tableBody = document.getElementById('tableBody');
     tableBody?.addEventListener('click', handleTableClick);
     tableBody?.addEventListener('dblclick', handleCellDoubleClick);
     tableBody?.addEventListener('contextmenu', handleContextMenu);
     
+    const contextMenu = document.getElementById('contextMenu');
     contextMenu?.addEventListener('click', handleContextMenuItemClick);
     window.addEventListener('click', (event) => {
         if (contextMenu && !contextMenu.contains(event.target)) {
@@ -515,9 +489,18 @@ function setupEventListeners() {
         btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose));
     });
     
+    // ✅ NEW: Event listeners now call the fast `applyFilters` function
     document.getElementById('searchInput')?.addEventListener('input', e => {
         state.activeFilters.search = e.target.value;
-        applyFiltersAndRender();
+        applyFilters();
+    });
+    document.getElementById('statusFilter')?.addEventListener('change', e => {
+        state.activeFilters.status = e.target.value;
+        applyFilters();
+    });
+    document.getElementById('salesFilter')?.addEventListener('change', e => {
+        state.activeFilters.sales = e.target.value;
+        applyFilters();
     });
 }
 
