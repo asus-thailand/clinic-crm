@@ -25,7 +25,7 @@
     --error-color: #dc3545;
     --info-color: #007bff;
     
-    /* ✅ UPDATED: Header color variables simplified */
+    /* Header color variables */
     --header-bg-admin: #70ad47; /* Green for Admin Section */
     --header-bg-sales: #ffc000;  /* Yellow for Sales Section */
 
@@ -183,7 +183,6 @@ body {
     background-color: #5a6268;
 }
 
-
 .search-input, .filter-select {
     padding: 10px 15px;
     border: 2px solid var(--border-color-light);
@@ -299,7 +298,6 @@ body {
     height: 45px;
     vertical-align: middle;
     user-select: none;
-    color: var(--text-color-white);
 }
 
 .row-number {
@@ -315,18 +313,15 @@ body {
     z-index: 50;
 }
 
-/* ✅ UPDATED: Header Colors simplified to 2 sections */
 .header-admin-section { 
     background: var(--header-bg-admin) !important; 
     color: var(--text-color-white) !important;
 }
 .header-sales-section { 
     background: var(--header-bg-sales) !important; 
-    color: var(--text-color-black) !important; /* Yellow works better with black text */
+    color: var(--text-color-black) !important;
 }
 
-
-/* Cell Styles */
 .excel-table td {
     border: 1px solid var(--border-color-medium);
     padding: 3px 6px;
@@ -343,12 +338,6 @@ body {
     min-width: 160px;
 }
 
-/* Cell Backgrounds */
-.admin-cell { background: var(--admin-cell-bg); }
-.status-cell { background: var(--status-cell-bg); }
-.etc-cell { background: var(--etc-cell-bg); }
-
-/* Removed hover effect for read-only view */
 .excel-table td:not(.row-number):not(.actions-cell) {
     cursor: default;
 }
@@ -358,6 +347,17 @@ body {
     background: var(--bg-color-white) !important;
     border: 2px solid #0066cc;
 }
+
+/* ✅ NEW: Style for completed closed deals */
+.row-deal-closed td {
+    background-color: #9ceb8d !important;
+    font-weight: bold;
+}
+/* Style for hover effect on the green row */
+.row-deal-closed:hover td {
+    background-color: #89d87a !important;
+}
+
 
 .cell-input, .cell-select {
     width: 100%;
@@ -369,21 +369,6 @@ body {
     background: transparent;
     outline: none;
 }
-
-.has-dropdown::after {
-    content: '▼';
-    position: absolute;
-    right: 2px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 8px;
-    color: #666;
-    pointer-events: none;
-}
-
-.yn-cell { text-align: center; font-weight: bold; }
-.yn-cell.yes { color: var(--success-color); }
-.yn-cell.no { color: var(--error-color); }
 
 /* --- 8. Context Menu --- */
 .context-menu {
@@ -496,12 +481,6 @@ body {
 }
 
 .close-button:hover { color: var(--text-color-black); }
-
-.import-status {
-    margin-top: 15px;
-    font-size: 14px;
-    color: var(--text-color-primary);
-}
 
 .modal-input-group {
     margin-bottom: 15px;
@@ -631,7 +610,7 @@ body {
 
 /* --- 11. Print Styles --- */
 @media print {
-    .header, .toolbar, .stats-container, .context-menu, .status-indicator, .mobile-actions-btn, .modal {
+    .header, .toolbar, .stats-container, .context-menu, .status-indicator, .modal {
         display: none !important;
     }
 
