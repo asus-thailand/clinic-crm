@@ -58,7 +58,7 @@ ui.updateUIAfterLogin = function(user) {
 }
 
 // ================================================================================
-// ✅ FIXED: FIELD MAPPING (Character Encoding แก้ไขแล้ว)
+// FIELD MAPPING & CONSTANTS
 // ================================================================================
 
 const FIELD_MAPPING = {
@@ -92,7 +92,7 @@ ui.FIELD_MAPPING = FIELD_MAPPING;
 const HEADERS = Object.keys(FIELD_MAPPING);
 
 // ================================================================================
-// TABLE RENDERING - CELL CREATION
+// TABLE RENDERING
 // ================================================================================
 
 function createCell(row, fieldName, currentUser, salesEditableFields) {
@@ -100,7 +100,6 @@ function createCell(row, fieldName, currentUser, salesEditableFields) {
     td.dataset.field = fieldName;
     td.textContent = row[fieldName] || '';
     
-    // เพิ่ม class สำหรับ Sales ที่ไม่มีสิทธิ์แก้ไข
     if (currentUser && currentUser.role === 'sales' && !salesEditableFields.includes(fieldName)) {
         td.classList.add('non-editable');
     }
@@ -112,7 +111,6 @@ function createActionsCell(row) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
     
-    // ใช้ชื่อลูกค้า หรือ lead_code หรือ phone เป็นชื่อแสดง
     const displayName = row.name || row.lead_code || row.phone || 'N/A';
 
     td.innerHTML = `
@@ -127,18 +125,15 @@ function createRowElement(row, index, currentUser, salesEditableFields) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
-    // ✅ NEW: Add conditional class for highlighting closed deals
     if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
         tr.classList.add('row-deal-closed');
     }
     
-    // สร้าง Row Number Cell
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
     rowNumberCell.textContent = index + 1;
     tr.appendChild(rowNumberCell);
     
-    // สร้าง cells ตาม headers
     HEADERS.slice(1).forEach(header => {
         const fieldName = FIELD_MAPPING[header];
         if (fieldName) {
@@ -150,10 +145,6 @@ function createRowElement(row, index, currentUser, salesEditableFields) {
     
     return tr;
 }
-
-// ================================================================================
-// TABLE RENDERING - MAIN FUNCTIONS
-// ================================================================================
 
 ui.renderTable = function(customers, currentUser, salesEditableFields) {
     const tbody = document.getElementById('tableBody');
@@ -168,29 +159,8 @@ ui.renderTable = function(customers, currentUser, salesEditableFields) {
     tbody.appendChild(fragment);
 }
 
-ui.prependNewRow = function(customer, currentUser, salesEditableFields) {
-    const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    
-    const newRowElement = createRowElement(customer, 0, currentUser, salesEditableFields);
-    tbody.prepend(newRowElement);
-    
-    // อัปเดตหมายเลขแถวทั้งหมด
-    const rows = tbody.querySelectorAll('tr');
-    rows.forEach((row, index) => {
-        const rowNumberCell = row.querySelector('.row-number');
-        if (rowNumberCell) rowNumberCell.textContent = index + 1;
-    });
-    
-    // Highlight แถวใหม่
-    newRowElement.style.backgroundColor = '#d4edda';
-    setTimeout(() => {
-        newRowElement.style.backgroundColor = '';
-    }, 2000);
-}
-
 // ================================================================================
-// MODAL MANAGEMENT
+// MODAL & FORM MANAGEMENT
 // ================================================================================
 
 ui.showModal = function(modalId, context = {}) {
@@ -199,15 +169,10 @@ ui.showModal = function(modalId, context = {}) {
     
     if (modalId === 'statusUpdateModal' || modalId === 'historyModal') {
         const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`);
-        if (nameElement) {
-            nameElement.textContent = context.customerName || 'N/A';
-        }
-        
+        if (nameElement) nameElement.textContent = context.customerName || 'N/A';
         if (modalId === 'statusUpdateModal') {
             const customerIdElement = modal.querySelector('#modalCustomerId');
-            if (customerIdElement) {
-                customerIdElement.value = context.customerId || '';
-            }
+            if (customerIdElement) customerIdElement.value = context.customerId || '';
         }
     }
     
@@ -220,7 +185,6 @@ ui.hideModal = function(modalId) {
     
     modal.style.display = 'none';
     
-    // ล้างข้อมูลใน modal
     if (modalId === 'statusUpdateModal') {
         modal.querySelector('#modalStatusSelect').value = '';
         modal.querySelector('#modalNotesText').value = '';
@@ -232,8 +196,61 @@ ui.hideModal = function(modalId) {
     }
 }
 
+/**
+ * ✅ NEW: Added the missing function to build the edit form dynamically.
+ */
+ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
+    const form = document.getElementById('editCustomerForm');
+    form.innerHTML = ''; 
+
+    Object.entries(FIELD_MAPPING).forEach(([header, field]) => {
+        if (!field) return; 
+
+        const value = customer[field] || '';
+        const options = (field === 'sales') ? salesList : dropdownOptions[field];
+        const isSalesUser = currentUser.role === 'sales';
+        const isEditable = !isSalesUser || (isSalesUser && salesEditableFields.includes(field));
+
+        const formGroup = document.createElement('div');
+        formGroup.className = 'form-group';
+        
+        let inputHtml = '';
+        if (options) {
+            const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('');
+            inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
+        } else {
+            inputHtml = `<input type="text" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
+        }
+        
+        formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
+        form.appendChild(formGroup);
+    });
+    document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
+};
+
+/**
+ * ✅ NEW: Added the missing function to populate filter dropdowns.
+ */
+ui.populateFilterDropdown = function(elementId, options) {
+    const select = document.getElementById(elementId);
+    if (!select) return;
+    // Keep the first option ("All")
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+    (options || []).forEach(option => {
+        if (option) { // Ensure not to add null/empty options
+            const optElement = document.createElement('option');
+            optElement.value = option;
+            optElement.textContent = option;
+            select.appendChild(optElement);
+        }
+    });
+};
+
 // ================================================================================
-// HISTORY TIMELINE RENDERING
+// HISTORY TIMELINE, CONTEXT MENU, INLINE EDITING, etc.
+// (No changes in the sections below)
 // ================================================================================
 
 ui.renderHistoryTimeline = function(historyData) {
@@ -260,10 +277,6 @@ ui.renderHistoryTimeline = function(historyData) {
     `).join('');
 }
 
-// ================================================================================
-// CONTEXT MENU
-// ================================================================================
-
 ui.showContextMenu = function(event) {
     const menu = document.getElementById('contextMenu');
     if (!menu) return;
@@ -278,15 +291,10 @@ ui.hideContextMenu = function() {
     if (menu) menu.style.display = 'none';
 };
 
-// ================================================================================
-// INLINE CELL EDITING
-// ================================================================================
-
 ui.createCellEditor = function(cell, value, options) {
     cell.classList.add('editing');
     
     if (options && Array.isArray(options)) {
-        // สร้าง dropdown
         const optionsHtml = options.map(opt => 
             `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`
         ).join('');
@@ -298,7 +306,6 @@ ui.createCellEditor = function(cell, value, options) {
             </select>
         `;
     } else {
-        // สร้าง text input
         cell.innerHTML = `<input type="text" class="cell-input" value="${escapeHtml(value)}" />`;
     }
     
@@ -315,27 +322,5 @@ ui.revertCellToText = function(cell, value) {
         cell.textContent = value;
     }
 };
-
-// ================================================================================
-// ROW OPERATIONS
-// ================================================================================
-
-ui.removeRow = function(rowId) {
-    const row = document.querySelector(`tr[data-id="${rowId}"]`);
-    if (!row) return;
-    
-    // แสดง animation ก่อนลบ
-    row.style.backgroundColor = '#f8d7da';
-    row.style.transition = 'opacity 0.5s ease';
-    row.style.opacity = '0';
-    
-    setTimeout(() => {
-        row.remove();
-    }, 500);
-};
-
-// ================================================================================
-// EXPORT UI TO GLOBAL SCOPE
-// ================================================================================
 
 window.ui = ui;
