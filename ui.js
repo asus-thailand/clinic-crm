@@ -126,6 +126,11 @@ function createActionsCell(row) {
 function createRowElement(row, index, currentUser, salesEditableFields) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
+
+    // ✅ NEW: Add conditional class for highlighting closed deals
+    if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
+        tr.classList.add('row-deal-closed');
+    }
     
     // สร้าง Row Number Cell
     const rowNumberCell = document.createElement('td');
@@ -334,4 +339,3 @@ ui.removeRow = function(rowId) {
 // ================================================================================
 
 window.ui = ui;
-
