@@ -348,7 +348,7 @@ body {
     border: 2px solid #0066cc;
 }
 
-/* ✅ NEW: Style for completed closed deals */
+/* Style for completed closed deals */
 .row-deal-closed td {
     background-color: #9ceb8d !important;
     font-weight: bold;
@@ -753,4 +753,9 @@ body {
     border: none;
     border-radius: 8px;
     cursor: pointer;
+}
+
+/* ✅ NEW: Performance Improvement Class */
+.hidden {
+    display: none;
 }
