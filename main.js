@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PERFORMANCE ENHANCED)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PERFORMANCE ENHANCED & BUG FIXED)
 // ================================================================================
 
 const state = {
@@ -70,17 +70,22 @@ async function initializeApp() {
         state.currentUser = { id: session.user.id, ...userProfile };
         ui.updateUIAfterLogin(state.currentUser);
 
-        const [customers, salesList, statuses] = await Promise.all([
+        // ✅ BUG FIX: Changed the data fetching logic to be sequential and robust.
+        // This removes the call to the non-existent 'api.fetchDistinctColumn' function.
+        const [customers, salesList] = await Promise.all([
             api.fetchAllCustomers(),
-            api.fetchSalesList(),
-            api.fetchDistinctColumn('status_1')
+            api.fetchSalesList()
         ]);
         
         state.customers = customers || [];
         state.salesList = salesList || [];
         
+        // Create a distinct list of statuses from the fetched customer data.
+        const statuses = [...new Set(state.customers.map(c => c.status_1).filter(Boolean))].sort();
+
         // Render the full table initially
         renderFullTable();
+        // Populate filters with dynamic data
         ui.populateFilterDropdown('salesFilter', state.salesList);
         ui.populateFilterDropdown('statusFilter', statuses);
 
@@ -94,25 +99,15 @@ async function initializeApp() {
 }
 
 // ================================================================================
-// ✅ REFACTORED: FILTERING & RENDERING (PERFORMANCE FOCUS)
+// FILTERING & RENDERING (PERFORMANCE FOCUS)
 // ================================================================================
 
-/**
- * Renders the entire table from scratch based on the current state.
- * This function is now used only for major data changes like initial load, add, or delete.
- */
 function renderFullTable() {
     ui.renderTable(state.customers, state.currentUser, SALES_EDITABLE_FIELDS);
     updateDashboardStats();
-    // After a full render, it's good practice to re-apply the current filters
     applyFilters();
 }
 
-/**
- * ✅ NEW: High-performance filtering function.
- * This function iterates through existing DOM rows and toggles a 'hidden' class.
- * It does NOT rebuild the table, making it extremely fast.
- */
 function applyFilters() {
     const { search, status, sales } = state.activeFilters;
     const lowerCaseSearch = search.toLowerCase();
@@ -209,7 +204,7 @@ async function handleSaveEditForm(event) {
         }
         
         hideEditModal();
-        renderFullTable(); // Data changed, so a full re-render is needed
+        renderFullTable();
         ui.showStatus('บันทึกข้อมูลสำเร็จ', false);
     } catch (error) {
         console.error('Save failed:', error);
@@ -241,7 +236,7 @@ async function handleAddCustomer() {
         document.getElementById('statusFilter').value = '';
         document.getElementById('salesFilter').value = '';
         
-        renderFullTable(); // New data requires a full re-render
+        renderFullTable();
         showEditModal(newCustomer.id);
         ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
     } catch (error) {
@@ -334,8 +329,6 @@ async function handleCellEditSave(cell, originalValue) {
             state.customers[customerIndex] = updatedCustomer;
         }
         
-        // After an inline edit, we might need to update row styles or stats.
-        // A full re-render is safest, but we can also just update the specific row.
         renderFullTable(); 
         ui.showStatus('แก้ไขข้อมูลสำเร็จ', false);
 
@@ -401,7 +394,7 @@ async function handleSubmitStatusUpdate() {
             state.customers[index] = updatedCustomer;
         }
         
-        renderFullTable(); // Re-render to ensure all data is fresh
+        renderFullTable();
         ui.hideModal('statusUpdateModal');
         ui.showStatus('อัปเดตสถานะสำเร็จ', false);
     } catch (error) {
@@ -447,7 +440,7 @@ async function handleContextMenuItemClick(event) {
             try {
                 await api.deleteCustomer(state.contextMenuRowId);
                 state.customers = state.customers.filter(c => c.id != state.contextMenuRowId);
-                renderFullTable(); // Data deleted, needs a full re-render
+                renderFullTable();
                 ui.showStatus('ลบข้อมูลสำเร็จ', false);
             } catch (error) {
                 ui.showStatus(error.message, true);
@@ -489,7 +482,6 @@ function setupEventListeners() {
         btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose));
     });
     
-    // ✅ NEW: Event listeners now call the fast `applyFilters` function
     document.getElementById('searchInput')?.addEventListener('input', e => {
         state.activeFilters.search = e.target.value;
         applyFilters();
