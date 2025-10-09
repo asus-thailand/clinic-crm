@@ -759,3 +759,17 @@ body {
 .hidden {
     display: none;
 }
+
+/* --- ✅ NEW: Row-level Permission Styles --- */
+.read-only-row td {
+    background-color: #f8f9fa !important; /* สีพื้นหลังจางๆ */
+    color: #6c757d; /* สีตัวอักษรจางลง */
+    cursor: not-allowed; /* เปลี่ยน cursor เป็นเครื่องหมายห้าม */
+}
+
+.read-only-row .btn-edit:disabled,
+.read-only-row .btn-update:disabled {
+    background-color: #ced4da;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
