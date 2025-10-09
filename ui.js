@@ -95,17 +95,12 @@ const HEADERS = Object.keys(FIELD_MAPPING);
 // TABLE RENDERING
 // ================================================================================
 
-function createCell(row, fieldName, isOwner) {
+function createCell(row, fieldName) {
     const td = document.createElement('td');
     td.dataset.field = fieldName;
     td.textContent = row[fieldName] || '';
-    
-    // ✅ LOGIC: ถ้าไม่ใช่เจ้าของและเป็น sales จะเพิ่ม class non-editable
-    // (แต่การป้องกันหลักจะอยู่ที่ handleCellDoubleClick)
-    if (!isOwner) {
-        td.classList.add('non-editable-row-cell'); 
-    }
-    
+    // ✅ [Mobile-First Update] ลบ Logic ที่ไม่จำเป็นสำหรับการแก้ไขในตารางออก
+    // การควบคุมสิทธิ์ทั้งหมดจะอยู่ที่ปุ่มและ class ของแถว (tr)
     return td;
 }
 
@@ -115,13 +110,11 @@ function createActionsCell(row, currentUser) {
     
     const displayName = row.name || row.lead_code || row.phone || 'N/A';
 
-    // ✅ LOGIC: ตรวจสอบสิทธิ์ก่อนสร้างปุ่ม
-    // 1. ถ้า role ไม่ใช่ 'sales' (เป็น admin/administrator) -> มีสิทธิ์เสมอ (isOwner = true)
-    // 2. ถ้า role เป็น 'sales' -> ตรวจสอบว่า `row.sales` ตรงกับ `currentUser.username` หรือไม่
-    const isOwner = currentUser.role !== 'sales' || row.sales === currentUser.username;
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
+    const isOwner = row.sales === currentUser.username;
+    const canEdit = isAdmin || isOwner;
 
-    // ✅ LOGIC: เพิ่ม attribute 'disabled' ให้กับปุ่มถ้าไม่มีสิทธิ์
-    const disabledAttribute = !isOwner ? 'disabled' : '';
+    const disabledAttribute = !canEdit ? 'disabled' : '';
 
     td.innerHTML = `
         <button class="btn-edit" data-action="edit-customer" data-id="${row.id}" ${disabledAttribute}>แก้ไข</button>
@@ -139,10 +132,11 @@ function createRowElement(row, index, currentUser) {
         tr.classList.add('row-deal-closed');
     }
 
-    // ✅ LOGIC: ตรวจสอบความเป็นเจ้าของของแถวนี้
-    const isOwner = currentUser.role !== 'sales' || row.sales === currentUser.username;
-    if (!isOwner) {
-        tr.classList.add('read-only-row'); // เพิ่ม class เพื่อให้ CSS จัดการการแสดงผล
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
+    const isOwner = row.sales === currentUser.username;
+    
+    if (!isAdmin && !isOwner) {
+        tr.classList.add('read-only-row');
     }
     
     const rowNumberCell = document.createElement('td');
@@ -153,10 +147,8 @@ function createRowElement(row, index, currentUser) {
     HEADERS.slice(1).forEach(header => {
         const fieldName = FIELD_MAPPING[header];
         if (fieldName) {
-            // ✅ LOGIC: ส่ง isOwner ไปให้ createCell ด้วย
-            tr.appendChild(createCell(row, fieldName, isOwner));
+            tr.appendChild(createCell(row, fieldName));
         } else if (header === 'จัดการ') {
-            // ✅ LOGIC: ส่ง currentUser ไปให้ createActionsCell
             tr.appendChild(createActionsCell(row, currentUser));
         }
     });
@@ -164,22 +156,19 @@ function createRowElement(row, index, currentUser) {
     return tr;
 }
 
-ui.renderTable = function(customers, currentUser) {
+ui.renderTable = function(customers, currentUser, salesEditableFields) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
     const fragment = document.createDocumentFragment();
     customers.forEach((row, index) => {
-        // ✅ LOGIC: ส่ง currentUser ไปด้วย
-        fragment.appendChild(createRowElement(row, index, currentUser));
+        fragment.appendChild(createRowElement(row, index, currentUser, salesEditableFields));
     });
     
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
 }
 
-
-// ... (ส่วนที่เหลือของไฟล์ ui.js เหมือนเดิม)
 // ================================================================================
 // MODAL & FORM MANAGEMENT
 // ================================================================================
@@ -217,9 +206,6 @@ ui.hideModal = function(modalId) {
     }
 }
 
-/**
- * ✅ NEW: Added the missing function to build the edit form dynamically.
- */
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
     form.innerHTML = ''; 
@@ -230,7 +216,11 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const isSalesUser = currentUser.role === 'sales';
-        const isEditable = !isSalesUser || (isSalesUser && salesEditableFields.includes(field));
+        
+        // Admin can edit everything. Sales can only edit fields in SALES_EDITABLE_FIELDS.
+        const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
+        const isEditableBySales = isSalesUser && salesEditableFields.includes(field);
+        const isEditable = isAdmin || isEditableBySales;
 
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
@@ -240,7 +230,8 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('');
             inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
         } else {
-            inputHtml = `<input type="text" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
+            const fieldType = (field === 'date' || field === 'appointment_date' || field === 'old_appointment') ? 'date' : 'text';
+            inputHtml = `<input type="${fieldType}" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
         }
         
         formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
@@ -249,18 +240,14 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
 };
 
-/**
- * ✅ NEW: Added the missing function to populate filter dropdowns.
- */
 ui.populateFilterDropdown = function(elementId, options) {
     const select = document.getElementById(elementId);
     if (!select) return;
-    // Keep the first option ("All")
     while (select.options.length > 1) {
         select.remove(1);
     }
     (options || []).forEach(option => {
-        if (option) { // Ensure not to add null/empty options
+        if (option) {
             const optElement = document.createElement('option');
             optElement.value = option;
             optElement.textContent = option;
@@ -271,7 +258,6 @@ ui.populateFilterDropdown = function(elementId, options) {
 
 // ================================================================================
 // HISTORY TIMELINE, CONTEXT MENU, INLINE EDITING, etc.
-// (No changes in the sections below)
 // ================================================================================
 
 ui.renderHistoryTimeline = function(historyData) {
@@ -313,6 +299,7 @@ ui.hideContextMenu = function() {
 };
 
 ui.createCellEditor = function(cell, value, options) {
+    // ฟังก์ชันนี้ไม่ได้ถูกเรียกใช้งานแล้ว แต่เก็บไว้เผื่ออนาคต
     cell.classList.add('editing');
     
     if (options && Array.isArray(options)) {
