@@ -58,7 +58,7 @@ ui.updateUIAfterLogin = function(user) {
 }
 
 // ================================================================================
-// ✨ SINGLE SOURCE OF TRUTH: FIELD MAPPING
+// SINGLE SOURCE OF TRUTH: FIELD MAPPING
 // ================================================================================
 
 const FIELD_MAPPING = {
@@ -92,7 +92,7 @@ ui.FIELD_MAPPING = FIELD_MAPPING;
 const HEADERS = Object.keys(FIELD_MAPPING);
 
 // ================================================================================
-// ✨ NEW: DYNAMIC TABLE HEADER RENDERING
+// DYNAMIC TABLE HEADER RENDERING
 // ================================================================================
 
 ui.renderTableHeaders = function() {
@@ -118,7 +118,7 @@ ui.renderTableHeaders = function() {
         tr.appendChild(th);
     });
 
-    thead.innerHTML = ''; // Clear any existing content
+    thead.innerHTML = ''; 
     thead.appendChild(tr);
 };
 
@@ -174,7 +174,6 @@ function createRowElement(row, index, currentUser) {
     rowNumberCell.textContent = index + 1;
     tr.appendChild(rowNumberCell);
     
-    // ✨ UPDATED: Loop through HEADERS, skipping the first ('#')
     HEADERS.slice(1).forEach(header => {
         const fieldName = FIELD_MAPPING[header].field;
         if (fieldName) {
@@ -205,7 +204,6 @@ ui.renderTable = function(customers, currentUser) {
 // ================================================================================
 
 ui.showModal = function(modalId, context = {}) {
-    // ... (This function remains unchanged)
     const modal = document.getElementById(modalId);
     if (!modal) return;
     
@@ -222,7 +220,6 @@ ui.showModal = function(modalId, context = {}) {
 }
 
 ui.hideModal = function(modalId) {
-    // ... (This function remains unchanged)
     const modal = document.getElementById(modalId);
     if (!modal) return;
     
@@ -239,15 +236,31 @@ ui.hideModal = function(modalId) {
     }
 }
 
+// ✨ UPDATED: This function is now completely rewritten to support sections
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
-    form.innerHTML = ''; 
+    form.innerHTML = ''; // Clear previous form content
 
-    // ✨ UPDATED: Loop through FIELD_MAPPING to build the form dynamically
+    // Create section containers
+    const adminSection = document.createElement('div');
+    adminSection.className = 'modal-section admin-section';
+    adminSection.innerHTML = '<h3 class="modal-section-title">ส่วนของแอดมิน (Admin Section)</h3>';
+    const adminContent = document.createElement('div');
+    adminContent.className = 'modal-section-content';
+    adminSection.appendChild(adminContent);
+
+    const salesSection = document.createElement('div');
+    salesSection.className = 'modal-section sales-section';
+    salesSection.innerHTML = '<h3 class="modal-section-title">ส่วนของเซลล์ (Sales Section)</h3>';
+    const salesContent = document.createElement('div');
+    salesContent.className = 'modal-section-content';
+    salesSection.appendChild(salesContent);
+
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
-        if (!field) return; // Skip special fields like '#' and 'จัดการ'
+        if (!field) return; 
 
+        // Create the form group element
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const isSalesUser = currentUser.role === 'sales';
@@ -269,13 +282,23 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         }
         
         formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
-        form.appendChild(formGroup);
+        
+        // Append the form group to the correct section
+        if (config.section === 'admin') {
+            adminContent.appendChild(formGroup);
+        } else if (config.section === 'sales') {
+            salesContent.appendChild(formGroup);
+        }
     });
+
+    // Append the sections to the main form
+    form.appendChild(adminSection);
+    form.appendChild(salesSection);
+
     document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
 };
 
 ui.populateFilterDropdown = function(elementId, options) {
-    // ... (This function remains unchanged)
     const select = document.getElementById(elementId);
     if (!select) return;
     while (select.options.length > 1) {
@@ -292,11 +315,10 @@ ui.populateFilterDropdown = function(elementId, options) {
 };
 
 // ================================================================================
-// HISTORY TIMELINE, CONTEXT MENU, etc.
+// HISTORY TIMELINE, CONTEXT MENU, etc. (Unchanged)
 // ================================================================================
 
 ui.renderHistoryTimeline = function(historyData) {
-    // ... (This function remains unchanged)
     const container = document.getElementById('historyTimelineContainer');
     if (!container) return;
     
@@ -321,7 +343,6 @@ ui.renderHistoryTimeline = function(historyData) {
 }
 
 ui.showContextMenu = function(event) {
-    // ... (This function remains unchanged)
     const menu = document.getElementById('contextMenu');
     if (!menu) return;
     
@@ -331,17 +352,8 @@ ui.showContextMenu = function(event) {
 };
 
 ui.hideContextMenu = function() {
-    // ... (This function remains unchanged)
     const menu = document.getElementById('contextMenu');
     if (menu) menu.style.display = 'none';
-};
-
-ui.createCellEditor = function(cell, value, options) {
-    // This function is no longer called but is kept for future reference
-};
-
-ui.revertCellToText = function(cell, value) {
-    // This function is no longer called but is kept for future reference
 };
 
 window.ui = ui;
