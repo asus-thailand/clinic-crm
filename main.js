@@ -15,8 +15,13 @@ const state = {
 };
 
 const DROPDOWN_OPTIONS = {
+    channel: ["-เพื่อนแนะนำ/", "-Walk-In/", "-PHONE-IN/", "-Line@/", "-Fbc By หมอธีร์ (ปลูกผม)", "-Fbc By หมอธีร์ (หัตถการอื่น)", "-FBC HAIR CLINIC", "-Fbc ตาสองชั้น ยกคิ้ว เสริมจมูก", "-Fbc ปรับรูปหน้า Botox Filler HIFU", "-เว็บไซต์", "-AGENCY", "-IG", "-Tiktok "],
+    procedure: ["ตา Dr.T", "ตาทีมแพทย์", "ปลูกผม", "ปลูกหนวด/เครา", "ปลูกคิ้ว", "FaceLift", "จมูก/ปาก/คาง", "Thermage", "Ultraformer", "Filler", "BOTOX", "Laser กำจัดขน", "SKIN อื่น ๆ", "ตา Dr.T/ปลูกผม", "ตา/SKIN", "ผม/SKIN", "ตา/อื่นๆ", "ผม/อื่นๆ", "ตาทีมแพทย์/ปลูกผม"],
+    confirm_y: ["Y", "N"],
+    transfer_100: ["Y", "N"],
     status_1: ["status 1", "status 2", "status 3", "status 4", "ไม่สนใจ", "ปิดการขาย", "ตามต่อ"],
-    // ... (rest of the dropdown options remain the same)
+    cs_confirm: ["CSX", "CSY"],
+    last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
 };
 
 const SALES_EDITABLE_FIELDS = [
@@ -43,7 +48,7 @@ async function initializeApp() {
         if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
         
         state.currentUser = { id: session.user.id, ...userProfile };
-        window.state = state; // Make state globally accessible for ui.js
+        window.state = state; 
         ui.updateUIAfterLogin(state.currentUser);
 
         const [customers, salesList] = await Promise.all([
@@ -54,12 +59,11 @@ async function initializeApp() {
         state.customers = customers || [];
         state.salesList = salesList || [];
         
-        // Populate static dropdowns
         const statuses = [...new Set(state.customers.map(c => c.last_status).filter(Boolean))].sort();
         ui.populateFilterDropdown('salesFilter', state.salesList);
         ui.populateFilterDropdown('statusFilter', statuses);
 
-        updateVisibleData(); // First render
+        updateVisibleData(); 
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
     } catch (error) {
         console.error('Initialization failed:', error);
@@ -70,11 +74,10 @@ async function initializeApp() {
 }
 
 // ================================================================================
-// ✨ NEW: MASTER DATA PROCESSING & RENDERING PIPELINE
+// MASTER DATA PROCESSING & RENDERING PIPELINE
 // ================================================================================
 
 function updateVisibleData() {
-    // 1. Apply Date Filter
     let dateFiltered = state.customers;
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
         dateFiltered = state.customers.filter(c => {
@@ -84,7 +87,6 @@ function updateVisibleData() {
         });
     }
 
-    // 2. Apply Other Filters (Search, Status, Sales)
     const { search, status, sales } = state.activeFilters;
     const lowerCaseSearch = search.toLowerCase();
 
@@ -96,7 +98,6 @@ function updateVisibleData() {
         return matchesSearch && matchesStatus && matchesSales;
     });
 
-    // 3. Apply Pagination
     const { currentPage, pageSize } = state.pagination;
     const totalRecords = state.filteredCustomers.length;
     const totalPages = Math.ceil(totalRecords / pageSize);
@@ -104,10 +105,9 @@ function updateVisibleData() {
     const endIndex = startIndex + pageSize;
     const paginatedCustomers = state.filteredCustomers.slice(startIndex, endIndex);
 
-    // 4. Render UI Components
     ui.renderTable(paginatedCustomers, currentPage, pageSize);
     ui.renderPaginationControls(totalPages, currentPage, totalRecords, pageSize);
-    updateDashboardStats(); // Update stats based on filtered data
+    updateDashboardStats(); 
 }
 
 // ================================================================================
@@ -115,16 +115,13 @@ function updateVisibleData() {
 // ================================================================================
 
 function updateDashboardStats() {
-    const dataSet = state.filteredCustomers; // Use filtered data for stats
+    const dataSet = state.filteredCustomers; 
     document.getElementById('totalCustomers').textContent = dataSet.length;
-
     const today = new Date().toISOString().split('T')[0];
     const todayCustomers = dataSet.filter(c => c.date === today).length;
     document.getElementById('todayCustomers').textContent = todayCustomers;
-
     const pendingCustomers = dataSet.filter(c => c.status_1 === 'ตามต่อ').length;
     document.getElementById('pendingCustomers').textContent = pendingCustomers;
-
     const closedDeals = dataSet.filter(c => c.status_1 === 'ปิดการขาย' && c.last_status === '100%' && c.closed_amount).length;
     document.getElementById('closedDeals').textContent = closedDeals;
 }
@@ -135,43 +132,23 @@ function setDateFilterPreset(preset) {
     let startDate = new Date(today);
     let endDate = new Date(today);
     endDate.setHours(23, 59, 59, 999);
-
     switch(preset) {
-        case '7d':
-            startDate.setDate(today.getDate() - 6);
-            break;
-        case '30d':
-            startDate.setDate(today.getDate() - 29);
-            break;
-        case 'today':
-            // Already set
-            break;
-        case 'all':
-            startDate = null;
-            endDate = null;
-            break;
+        case '7d': startDate.setDate(today.getDate() - 6); break;
+        case '30d': startDate.setDate(today.getDate() - 29); break;
+        case 'today': break;
+        case 'all': startDate = null; endDate = null; break;
     }
-    
-    state.dateFilter.startDate = startDate;
-    state.dateFilter.endDate = endDate;
-    state.dateFilter.preset = preset;
-
-    // Update UI
+    state.dateFilter = { startDate, endDate, preset };
     document.getElementById('startDateFilter').valueAsDate = startDate;
     document.getElementById('endDateFilter').valueAsDate = endDate;
-    document.querySelectorAll('.btn-date-filter').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.preset === preset);
-    });
+    document.querySelectorAll('.btn-date-filter').forEach(btn => btn.classList.toggle('active', btn.dataset.preset === preset));
     if (preset === 'all') document.getElementById('clearDateFilter').classList.add('active');
-
     state.pagination.currentPage = 1;
     updateVisibleData();
 }
 
 // ================================================================================
-// (All other functions from the previous version remain largely the same,
-// with minor tweaks to call updateVisibleData() instead of applyFilters())
-// ... The following is the rest of the complete file.
+// State Machine Logic for Status Transitions
 // ================================================================================
 
 function getAllowedNextStatuses(currentStatus) {
@@ -187,10 +164,32 @@ function getAllowedNextStatuses(currentStatus) {
     }
 }
 
+// ================================================================================
+// EDIT MODAL HANDLERS & TABLE INTERACTIONS
+// ================================================================================
+
+/**
+ * ✨ UPDATED: This function now checks the user's role to determine which statuses to show.
+ * Admins see all statuses; Sales see only the allowed next steps.
+ */
 function showUpdateStatusModal(customer) {
     const select = document.getElementById('modalStatusSelect');
     if (!select) return;
-    const allowedStatuses = getAllowedNextStatuses(customer.status_1);
+
+    const currentUser = state.currentUser;
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
+    
+    let allowedStatuses;
+
+    if (isAdmin) {
+        // Admins can see all statuses.
+        allowedStatuses = DROPDOWN_OPTIONS.status_1;
+    } else {
+        // Sales follow the sequential logic.
+        allowedStatuses = getAllowedNextStatuses(customer.status_1);
+    }
+
+    // Populate the dropdown with the correct list of statuses.
     select.innerHTML = '<option value="">-- เลือกสถานะ --</option>';
     allowedStatuses.forEach(opt => {
         const optionEl = document.createElement('option');
@@ -198,6 +197,8 @@ function showUpdateStatusModal(customer) {
         optionEl.textContent = opt;
         select.appendChild(optionEl);
     });
+
+    // Show the modal.
     ui.showModal('statusUpdateModal', { 
         customerId: customer.id, 
         customerName: customer.name || customer.lead_code || 'N/A' 
@@ -379,50 +380,37 @@ function setupEventListeners() {
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('refreshButton')?.addEventListener('click', initializeApp);
     
-    // Main Filters
     document.getElementById('searchInput')?.addEventListener('input', e => { state.activeFilters.search = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
     document.getElementById('statusFilter')?.addEventListener('change', e => { state.activeFilters.status = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
     document.getElementById('salesFilter')?.addEventListener('change', e => { state.activeFilters.sales = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
 
-    // ✨ NEW: Date Filter Listeners
-    document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => {
-        button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset));
-    });
+    document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => { button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset)); });
     document.getElementById('clearDateFilter')?.addEventListener('click', () => setDateFilterPreset('all'));
-    document.getElementById('startDateFilter')?.addEventListener('change', () => {
-        state.dateFilter.startDate = document.getElementById('startDateFilter').valueAsDate;
-        if (state.dateFilter.endDate) { state.pagination.currentPage = 1; updateVisibleData(); }
-    });
-    document.getElementById('endDateFilter')?.addEventListener('change', () => {
-        state.dateFilter.endDate = document.getElementById('endDateFilter').valueAsDate;
-        if (state.dateFilter.startDate) { state.pagination.currentPage = 1; updateVisibleData(); }
-    });
+    const startDateFilter = document.getElementById('startDateFilter');
+    const endDateFilter = document.getElementById('endDateFilter');
+    startDateFilter?.addEventListener('change', () => { if (endDateFilter.value) { state.dateFilter.startDate = startDateFilter.valueAsDate; state.pagination.currentPage = 1; updateVisibleData(); }});
+    endDateFilter?.addEventListener('change', () => { if (startDateFilter.value) { state.dateFilter.endDate = endDateFilter.valueAsDate; state.pagination.currentPage = 1; updateVisibleData(); }});
 
-    // ✨ NEW: Pagination Listeners
     document.getElementById('paginationContainer')?.addEventListener('click', event => {
         const button = event.target.closest('button');
         if (button && button.dataset.page) {
             const page = button.dataset.page;
-            if (page === 'prev') {
-                if (state.pagination.currentPage > 1) state.pagination.currentPage--;
-            } else if (page === 'next') {
+            if (page === 'prev') { if (state.pagination.currentPage > 1) state.pagination.currentPage--; } 
+            else if (page === 'next') {
                 const totalPages = Math.ceil(state.filteredCustomers.length / state.pagination.pageSize);
                 if (state.pagination.currentPage < totalPages) state.pagination.currentPage++;
-            } else {
-                state.pagination.currentPage = parseInt(page);
-            }
+            } else { state.pagination.currentPage = parseInt(page); }
             updateVisibleData();
         }
     });
     document.getElementById('paginationContainer')?.addEventListener('change', event => {
         if (event.target.id === 'pageSize') {
             state.pagination.pageSize = parseInt(event.target.value);
-            state.pagination.currentPage = 1; // Reset to first page
+            state.pagination.currentPage = 1; 
             updateVisibleData();
         }
     });
 
-    // Other listeners
     const tableBody = document.getElementById('tableBody');
     tableBody?.addEventListener('click', handleTableClick);
     tableBody?.addEventListener('contextmenu', handleContextMenu);
