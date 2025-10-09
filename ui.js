@@ -77,8 +77,6 @@ const FIELD_MAPPING = {
     'อัพเดทการเข้าถึง':  { field: 'update_access',     section: 'sales' },
     'Last Status':      { field: 'last_status',       section: 'sales' },
     'เวลาโทร':            { field: 'call_time',         section: 'sales' },
-    'Staus Sale':       { field: 'status_1',          section: 'sales' },
-    'เหตุผล':              { field: 'reason',            section: 'sales' },
     'ETC':                { field: 'etc',               section: 'sales' },
     'HN ลูกค้า':          { field: 'hn_customer',       section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment',   section: 'sales' },
@@ -158,6 +156,7 @@ function createRowElement(row, index, currentUser) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
+    // ✨ LOGIC: Update condition to check all 3 fields for deal closing highlight
     if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
         tr.classList.add('row-deal-closed');
     }
@@ -175,9 +174,9 @@ function createRowElement(row, index, currentUser) {
     tr.appendChild(rowNumberCell);
     
     HEADERS.slice(1).forEach(header => {
-        const fieldName = FIELD_MAPPING[header].field;
-        if (fieldName) {
-            tr.appendChild(createCell(row, fieldName));
+        const config = FIELD_MAPPING[header];
+        if (config && config.field) {
+            tr.appendChild(createCell(row, config.field));
         } else if (header === 'จัดการ') {
             tr.appendChild(createActionsCell(row, currentUser));
         }
@@ -236,12 +235,11 @@ ui.hideModal = function(modalId) {
     }
 }
 
-// ✨ UPDATED: This function is now completely rewritten to support sections
+// ✨ UPDATED: This function is now completely rewritten to support sections and deal-closing highlights
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
-    form.innerHTML = ''; // Clear previous form content
+    form.innerHTML = ''; 
 
-    // Create section containers
     const adminSection = document.createElement('div');
     adminSection.className = 'modal-section admin-section';
     adminSection.innerHTML = '<h3 class="modal-section-title">ส่วนของแอดมิน (Admin Section)</h3>';
@@ -256,11 +254,18 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
 
-    Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
+    const allEditableFields = {
+        ...FIELD_MAPPING,
+        'Staus Sale': { field: 'status_1', section: 'sales'},
+        'เหตุผล': { field: 'reason', section: 'sales' }
+    };
+    
+    const dealClosingFields = ['last_status', 'status_1', 'closed_amount'];
+
+    Object.entries(allEditableFields).forEach(([header, config]) => {
         const field = config.field;
         if (!field) return; 
 
-        // Create the form group element
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const isSalesUser = currentUser.role === 'sales';
@@ -271,6 +276,9 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
+        
+        // ✨ NEW: Add a specific data-attribute to the form group for easy selection
+        formGroup.dataset.fieldGroup = field;
         
         let inputHtml = '';
         if (options) {
@@ -283,7 +291,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         
         formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
         
-        // Append the form group to the correct section
         if (config.section === 'admin') {
             adminContent.appendChild(formGroup);
         } else if (config.section === 'sales') {
@@ -291,9 +298,37 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         }
     });
 
-    // Append the sections to the main form
     form.appendChild(adminSection);
     form.appendChild(salesSection);
+
+    // ✨ NEW: Attach event listeners for dynamic highlighting
+    const lastStatusInput = form.querySelector('[name="last_status"]');
+    const status1Input = form.querySelector('[name="status_1"]');
+    const closedAmountInput = form.querySelector('[name="closed_amount"]');
+    
+    const highlightFields = () => {
+        const isClosingAttempt = 
+            (lastStatusInput.value === '100%') || 
+            (status1Input.value === 'ปิดการขาย') || 
+            (closedAmountInput.value && closedAmountInput.value.trim() !== '');
+            
+        dealClosingFields.forEach(fieldName => {
+            const group = form.querySelector(`[data-field-group="${fieldName}"]`);
+            if (group) {
+                group.classList.toggle('highlight-deal-closing', isClosingAttempt);
+            }
+        });
+    };
+    
+    [lastStatusInput, status1Input, closedAmountInput].forEach(input => {
+        if (input) {
+            input.addEventListener('change', highlightFields);
+            input.addEventListener('input', highlightFields); // For text fields
+        }
+    });
+
+    // Initial check on form build
+    highlightFields();
 
     document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
 };
