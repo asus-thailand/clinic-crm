@@ -164,31 +164,20 @@ body {
     margin: 0 2px;
 }
 
-.btn-edit {
-    background-color: #ffc107;
-}
-.btn-edit:hover {
-    background-color: #e0a800;
-}
-.btn-update {
-    background-color: var(--info-color);
-}
-.btn-update:hover {
-    background-color: #0056b3;
-}
-.btn-history {
-    background-color: #6c757d;
-}
-.btn-history:hover {
-    background-color: #5a6268;
-}
+.btn-edit { background-color: #ffc107; }
+.btn-edit:hover { background-color: #e0a800; }
+.btn-update { background-color: var(--info-color); }
+.btn-update:hover { background-color: #0056b3; }
+.btn-history { background-color: #6c757d; }
+.btn-history:hover { background-color: #5a6268; }
 
 .search-input, .filter-select {
     padding: 10px 15px;
-    border: 2px solid var(--border-color-light);
+    border: 1px solid var(--border-color-medium);
     border-radius: var(--border-radius-medium);
     font-size: 14px;
     background: var(--bg-color-white);
+    height: 38px;
 }
 
 .search-input:focus, .filter-select:focus {
@@ -197,8 +186,8 @@ body {
 }
 
 .search-container {
-    flex: 1;
-    min-width: 250px;
+    flex-grow: 1;
+    max-width: 400px;
     position: relative;
 }
 
@@ -219,33 +208,10 @@ body {
     max-width: 1400px;
     padding: 0 20px;
 }
-
-.stat-card {
-    background: var(--bg-color-white);
-    padding: 20px;
-    border-radius: var(--border-radius-large);
-    box-shadow: var(--shadow-light);
-    border-left: 4px solid var(--info-color);
-    transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-}
-
-.stat-title {
-    font-size: 14px;
-    color: var(--text-color-secondary);
-    margin-bottom: 8px;
-}
-
-.stat-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text-color-primary);
-}
-
+.stat-card { background: var(--bg-color-white); padding: 20px; border-radius: var(--border-radius-large); box-shadow: var(--shadow-light); border-left: 4px solid var(--info-color); transition: all 0.3s ease; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
+.stat-title { font-size: 14px; color: var(--text-color-secondary); margin-bottom: 8px; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--text-color-primary); }
 .stat-change { font-size: 12px; font-weight: 600; }
 .stat-up { color: var(--success-color); }
 .stat-down { color: var(--error-color); }
@@ -256,26 +222,34 @@ body {
     border-bottom: 1px solid var(--border-color-light);
     padding: 15px 20px;
     display: flex;
-    flex-direction: column; /* ✨ NEW */
-    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
     max-width: 1400px;
     margin: 0 auto;
 }
 
-.main-filters {
+.toolbar-left, .toolbar-right {
     display: flex;
+    align-items: center;
     gap: 15px;
-    width: 100%;
     flex-wrap: wrap;
 }
 
-/* --- ✨ NEW: Date Filter Styles --- */
+.toolbar-right {
+    justify-content: flex-end;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+}
+
 .date-filter-container {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%;
-    flex-wrap: wrap;
 }
 
 .btn-date-filter {
@@ -286,190 +260,51 @@ body {
     background: #fff;
     cursor: pointer;
     transition: all 0.2s;
+    height: 38px;
+    white-space: nowrap;
 }
 
-.btn-date-filter:hover {
-    background: #f0f0f0;
-}
-
-.btn-date-filter.active {
-    background: var(--info-color);
-    color: #fff;
-    border-color: var(--info-color);
-}
-
-.date-input {
-    padding: 7px 10px;
-    border: 1px solid var(--border-color-medium);
-    border-radius: var(--border-radius-small);
-    font-size: 12px;
-}
-
-.date-separator {
-    color: var(--text-color-secondary);
-}
+.btn-date-filter:hover { background: #f0f0f0; }
+.btn-date-filter.active { background: var(--info-color); color: #fff; border-color: var(--info-color); }
+.date-input { padding: 8px 10px; border: 1px solid var(--border-color-medium); border-radius: var(--border-radius-small); font-size: 12px; height: 38px; }
+.date-separator { color: var(--text-color-secondary); }
 
 /* --- 7. Excel Table --- */
-.excel-container {
-    background: var(--bg-color-white);
-    margin: 20px auto 0; /* ✨ UPDATED: margin-bottom to 0 */
-    max-width: 1400px;
-    border-radius: var(--border-radius-large);
-    overflow: hidden;
-    box-shadow: var(--shadow-medium);
-}
-
-.table-wrapper {
-    overflow: auto;
-    max-height: calc(100vh - 420px); /* ✨ UPDATED: Adjusted height for new UI elements */
-    position: relative;
-}
-
-.excel-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-    font-family: var(--font-family-calibri);
-    min-width: 2300px;
-}
-
-.excel-table thead th {
-    font-weight: bold;
-    text-align: center;
-    border: 1px solid var(--border-color-dark);
-    padding: 8px 6px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    height: 45px;
-    vertical-align: middle;
-    user-select: none;
-}
-
-.row-number {
-    background: #e7e6e6 !important;
-    color: var(--text-color-black) !important;
-    font-weight: normal;
-    text-align: center;
-    border: 1px solid var(--border-color-dark);
-    width: 40px;
-    min-width: 40px;
-    position: sticky;
-    left: 0;
-    z-index: 50;
-}
-
-.header-admin-section { 
-    background: var(--header-bg-admin) !important; 
-    color: var(--text-color-white) !important;
-}
-.header-sales-section { 
-    background: var(--header-bg-sales) !important; 
-    color: var(--text-color-black) !important;
-}
-
-.excel-table td {
-    border: 1px solid var(--border-color-medium);
-    padding: 3px 6px;
-    height: 22px;
-    background: var(--bg-color-white);
-    position: relative;
-    vertical-align: middle;
-    font-size: 11px;
-}
+.excel-container { background: var(--bg-color-white); margin: 20px auto 0; max-width: 1400px; border-radius: var(--border-radius-large); overflow: hidden; box-shadow: var(--shadow-medium); }
+.table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
+.excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
+.excel-table thead th { font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; position: sticky; top: 0; z-index: 100; height: 45px; vertical-align: middle; user-select: none; }
+.row-number { background: #e7e6e6 !important; color: var(--text-color-black) !important; font-weight: normal; text-align: center; border: 1px solid var(--border-color-dark); width: 40px; min-width: 40px; position: sticky; left: 0; z-index: 50; }
+.header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
+.header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
+.excel-table td { border: 1px solid var(--border-color-medium); padding: 3px 6px; height: 22px; background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px; }
 
 .actions-cell {
     text-align: center;
     padding: 2px !important;
     min-width: 160px;
+    white-space: nowrap; /* ✨ FIXED: Prevents buttons from wrapping */
 }
 
-.excel-table td:not(.row-number):not(.actions-cell) {
-    cursor: default;
-}
+.excel-table td:not(.row-number):not(.actions-cell) { cursor: default; }
+.row-deal-closed td { background-color: #9ceb8d !important; font-weight: bold; }
+.row-deal-closed:hover td { background-color: #89d87a !important; }
 
-.row-deal-closed td {
-    background-color: #9ceb8d !important;
-    font-weight: bold;
-}
-.row-deal-closed:hover td {
-    background-color: #89d87a !important;
-}
-
-/* --- ✨ NEW: Pagination Styles --- */
-.pagination-container {
-    background: #fff;
-    padding: 15px 20px;
-    max-width: 1400px;
-    margin: 0 auto 20px auto;
-    border-bottom-left-radius: var(--border-radius-large);
-    border-bottom-right-radius: var(--border-radius-large);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.pagination-controls button {
-    padding: 6px 12px;
-    font-size: 12px;
-    margin: 0 2px;
-    border: 1px solid var(--border-color-medium);
-    border-radius: var(--border-radius-small);
-    background: #fff;
-    cursor: pointer;
-}
-
-.pagination-controls button:hover {
-    background: #f0f0f0;
-}
-
-.pagination-controls button.active {
-    background: var(--info-color);
-    color: #fff;
-    border-color: var(--info-color);
-}
-
-.pagination-controls button:disabled {
-    background: #f8f9fa;
-    color: #ccc;
-    cursor: not-allowed;
-}
-
-.pagination-info, .page-size-selector {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--text-color-secondary);
-}
-
-.page-size-selector select {
-    padding: 6px;
-    border-radius: var(--border-radius-small);
-    border: 1px solid var(--border-color-medium);
-}
+/* --- Pagination Styles --- */
+.pagination-container { background: #fff; padding: 15px 20px; max-width: 1400px; margin: 0 auto 20px auto; border-bottom-left-radius: var(--border-radius-large); border-bottom-right-radius: var(--border-radius-large); box-shadow: 0 10px 20px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;}
+.pagination-controls button { padding: 6px 12px; font-size: 12px; margin: 0 2px; border: 1px solid var(--border-color-medium); border-radius: var(--border-radius-small); background: #fff; cursor: pointer; }
+.pagination-controls button:hover { background: #f0f0f0; }
+.pagination-controls button.active { background: var(--info-color); color: #fff; border-color: var(--info-color); }
+.pagination-controls button:disabled { background: #f8f9fa; color: #ccc; cursor: not-allowed; }
+.pagination-info, .page-size-selector { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-color-secondary); }
+.page-size-selector select { padding: 6px; border-radius: var(--border-radius-small); border: 1px solid var(--border-color-medium); }
 
 
 /* --- (Rest of the CSS remains the same from previous version) --- */
-
-/* --- 8. Context Menu --- */
-.context-menu {
-    position: absolute;
-    background: var(--bg-color-white);
-    border: 1px solid #ccc;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-    z-index: 1000;
-    display: none;
-    min-width: 150px;
-    border-radius: var(--border-radius-small);
-    overflow: hidden;
-}
+.context-menu { position: absolute; background: var(--bg-color-white); border: 1px solid #ccc; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: none; min-width: 150px; border-radius: var(--border-radius-small); overflow: hidden; }
 .context-menu-item { padding: 8px 12px; cursor: pointer; font-size: 13px; }
 .context-menu-item:hover { background: #e8f4f8; }
 .context-menu-separator { border-top: 1px solid var(--border-color-light); margin: 2px 0; }
-
-/* --- 9. Indicators & Modals --- */
 .status-indicator { position: fixed; bottom: 10px; right: 10px; padding: 8px 15px; background: var(--success-color); color: var(--text-color-white); border-radius: var(--border-radius-small); font-size: 12px; display: none; z-index: 9998; box-shadow: var(--shadow-medium); }
 .status-indicator.show { display: block; animation: fadeIn 0.3s; }
 .status-indicator.error { background: var(--error-color); }
@@ -479,9 +314,6 @@ body {
 .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
 .modal { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; }
 .modal-content { background-color: #fefefe; padding: 25px; border-radius: var(--border-radius-large); box-shadow: var(--shadow-medium); width: 90%; max-width: 500px; position: relative; animation: fadeIn 0.3s; }
-.modal-content h2 { margin-bottom: 15px; }
-.modal-content p { margin-bottom: 15px; }
-.modal-content input[type="file"] { margin-bottom: 15px; width: 100%; }
 .close-button { color: #aaa; position: absolute; top: 10px; right: 15px; font-size: 28px; font-weight: bold; cursor: pointer; }
 .close-button:hover { color: var(--text-color-black); }
 .modal-input-group { margin-bottom: 15px; text-align: left; }
@@ -498,13 +330,9 @@ body {
 .timeline-footer { font-size: 12px; color: #888; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-/* --- 12. Permission Styles --- */
 .non-editable { background-color: #f0f0f0 !important; color: #888; cursor: not-allowed; }
 .read-only-row td { background-color: #f8f9fa !important; color: #6c757d; cursor: not-allowed; }
 .read-only-row .btn-edit:disabled, .read-only-row .btn-update:disabled { background-color: #ced4da; cursor: not-allowed; opacity: 0.6; }
-
-/* --- 13. Mobile Edit Form (Modal) --- */
 .edit-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; z-index: 3000; }
 .edit-modal-overlay.show { display: flex; opacity: 1; }
 .edit-modal-container { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 95%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; transform: scale(0.95); transition: transform 0.3s ease; }
