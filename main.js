@@ -80,29 +80,20 @@ async function initializeApp() {
 // MASTER DATA PROCESSING & RENDERING PIPELINE
 // ================================================================================
 
-// ✨ NEW HELPER FUNCTION: Safely converts a Date object to a 'YYYY-MM-DD' string
-function toYYYYMMDD(date) {
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-
 function updateVisibleData() {
     // 1. Apply Date Filter
     let dateFiltered = state.customers;
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
         
-        // ✨ BUG FIX: Convert dates to YYYY-MM-DD strings for robust, timezone-safe comparison
-        const startDateString = toYYYYMMDD(state.dateFilter.startDate);
-        const endDateString = toYYYYMMDD(state.dateFilter.endDate);
+        // ✨ BUG FIX (FINAL): Use numeric timestamps for 100% accurate comparison.
+        const startTimestamp = state.dateFilter.startDate.getTime();
+        const endTimestamp = new Date(state.dateFilter.endDate).setHours(23, 59, 59, 999);
 
         dateFiltered = state.customers.filter(c => {
             if (!c.date) return false;
-            // Direct string comparison is reliable for YYYY-MM-DD format
-            return c.date >= startDateString && c.date <= endDateString;
+            // Parse date string as local time and get its timestamp
+            const customerTimestamp = new Date(c.date + 'T00:00:00').getTime();
+            return customerTimestamp >= startTimestamp && customerTimestamp <= endTimestamp;
         });
     }
 
