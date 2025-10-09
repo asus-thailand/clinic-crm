@@ -7,13 +7,10 @@ const api = {};
 // ================================================================================
 // AUTHENTICATION APIs
 // ================================================================================
-
 api.getSession = async function() {
-    console.log("API: Attempting to get session...");
     try {
         const { data, error } = await window.supabaseClient.auth.getSession();
         if (error) throw error;
-        console.log("API: Get session successful.");
         return data.session;
     } catch (error) {
         console.error("API ERROR in getSession:", error);
@@ -22,11 +19,9 @@ api.getSession = async function() {
 }
 
 api.signOut = async function() {
-    console.log("API: Attempting to sign out...");
     try {
         const { error } = await window.supabaseClient.auth.signOut();
         if (error) throw error;
-        console.log("API: Sign out successful.");
     } catch (error) {
         console.error("API ERROR in signOut:", error);
         throw new Error('Failed to sign out.');
@@ -36,17 +31,10 @@ api.signOut = async function() {
 // ================================================================================
 // USER PROFILE APIs
 // ================================================================================
-
 api.getUserProfile = async function(userId) {
-    console.log(`API: Attempting to get profile for user ${userId}...`);
     try {
-        const { data, error } = await window.supabaseClient
-            .from('users')
-            .select('role, username, full_name')
-            .eq('id', userId)
-            .single();
+        const { data, error } = await window.supabaseClient.from('users').select('role, username, full_name').eq('id', userId).single();
         if (error && error.code !== 'PGRST116') throw error;
-        console.log("API: Get user profile successful.", data);
         return data;
     } catch (error) {
         console.error("API ERROR in getUserProfile:", error);
@@ -55,21 +43,10 @@ api.getUserProfile = async function(userId) {
 }
 
 api.createDefaultUserProfile = async function(user) {
-    console.log("API: Attempting to create default profile...");
     try {
         const username = user.email.split('@')[0];
-        const { data, error } = await window.supabaseClient
-            .from('users')
-            .insert({ 
-                id: user.id, 
-                username, 
-                full_name: username, 
-                role: 'sales' 
-            })
-            .select()
-            .single();
+        const { data, error } = await window.supabaseClient.from('users').insert({ id: user.id, username, full_name: username, role: 'sales' }).select().single();
         if (error) throw error;
-        console.log("API: Create default profile successful.");
         return data;
     } catch (error) {
         console.error("API ERROR in createDefaultUserProfile:", error);
@@ -78,14 +55,9 @@ api.createDefaultUserProfile = async function(user) {
 }
 
 api.fetchSalesList = async function() {
-    console.log("API: Attempting to fetch sales list...");
     try {
-        const { data, error } = await window.supabaseClient
-            .from('users')
-            .select('username')
-            .not('username', 'is', null);
+        const { data, error } = await window.supabaseClient.from('users').select('username').not('username', 'is', null);
         if (error) throw error;
-        console.log(`API: Fetched ${data ? data.length : 0} sales users successfully.`);
         return (data || []).map(u => u.username);
     } catch (error) {
         console.error("API ERROR in fetchSalesList:", error);
@@ -98,14 +70,9 @@ api.fetchSalesList = async function() {
 // ================================================================================
 
 api.fetchAllCustomers = async function() {
-    console.log("API: Attempting to fetch all customers...");
     try {
-        const { data, error } = await window.supabaseClient
-            .from('customers')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const { data, error } = await window.supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        console.log(`API: Fetched ${data ? data.length : 0} customers successfully.`);
         return data || [];
     } catch (error) {
         console.error("API ERROR in fetchAllCustomers:", error);
@@ -113,20 +80,43 @@ api.fetchAllCustomers = async function() {
     }
 }
 
-api.addCustomer = async function(salesName) {
-    console.log("API: Attempting to add a new customer...");
+/**
+ * ✨ NEW: Function to get the count of leads created today.
+ * @returns {Promise<number>} The number of leads created today.
+ */
+api.getTodaysLeadCount = async function() {
+    const today = new Date().toISOString().split('T')[0];
+    try {
+        const { count, error } = await window.supabaseClient
+            .from('customers')
+            .select('*', { count: 'exact', head: true })
+            .eq('date', today);
+        
+        if (error) throw error;
+        return count || 0;
+    } catch (error) {
+        console.error("API ERROR in getTodaysLeadCount:", error);
+        throw new Error('Could not get today\'s lead count.');
+    }
+}
+
+
+/**
+ * ✨ UPDATED: addCustomer now accepts a leadCode.
+ */
+api.addCustomer = async function(salesName, leadCode) {
     try {
         const { data, error } = await window.supabaseClient
             .from('customers')
             .insert({
                 sales: salesName,
-                date: new Date().toISOString().split('T')[0]
+                date: new Date().toISOString().split('T')[0],
+                lead_code: leadCode
             })
             .select()
             .single();
         
         if (error) throw error;
-        console.log("API: New customer added successfully.", data);
         return data;
     } catch (error) {
         console.error("API ERROR in addCustomer:", error);
@@ -134,43 +124,12 @@ api.addCustomer = async function(salesName) {
     }
 }
 
-api.updateCustomerCell = async function(customerId, field, value) {
-    console.log(`API: Updating customer ${customerId}, field ${field} with value "${value}"...`);
-    try {
-        const updateData = {};
-        updateData[field] = value;
-        
-        const { data, error } = await window.supabaseClient
-            .from('customers')
-            .update(updateData)
-            .eq('id', customerId)
-            .select()
-            .single();
-        if (error) throw error;
-        console.log("API: Customer updated successfully.");
-        return data;
-    } catch (error) {
-        console.error("API ERROR in updateCustomerCell:", error);
-        throw new Error('Could not update customer.');
-    }
-}
-
 api.updateCustomer = async function(customerId, customerData) {
-    console.log(`API: Updating full data for customer ${customerId}...`);
     try {
-        // ไม่ควรอัปเดต id, created_at
         delete customerData.id;
         delete customerData.created_at;
-
-        const { data, error } = await window.supabaseClient
-            .from('customers')
-            .update(customerData)
-            .eq('id', customerId)
-            .select()
-            .single();
-        
+        const { data, error } = await window.supabaseClient.from('customers').update(customerData).eq('id', customerId).select().single();
         if (error) throw error;
-        console.log("API: Customer full data updated successfully.");
         return data;
     } catch (error) {
         console.error("API ERROR in updateCustomer:", error);
@@ -179,15 +138,9 @@ api.updateCustomer = async function(customerId, customerData) {
 }
 
 api.deleteCustomer = async function(customerId) {
-    console.log(`API: Attempting to delete customer ${customerId}...`);
     try {
-        const { error } = await window.supabaseClient
-            .from('customers')
-            .delete()
-            .eq('id', customerId);
-
+        const { error } = await window.supabaseClient.from('customers').delete().eq('id', customerId);
         if (error) throw error;
-        console.log("API: Customer deleted successfully.");
         return true;
     } catch (error) {
         console.error("API ERROR in deleteCustomer:", error);
@@ -196,19 +149,12 @@ api.deleteCustomer = async function(customerId) {
 }
 
 // ================================================================================
-// ✅ FIXED: STATUS HISTORY APIs (แก้ไขชื่อ table เป็น customer_status_history)
+// STATUS HISTORY APIs
 // ================================================================================
-
 api.fetchStatusHistory = async function(customerId) {
-    console.log(`API: Fetching status history for customer ${customerId}...`);
     try {
-        const { data, error } = await window.supabaseClient
-            .from('customer_status_history') // ✅ FIXED: ชื่อ table ที่ถูกต้อง
-            .select('*, users(username)')
-            .eq('customer_id', customerId)
-            .order('created_at', { ascending: false });
+        const { data, error } = await window.supabaseClient.from('customer_status_history').select('*, users(username)').eq('customer_id', customerId).order('created_at', { ascending: false });
         if (error) throw error;
-        console.log(`API: Fetched ${data ? data.length : 0} history records.`);
         return data || [];
     } catch (error) {
         console.error("API ERROR in fetchStatusHistory:", error);
@@ -217,38 +163,16 @@ api.fetchStatusHistory = async function(customerId) {
 }
 
 api.addStatusUpdate = async function(customerId, status, notes, userId) {
-    console.log("API: Adding status update...");
     try {
-        // สร้าง object โดยเพิ่ม updated_by เฉพาะเมื่อมีค่า
-        const insertData = {
-            customer_id: customerId,
-            status: status,
-            notes: notes
-        };
-        
-        // เพิ่ม updated_by เฉพาะเมื่อมี userId
-        if (userId) {
-            insertData.updated_by = userId;
-        }
-        
-        const { data, error } = await window.supabaseClient
-            .from('customer_status_history')
-            .insert(insertData)
-            .select()
-            .single();
+        const insertData = { customer_id: customerId, status: status, notes: notes };
+        if (userId) { insertData.updated_by = userId; }
+        const { data, error } = await window.supabaseClient.from('customer_status_history').insert(insertData).select().single();
         if (error) throw error;
-        console.log("API: Status update added successfully.");
         return data;
     } catch (error) {
         console.error("API ERROR in addStatusUpdate:", error);
-        // ไม่ throw error ให้หยุดทำงาน แต่ให้ return null
-        console.warn("Status history could not be saved, but continuing...");
         return null;
     }
 }
-
-// ================================================================================
-// EXPORT TO GLOBAL SCOPE
-// ================================================================================
 
 window.api = api;
