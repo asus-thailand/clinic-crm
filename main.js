@@ -85,14 +85,16 @@ function updateVisibleData() {
     let dateFiltered = state.customers;
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
         
-        // ✨ BUG FIX (FINAL): Use numeric timestamps for 100% accurate comparison.
         const startTimestamp = state.dateFilter.startDate.getTime();
         const endTimestamp = new Date(state.dateFilter.endDate).setHours(23, 59, 59, 999);
 
         dateFiltered = state.customers.filter(c => {
             if (!c.date) return false;
-            // Parse date string as local time and get its timestamp
             const customerTimestamp = new Date(c.date + 'T00:00:00').getTime();
+
+            // ✨✨✨ DEBUG LINE ADDED ✨✨✨
+            console.log(`Checking [${c.date}] -> Result: ${customerTimestamp >= startTimestamp && customerTimestamp <= endTimestamp}`);
+
             return customerTimestamp >= startTimestamp && customerTimestamp <= endTimestamp;
         });
     }
