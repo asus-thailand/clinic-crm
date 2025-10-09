@@ -29,6 +29,43 @@ const SALES_EDITABLE_FIELDS = [
 ];
 
 // ================================================================================
+// ✨ NEW: Smart Date Parsing Function
+// ================================================================================
+
+/**
+ * Parses a date string which could be in YYYY-MM-DD or DD/MM/BBBB (Buddhist year) format.
+ * @param {string} dateStr - The date string to parse.
+ * @returns {Date|null} - A valid Date object or null if parsing fails.
+ */
+function parseDateString(dateStr) {
+    if (!dateStr) return null;
+
+    // Check for DD/MM/BBBB format (e.g., 25/9/2568)
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in JS
+            let year = parseInt(parts[2], 10);
+            
+            // Convert from Buddhist year to Gregorian year if necessary
+            if (year > 2500) {
+                year -= 543;
+            }
+            
+            return new Date(year, month, day);
+        }
+    }
+
+    // Assume YYYY-MM-DD format (e.g., 2025-10-09)
+    // Adding T00:00:00 ensures it's parsed in the local timezone
+    const date = new Date(dateStr + 'T00:00:00');
+    // Check if the date is valid
+    return isNaN(date.getTime()) ? null : date;
+}
+
+
+// ================================================================================
 // INITIALIZATION
 // ================================================================================
 
@@ -39,12 +76,8 @@ async function initializeApp() {
         if (!window.supabaseClient || !window.api || !window.ui) throw new Error('Dependencies not loaded');
         
         ui.renderTableHeaders();
-
         const session = await api.getSession();
-        if (!session) { 
-            window.location.replace('login.html'); 
-            return; 
-        }
+        if (!session) { window.location.replace('login.html'); return; }
         
         let userProfile = await api.getUserProfile(session.user.id);
         if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
@@ -81,25 +114,23 @@ async function initializeApp() {
 // ================================================================================
 
 function updateVisibleData() {
-    // 1. Apply Date Filter
     let dateFiltered = state.customers;
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
         
+        // ✨ FINAL FIX: Use numeric timestamps for 100% accurate comparison.
         const startTimestamp = state.dateFilter.startDate.getTime();
         const endTimestamp = new Date(state.dateFilter.endDate).setHours(23, 59, 59, 999);
 
         dateFiltered = state.customers.filter(c => {
-            if (!c.date) return false;
-            const customerTimestamp = new Date(c.date + 'T00:00:00').getTime();
+            // ✨ FINAL FIX: Use the new smart parsing function.
+            const customerDate = parseDateString(c.date);
+            if (!customerDate) return false;
 
-            // ✨✨✨ DEBUG LINE ADDED ✨✨✨
-            console.log(`Checking [${c.date}] -> Result: ${customerTimestamp >= startTimestamp && customerTimestamp <= endTimestamp}`);
-
+            const customerTimestamp = customerDate.getTime();
             return customerTimestamp >= startTimestamp && customerTimestamp <= endTimestamp;
         });
     }
 
-    // 2. Apply Other Filters
     const { search, status, sales } = state.activeFilters;
     const lowerCaseSearch = search.toLowerCase();
     state.filteredCustomers = dateFiltered.filter(customer => {
@@ -110,7 +141,6 @@ function updateVisibleData() {
         return matchesSearch && matchesStatus && matchesSales;
     });
 
-    // 3. Apply Pagination
     const { currentPage, pageSize } = state.pagination;
     const totalRecords = state.filteredCustomers.length;
     const totalPages = Math.ceil(totalRecords / pageSize);
@@ -118,14 +148,13 @@ function updateVisibleData() {
     const endIndex = startIndex + pageSize;
     const paginatedCustomers = state.filteredCustomers.slice(startIndex, endIndex);
 
-    // 4. Render UI Components
     ui.renderTable(paginatedCustomers, currentPage, pageSize);
     ui.renderPaginationControls(totalPages, currentPage, totalRecords, pageSize);
     updateDashboardStats(); 
 }
 
 // ================================================================================
-// DASHBOARD & FILTERS
+// (The rest of the file is unchanged)
 // ================================================================================
 function updateDashboardStats() {
     const dataSet = state.filteredCustomers; 
@@ -158,10 +187,6 @@ function setDateFilterPreset(preset) {
     state.pagination.currentPage = 1;
     updateVisibleData();
 }
-
-// ================================================================================
-// EDIT MODAL & STATUS LOGIC
-// ================================================================================
 
 function getAllowedNextStatuses(currentStatus) {
     const specialStatuses = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
