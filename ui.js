@@ -95,38 +95,54 @@ const HEADERS = Object.keys(FIELD_MAPPING);
 // TABLE RENDERING
 // ================================================================================
 
-function createCell(row, fieldName, currentUser, salesEditableFields) {
+function createCell(row, fieldName, isOwner) {
     const td = document.createElement('td');
     td.dataset.field = fieldName;
     td.textContent = row[fieldName] || '';
     
-    if (currentUser && currentUser.role === 'sales' && !salesEditableFields.includes(fieldName)) {
-        td.classList.add('non-editable');
+    // ✅ LOGIC: ถ้าไม่ใช่เจ้าของและเป็น sales จะเพิ่ม class non-editable
+    // (แต่การป้องกันหลักจะอยู่ที่ handleCellDoubleClick)
+    if (!isOwner) {
+        td.classList.add('non-editable-row-cell'); 
     }
     
     return td;
 }
 
-function createActionsCell(row) {
+function createActionsCell(row, currentUser) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
     
     const displayName = row.name || row.lead_code || row.phone || 'N/A';
 
+    // ✅ LOGIC: ตรวจสอบสิทธิ์ก่อนสร้างปุ่ม
+    // 1. ถ้า role ไม่ใช่ 'sales' (เป็น admin/administrator) -> มีสิทธิ์เสมอ (isOwner = true)
+    // 2. ถ้า role เป็น 'sales' -> ตรวจสอบว่า `row.sales` ตรงกับ `currentUser.username` หรือไม่
+    const isOwner = currentUser.role !== 'sales' || row.sales === currentUser.username;
+
+    // ✅ LOGIC: เพิ่ม attribute 'disabled' ให้กับปุ่มถ้าไม่มีสิทธิ์
+    const disabledAttribute = !isOwner ? 'disabled' : '';
+
     td.innerHTML = `
-        <button class="btn-edit" data-action="edit-customer" data-id="${row.id}">แก้ไข</button>
-        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(displayName)}">อัปเดต</button>
+        <button class="btn-edit" data-action="edit-customer" data-id="${row.id}" ${disabledAttribute}>แก้ไข</button>
+        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(displayName)}" ${disabledAttribute}>อัปเดต</button>
         <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(displayName)}">ประวัติ</button>
     `;
     return td;
 }
 
-function createRowElement(row, index, currentUser, salesEditableFields) {
+function createRowElement(row, index, currentUser) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
     if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
         tr.classList.add('row-deal-closed');
+    }
+
+    // ✅ LOGIC: ตรวจสอบความเป็นเจ้าของของแถวนี้
+    const isOwner = currentUser.role !== 'sales' || row.sales === currentUser.username;
+    if (!isOwner) {
+        tr.classList.add('read-only-row'); // เพิ่ม class เพื่อให้ CSS จัดการการแสดงผล
     }
     
     const rowNumberCell = document.createElement('td');
@@ -137,28 +153,33 @@ function createRowElement(row, index, currentUser, salesEditableFields) {
     HEADERS.slice(1).forEach(header => {
         const fieldName = FIELD_MAPPING[header];
         if (fieldName) {
-            tr.appendChild(createCell(row, fieldName, currentUser, salesEditableFields));
+            // ✅ LOGIC: ส่ง isOwner ไปให้ createCell ด้วย
+            tr.appendChild(createCell(row, fieldName, isOwner));
         } else if (header === 'จัดการ') {
-            tr.appendChild(createActionsCell(row));
+            // ✅ LOGIC: ส่ง currentUser ไปให้ createActionsCell
+            tr.appendChild(createActionsCell(row, currentUser));
         }
     });
     
     return tr;
 }
 
-ui.renderTable = function(customers, currentUser, salesEditableFields) {
+ui.renderTable = function(customers, currentUser) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
     const fragment = document.createDocumentFragment();
     customers.forEach((row, index) => {
-        fragment.appendChild(createRowElement(row, index, currentUser, salesEditableFields));
+        // ✅ LOGIC: ส่ง currentUser ไปด้วย
+        fragment.appendChild(createRowElement(row, index, currentUser));
     });
     
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
 }
 
+
+// ... (ส่วนที่เหลือของไฟล์ ui.js เหมือนเดิม)
 // ================================================================================
 // MODAL & FORM MANAGEMENT
 // ================================================================================
