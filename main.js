@@ -14,7 +14,7 @@ const state = {
 };
 
 const DROPDOWN_OPTIONS = {
-    channel: ["-เพื่อนแนะนำ/", "-Walk-In/", "-PHONE-IN/", "-Line@/", "-Fbc By หมอธีร์ (ปลูกผม)", "-Fbc By หมอธีร์ (หัตถการอื่น)", "-FBC HAIR CLINIC", "-Fbc ตาสองชั้น ยกคิ้ว เสริมจมูก", "-Fbc ปรับรูปหน้า Botox Filler HIFU", "-เว็บไซต์", "-AGENCY", "-IG", "-Tiktok "],
+    channel: ["-เพื่อนแนะนำ/", "-Walk-In/", "-PHONE-IN/", "-Line@/", "-Fbc By หมอธีร์ (ปลูกผม)", "-Fbc By หมอธีร์ (หัตถการอื่น)", "-FBC HAIR CLINIC", "-Fbc ตาสองชั้น ยกคิ้ว เสริมจิ้มูก", "-Fbc ปรับรูปหน้า Botox Filler HIFU", "-เว็บไซต์", "-AGENCY", "-IG", "-Tiktok "],
     procedure: ["ตา Dr.T", "ตาทีมแพทย์", "ปลูกผม", "ปลูกหนวด/เครา", "ปลูกคิ้ว", "FaceLift", "จมูก/ปาก/คาง", "Thermage", "Ultraformer", "Filler", "BOTOX", "Laser กำจัดขน", "SKIN อื่น ๆ", "ตา Dr.T/ปลูกผม", "ตา/SKIN", "ผม/SKIN", "ตา/อื่นๆ", "ผม/อื่นๆ", "ตาทีมแพทย์/ปลูกผม"],
     confirm_y: ["Y", "N"],
     transfer_100: ["Y", "N"],
@@ -68,16 +68,10 @@ async function initializeApp() {
         updateVisibleData(); 
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
         
-        // ✨ BUG FIX: Add an extra call to ensure the loader is hidden
-        ui.showLoading(false);
-
     } catch (error) {
         console.error('Initialization failed:', error);
         ui.showStatus('เกิดข้อผิดพลาด: ' + error.message, true);
-        // ✨ BUG FIX: Ensure loader is hidden on error
-        ui.showLoading(false);
     } finally {
-        // This will always run
         ui.showLoading(false);
     }
 }
@@ -92,6 +86,7 @@ function updateVisibleData() {
         const localStartDate = state.dateFilter.startDate;
         const localEndDate = new Date(state.dateFilter.endDate);
         localEndDate.setHours(23, 59, 59, 999); 
+
         dateFiltered = state.customers.filter(c => {
             if (!c.date) return false;
             const customerDate = new Date(c.date + 'T00:00:00'); 
@@ -390,22 +385,30 @@ function setupEventListeners() {
     document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => { button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset)); });
     document.getElementById('clearDateFilter')?.addEventListener('click', () => setDateFilterPreset('all'));
 
+    // --- ✨ BUG FIX: Rewritten Date Filter Logic ---
     const startDateFilter = document.getElementById('startDateFilter');
     const endDateFilter = document.getElementById('endDateFilter');
+
     function handleCustomDateChange() {
         const start = startDateFilter.valueAsDate;
         const end = endDateFilter.valueAsDate;
+
+        // Only trigger update if both dates are selected and the range is valid
         if (start && end && start <= end) {
             state.dateFilter.startDate = start;
             state.dateFilter.endDate = end;
             state.dateFilter.preset = 'custom';
             state.pagination.currentPage = 1;
+            
+            // De-select any active preset buttons
             document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => btn.classList.remove('active'));
+            
             updateVisibleData();
         }
     }
     startDateFilter?.addEventListener('change', handleCustomDateChange);
     endDateFilter?.addEventListener('change', handleCustomDateChange);
+    // --- END BUG FIX ---
 
     document.getElementById('paginationContainer')?.addEventListener('click', event => {
         const button = event.target.closest('button');
