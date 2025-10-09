@@ -41,7 +41,10 @@ async function initializeApp() {
         ui.renderTableHeaders();
 
         const session = await api.getSession();
-        if (!session) { window.location.replace('login.html'); return; }
+        if (!session) { 
+            window.location.replace('login.html'); 
+            return; 
+        }
         
         let userProfile = await api.getUserProfile(session.user.id);
         if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
@@ -64,10 +67,17 @@ async function initializeApp() {
 
         updateVisibleData(); 
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
+        
+        // ✨ BUG FIX: Add an extra call to ensure the loader is hidden
+        ui.showLoading(false);
+
     } catch (error) {
         console.error('Initialization failed:', error);
         ui.showStatus('เกิดข้อผิดพลาด: ' + error.message, true);
+        // ✨ BUG FIX: Ensure loader is hidden on error
+        ui.showLoading(false);
     } finally {
+        // This will always run
         ui.showLoading(false);
     }
 }
@@ -147,33 +157,124 @@ function setDateFilterPreset(preset) {
 }
 
 // ================================================================================
-// USER ACTIONS & MODALS
+// EDIT MODAL & STATUS LOGIC
 // ================================================================================
 
-/**
- * ✨ UPDATED: This function now generates the lead code automatically.
- */
+function getAllowedNextStatuses(currentStatus) {
+    const specialStatuses = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
+    if (!currentStatus || currentStatus.trim() === '') return ["status 1", ...specialStatuses];
+    switch (currentStatus) {
+        case "status 1": return ["status 2", ...specialStatuses];
+        case "status 2": return ["status 3", ...specialStatuses];
+        case "status 3": return ["status 4", ...specialStatuses];
+        case "status 4": return [...specialStatuses];
+        default: if (specialStatuses.includes(currentStatus)) return [...specialStatuses];
+            return ["status 1", ...specialStatuses];
+    }
+}
+
+function showUpdateStatusModal(customer) {
+    const select = document.getElementById('modalStatusSelect');
+    if (!select) return;
+    const currentUser = state.currentUser;
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
+    let allowedStatuses;
+    if (isAdmin) {
+        allowedStatuses = DROPDOWN_OPTIONS.status_1;
+    } else {
+        allowedStatuses = getAllowedNextStatuses(customer.status_1);
+    }
+    select.innerHTML = '<option value="">-- เลือกสถานะ --</option>';
+    allowedStatuses.forEach(opt => {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt;
+        optionEl.textContent = opt;
+        select.appendChild(optionEl);
+    });
+    ui.showModal('statusUpdateModal', { 
+        customerId: customer.id, 
+        customerName: customer.name || customer.lead_code || 'N/A' 
+    });
+}
+
+function showEditModal(customerId) {
+    const customer = state.customers.find(c => c.id == customerId);
+    if (!customer) { ui.showStatus('ไม่พบข้อมูลลูกค้า', true); return; }
+    state.editingCustomerId = customerId;
+    ui.buildEditForm(customer, state.currentUser, SALES_EDITABLE_FIELDS, state.salesList, DROPDOWN_OPTIONS);
+    document.getElementById('editCustomerModal').classList.add('show');
+}
+
+function hideEditModal() {
+    state.editingCustomerId = null;
+    document.getElementById('editCustomerModal').classList.remove('show');
+}
+
+async function handleSaveEditForm(event) {
+    event.preventDefault();
+    if (!state.editingCustomerId) return;
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const updatedData = {};
+    for (const [key, value] of formData.entries()) { updatedData[key] = value; }
+    const originalCustomer = state.customers.find(c => c.id == state.editingCustomerId);
+
+    const isClosingAttempt = updatedData.last_status === '100%' || updatedData.status_1 === 'ปิดการขาย' || (updatedData.closed_amount && updatedData.closed_amount.trim() !== '');
+    if (isClosingAttempt) {
+        const isClosingComplete = updatedData.last_status === '100%' && updatedData.status_1 === 'ปิดการขาย' && (updatedData.closed_amount && updatedData.closed_amount.trim() !== '');
+        if (!isClosingComplete) {
+            ui.showStatus('การปิดการขายต้องกรอก: Last Status (100%), Status Sale (ปิดการขาย), และ ยอดที่ปิดได้ ให้ครบถ้วน', true);
+            return;
+        }
+    }
+
+    ui.showLoading(true);
+    try {
+        const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
+        
+        const historyPromises = [];
+        for (const [key, value] of Object.entries(updatedData)) {
+            if (String(originalCustomer[key] || '') !== String(value)) {
+                const allFields = { ...ui.FIELD_MAPPING, 'Staus Sale': { field: 'status_1'}, 'เหตุผล': { field: 'reason'} };
+                const header = Object.keys(allFields).find(h => allFields[h].field === key) || key;
+                const logNote = `แก้ไข '${header}' จาก '${originalCustomer[key] || ''}' เป็น '${value}'`;
+                historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
+            }
+        }
+        if (historyPromises.length > 0) { await Promise.all(historyPromises); }
+        
+        const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
+        if (index !== -1) { state.customers[index] = updatedCustomer; }
+        
+        hideEditModal();
+        updateVisibleData();
+        ui.showStatus('บันทึกข้อมูลสำเร็จ', false);
+    } catch (error) {
+        console.error('Save failed:', error);
+        ui.showStatus('บันทึกข้อมูลไม่สำเร็จ: ' + error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+async function handleLogout() {
+    if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
+}
+
 async function handleAddCustomer() {
     ui.showLoading(true);
     try {
-        // 1. Get today's lead count
         const todaysCount = await api.getTodaysLeadCount();
         const nextNumber = todaysCount + 1;
-
-        // 2. Format the date part (e.g., 251009 for 2025-10-09)
         const now = new Date();
         const year = String(now.getFullYear()).slice(-2);
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         const datePart = `${year}${month}${day}`;
-        
-        // 3. Format the number part (e.g., 001)
         const numberPart = String(nextNumber).padStart(3, '0');
-        
-        // 4. Combine to create the new lead code
         const newLeadCode = `${datePart}-${numberPart}`;
 
-        // 5. Add customer with the new lead code
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', newLeadCode);
         state.customers.unshift(newCustomer);
         
@@ -187,19 +288,157 @@ async function handleAddCustomer() {
     }
 }
 
-// ... (The rest of the main.js file remains unchanged)
-function getAllowedNextStatuses(currentStatus) { /* ... unchanged ... */ }
-function showUpdateStatusModal(customer) { /* ... unchanged ... */ }
-function showEditModal(customerId) { /* ... unchanged ... */ }
-function hideEditModal() { /* ... unchanged ... */ }
-async function handleSaveEditForm(event) { /* ... unchanged ... */ }
-async function handleLogout() { /* ... unchanged ... */ }
-function handleTableClick(event) { /* ... unchanged ... */ }
-async function handleViewHistory(customerId, customerName) { /* ... unchanged ... */ }
-async function handleSubmitStatusUpdate() { /* ... unchanged ... */ }
-function handleContextMenu(event) { /* ... unchanged ... */ }
-async function handleContextMenuItemClick(event) { /* ... unchanged ... */ }
-function setupEventListeners() { /* ... unchanged ... */ }
+function handleTableClick(event) {
+    const target = event.target;
+    const action = target.dataset.action;
+    if (!action || target.disabled) return;
+    const id = target.closest('[data-id]')?.dataset.id;
+    if (!id) return;
+    const customer = state.customers.find(c => c.id == id);
+    if (!customer) return;
+    if (action === 'edit-customer') { showEditModal(id); }
+    if (action === 'update-status') { showUpdateStatusModal(customer); }
+    if (action === 'view-history') { handleViewHistory(id, customer.name); }
+}
+
+async function handleViewHistory(customerId, customerName) {
+    ui.showModal('historyModal', { customerName });
+    ui.showLoading(true);
+    try {
+        const historyData = await api.fetchStatusHistory(customerId);
+        ui.renderHistoryTimeline(historyData);
+    } catch (error) {
+        ui.showStatus(error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+async function handleSubmitStatusUpdate() {
+    const customerId = document.getElementById('modalCustomerId').value;
+    const newStatus = document.getElementById('modalStatusSelect').value;
+    const notes = document.getElementById('modalNotesText').value.trim();
+    if (!newStatus) return ui.showStatus('กรุณาเลือกสถานะ', true);
+    const requiresReason = ["status 1", "status 2", "status 3", "status 4"].includes(newStatus);
+    if (requiresReason && !notes) { return ui.showStatus('สำหรับ Status 1-4 กรุณากรอกเหตุผล/บันทึกเพิ่มเติม', true); }
+    ui.showLoading(true);
+    try {
+        const updateData = { status_1: newStatus, reason: notes, last_status: newStatus };
+        await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
+        const updatedCustomer = await api.updateCustomer(customerId, updateData);
+        const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
+        if (index !== -1) { state.customers[index] = updatedCustomer; }
+        updateVisibleData();
+        ui.hideModal('statusUpdateModal');
+        ui.showStatus('อัปเดตสถานะสำเร็จ', false);
+    } catch (error) {
+        ui.showStatus("เกิดข้อผิดพลาดในการอัปเดต: " + error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+function handleContextMenu(event) {
+    const row = event.target.closest('tr');
+    if (!row || !row.dataset.id) return;
+    if (state.currentUser.role === 'sales') { event.preventDefault(); return; }
+    event.preventDefault();
+    state.contextMenuRowId = row.dataset.id;
+    ui.showContextMenu(event);
+}
+
+async function handleContextMenuItemClick(event) {
+    const action = event.target.dataset.action;
+    if (!action || !state.contextMenuRowId) return;
+    ui.hideContextMenu();
+    if (action === 'delete') {
+        const customerToDelete = state.customers.find(c => c.id == state.contextMenuRowId);
+        if (confirm(`คุณต้องการลบลูกค้า "${customerToDelete?.name || 'รายนี้'}" ใช่หรือไม่?`)) {
+            ui.showLoading(true);
+            try {
+                await api.deleteCustomer(state.contextMenuRowId);
+                state.customers = state.customers.filter(c => c.id != state.contextMenuRowId);
+                updateVisibleData();
+                ui.showStatus('ลบข้อมูลสำเร็จ', false);
+            } catch (error) {
+                ui.showStatus(error.message, true);
+            } finally {
+                ui.showLoading(false);
+            }
+        }
+    }
+    state.contextMenuRowId = null;
+}
+
+// ================================================================================
+// EVENT LISTENERS SETUP
+// ================================================================================
+
+function setupEventListeners() {
+    document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
+    document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
+    document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
+    document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
+    document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
+    document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
+    document.getElementById('refreshButton')?.addEventListener('click', initializeApp);
+    
+    document.getElementById('searchInput')?.addEventListener('input', e => { state.activeFilters.search = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
+    document.getElementById('statusFilter')?.addEventListener('change', e => { state.activeFilters.status = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
+    document.getElementById('salesFilter')?.addEventListener('change', e => { state.activeFilters.sales = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
+
+    document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => { button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset)); });
+    document.getElementById('clearDateFilter')?.addEventListener('click', () => setDateFilterPreset('all'));
+
+    const startDateFilter = document.getElementById('startDateFilter');
+    const endDateFilter = document.getElementById('endDateFilter');
+    function handleCustomDateChange() {
+        const start = startDateFilter.valueAsDate;
+        const end = endDateFilter.valueAsDate;
+        if (start && end && start <= end) {
+            state.dateFilter.startDate = start;
+            state.dateFilter.endDate = end;
+            state.dateFilter.preset = 'custom';
+            state.pagination.currentPage = 1;
+            document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => btn.classList.remove('active'));
+            updateVisibleData();
+        }
+    }
+    startDateFilter?.addEventListener('change', handleCustomDateChange);
+    endDateFilter?.addEventListener('change', handleCustomDateChange);
+
+    document.getElementById('paginationContainer')?.addEventListener('click', event => {
+        const button = event.target.closest('button');
+        if (button && button.dataset.page) {
+            const page = button.dataset.page;
+            if (page === 'prev') { if (state.pagination.currentPage > 1) state.pagination.currentPage--; } 
+            else if (page === 'next') {
+                const totalPages = Math.ceil(state.filteredCustomers.length / state.pagination.pageSize);
+                if (state.pagination.currentPage < totalPages) state.pagination.currentPage++;
+            } else { state.pagination.currentPage = parseInt(page); }
+            updateVisibleData();
+        }
+    });
+    document.getElementById('paginationContainer')?.addEventListener('change', event => {
+        if (event.target.id === 'pageSize') {
+            state.pagination.pageSize = parseInt(event.target.value);
+            state.pagination.currentPage = 1; 
+            updateVisibleData();
+        }
+    });
+
+    const tableBody = document.getElementById('tableBody');
+    tableBody?.addEventListener('click', handleTableClick);
+    tableBody?.addEventListener('contextmenu', handleContextMenu);
+    const contextMenu = document.getElementById('contextMenu');
+    contextMenu?.addEventListener('click', handleContextMenuItemClick);
+    window.addEventListener('click', (event) => { if (contextMenu && !contextMenu.contains(event.target)) { ui.hideContextMenu(); } });
+    document.querySelectorAll('[data-modal-close]').forEach(btn => { btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose)); });
+}
+
+// ================================================================================
+// APPLICATION START
+// ================================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
