@@ -80,20 +80,33 @@ async function initializeApp() {
 // MASTER DATA PROCESSING & RENDERING PIPELINE
 // ================================================================================
 
+// ✨ NEW HELPER FUNCTION: Safely converts a Date object to a 'YYYY-MM-DD' string
+function toYYYYMMDD(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+
 function updateVisibleData() {
+    // 1. Apply Date Filter
     let dateFiltered = state.customers;
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
-        const localStartDate = state.dateFilter.startDate;
-        const localEndDate = new Date(state.dateFilter.endDate);
-        localEndDate.setHours(23, 59, 59, 999); 
+        
+        // ✨ BUG FIX: Convert dates to YYYY-MM-DD strings for robust, timezone-safe comparison
+        const startDateString = toYYYYMMDD(state.dateFilter.startDate);
+        const endDateString = toYYYYMMDD(state.dateFilter.endDate);
 
         dateFiltered = state.customers.filter(c => {
             if (!c.date) return false;
-            const customerDate = new Date(c.date + 'T00:00:00'); 
-            return customerDate >= localStartDate && customerDate <= localEndDate;
+            // Direct string comparison is reliable for YYYY-MM-DD format
+            return c.date >= startDateString && c.date <= endDateString;
         });
     }
 
+    // 2. Apply Other Filters
     const { search, status, sales } = state.activeFilters;
     const lowerCaseSearch = search.toLowerCase();
     state.filteredCustomers = dateFiltered.filter(customer => {
@@ -104,6 +117,7 @@ function updateVisibleData() {
         return matchesSearch && matchesStatus && matchesSales;
     });
 
+    // 3. Apply Pagination
     const { currentPage, pageSize } = state.pagination;
     const totalRecords = state.filteredCustomers.length;
     const totalPages = Math.ceil(totalRecords / pageSize);
@@ -111,6 +125,7 @@ function updateVisibleData() {
     const endIndex = startIndex + pageSize;
     const paginatedCustomers = state.filteredCustomers.slice(startIndex, endIndex);
 
+    // 4. Render UI Components
     ui.renderTable(paginatedCustomers, currentPage, pageSize);
     ui.renderPaginationControls(totalPages, currentPage, totalRecords, pageSize);
     updateDashboardStats(); 
@@ -385,7 +400,6 @@ function setupEventListeners() {
     document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => { button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset)); });
     document.getElementById('clearDateFilter')?.addEventListener('click', () => setDateFilterPreset('all'));
 
-    // --- ✨ BUG FIX: Rewritten Date Filter Logic ---
     const startDateFilter = document.getElementById('startDateFilter');
     const endDateFilter = document.getElementById('endDateFilter');
 
@@ -393,14 +407,12 @@ function setupEventListeners() {
         const start = startDateFilter.valueAsDate;
         const end = endDateFilter.valueAsDate;
 
-        // Only trigger update if both dates are selected and the range is valid
         if (start && end && start <= end) {
             state.dateFilter.startDate = start;
             state.dateFilter.endDate = end;
             state.dateFilter.preset = 'custom';
             state.pagination.currentPage = 1;
             
-            // De-select any active preset buttons
             document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => btn.classList.remove('active'));
             
             updateVisibleData();
@@ -408,7 +420,6 @@ function setupEventListeners() {
     }
     startDateFilter?.addEventListener('change', handleCustomDateChange);
     endDateFilter?.addEventListener('change', handleCustomDateChange);
-    // --- END BUG FIX ---
 
     document.getElementById('paginationContainer')?.addEventListener('click', event => {
         const button = event.target.closest('button');
