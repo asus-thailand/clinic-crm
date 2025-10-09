@@ -628,6 +628,19 @@ body {
     cursor: not-allowed; 
 }
 
+.read-only-row td {
+    background-color: #f8f9fa !important;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+.read-only-row .btn-edit:disabled,
+.read-only-row .btn-update:disabled {
+    background-color: #ced4da;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 /* --- 13. Mobile Edit Form (Modal) --- */
 .edit-modal-overlay {
     position: fixed;
@@ -691,15 +704,7 @@ body {
 .edit-modal-body {
     padding: 20px;
     overflow-y: auto;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 15px;
-}
-
-@media (min-width: 640px) {
-    .edit-modal-body {
-        grid-template-columns: 1fr 1fr;
-    }
+    /* ✨ UPDATED: Removed grid layout from the direct body */
 }
 
 .form-group {
@@ -755,21 +760,38 @@ body {
     cursor: pointer;
 }
 
-/* ✅ NEW: Performance Improvement Class */
+/* --- ✅ NEW: Modal Section Styles --- */
+.modal-section {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.modal-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #475569;
+    margin: -5px 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.modal-section.sales-section {
+    background-color: #f7f9fc; /* A light, subtle grey */
+}
+/* This will ensure the form groups are still laid out correctly within the sections */
+.modal-section-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+@media (min-width: 640px) {
+    .modal-section-content {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+
+/* Performance Improvement Class */
 .hidden {
     display: none;
-}
-
-/* --- ✅ NEW: Row-level Permission Styles --- */
-.read-only-row td {
-    background-color: #f8f9fa !important; /* สีพื้นหลังจางๆ */
-    color: #6c757d; /* สีตัวอักษรจางลง */
-    cursor: not-allowed; /* เปลี่ยน cursor เป็นเครื่องหมายห้าม */
-}
-
-.read-only-row .btn-edit:disabled,
-.read-only-row .btn-update:disabled {
-    background-color: #ced4da;
-    cursor: not-allowed;
-    opacity: 0.6;
 }
