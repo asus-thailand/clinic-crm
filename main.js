@@ -103,6 +103,7 @@ async function initializeApp() {
 // ================================================================================
 
 function renderFullTable() {
+    // ✅ LOGIC: ส่ง state.currentUser ไปให้ ui.renderTable เพื่อใช้ตรวจสอบสิทธิ์
     ui.renderTable(state.customers, state.currentUser, SALES_EDITABLE_FIELDS);
     updateDashboardStats();
     applyFilters();
@@ -253,7 +254,24 @@ async function handleAddCustomer() {
 async function handleCellDoubleClick(event) {
     const cell = event.target.closest('td');
     
+    // ✅ LOGIC: เพิ่มการตรวจสอบสิทธิ์ "บอร์ดใคร บอร์ดมัน"
     if (!cell || cell.classList.contains('row-number') || cell.classList.contains('actions-cell')) return;
+
+    const rowId = cell.parentElement.dataset.id;
+    const customer = state.customers.find(c => c.id == rowId);
+    if (!customer) return;
+
+    const currentUser = state.currentUser;
+    // Admin/Administrator สามารถแก้ไขได้ทั้งหมด
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
+    // Sales สามารถแก้ไขได้เฉพาะของตัวเอง
+    const isOwner = customer.sales === currentUser.username;
+
+    if (!isAdmin && !isOwner) {
+        ui.showStatus('คุณสามารถแก้ไขได้เฉพาะ Lead ของคุณเท่านั้น', true);
+        return; // หยุดการทำงานทันที
+    }
+    
     if (cell.classList.contains('non-editable')) {
         ui.showStatus('คุณไม่มีสิทธิ์แก้ไขฟิลด์นี้', true);
         return;
@@ -346,6 +364,11 @@ function handleTableClick(event) {
     const target = event.target;
     const action = target.dataset.action;
     if (!action) return;
+
+    // ✅ LOGIC: ป้องกันการคลิกปุ่มที่ถูก disabled
+    if (target.disabled) {
+        return;
+    }
 
     const id = target.closest('[data-id]')?.dataset.id;
     if (!id) return;
