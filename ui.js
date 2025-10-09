@@ -152,25 +152,17 @@ function createActionsCell(row, currentUser) {
     return td;
 }
 
-function createRowElement(row, index, currentUser) {
+function createRowElement(row, index, page, pageSize) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
-    // ✨ LOGIC: Update condition to check all 3 fields for deal closing highlight
     if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
         tr.classList.add('row-deal-closed');
     }
 
-    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
-    const isOwner = row.sales === currentUser.username;
-    
-    if (!isAdmin && !isOwner) {
-        tr.classList.add('read-only-row');
-    }
-    
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
-    rowNumberCell.textContent = index + 1;
+    rowNumberCell.textContent = (page - 1) * pageSize + index + 1; // Calculate global row number
     tr.appendChild(rowNumberCell);
     
     HEADERS.slice(1).forEach(header => {
@@ -178,20 +170,20 @@ function createRowElement(row, index, currentUser) {
         if (config && config.field) {
             tr.appendChild(createCell(row, config.field));
         } else if (header === 'จัดการ') {
-            tr.appendChild(createActionsCell(row, currentUser));
+            tr.appendChild(createActionsCell(row, window.state.currentUser)); // Access global state
         }
     });
     
     return tr;
 }
 
-ui.renderTable = function(customers, currentUser) {
+ui.renderTable = function(paginatedCustomers, page, pageSize) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
     const fragment = document.createDocumentFragment();
-    customers.forEach((row, index) => {
-        fragment.appendChild(createRowElement(row, index, currentUser));
+    paginatedCustomers.forEach((row, index) => {
+        fragment.appendChild(createRowElement(row, index, page, pageSize));
     });
     
     tbody.innerHTML = '';
@@ -199,13 +191,93 @@ ui.renderTable = function(customers, currentUser) {
 }
 
 // ================================================================================
+// ✨ NEW: PAGINATION UI RENDERING
+// ================================================================================
+
+ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) {
+    const container = document.getElementById('paginationContainer');
+    if (!container) return;
+
+    if (totalRecords === 0) {
+        container.innerHTML = '<div class="pagination-info">ไม่พบข้อมูล</div>';
+        return;
+    }
+
+    // Page size selector
+    const pageSizeHTML = `
+        <div class="page-size-selector">
+            <label for="pageSize">แสดง:</label>
+            <select id="pageSize">
+                <option value="25" ${pageSize == 25 ? 'selected' : ''}>25</option>
+                <option value="50" ${pageSize == 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${pageSize == 100 ? 'selected' : ''}>100</option>
+                <option value="200" ${pageSize == 200 ? 'selected' : ''}>200</option>
+            </select>
+            <span>แถว</span>
+        </div>
+    `;
+
+    // Info text
+    const startRecord = (currentPage - 1) * pageSize + 1;
+    const endRecord = Math.min(currentPage * pageSize, totalRecords);
+    const infoHTML = `<div class="pagination-info">แสดง ${startRecord} - ${endRecord} จากทั้งหมด ${totalRecords}</div>`;
+
+    // Page buttons
+    let buttonsHTML = '';
+    buttonsHTML += `<button data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>`;
+
+    // Logic to show page numbers with ellipsis
+    const maxButtons = 5;
+    let startPage, endPage;
+    if (totalPages <= maxButtons) {
+        startPage = 1;
+        endPage = totalPages;
+    } else {
+        const maxPagesBeforeCurrent = Math.floor(maxButtons / 2);
+        const maxPagesAfterCurrent = Math.ceil(maxButtons / 2) - 1;
+        if (currentPage <= maxPagesBeforeCurrent) {
+            startPage = 1;
+            endPage = maxButtons;
+        } else if (currentPage + maxPagesAfterCurrent >= totalPages) {
+            startPage = totalPages - maxButtons + 1;
+            endPage = totalPages;
+        } else {
+            startPage = currentPage - maxPagesBeforeCurrent;
+            endPage = currentPage + maxPagesAfterCurrent;
+        }
+    }
+
+    if (startPage > 1) {
+        buttonsHTML += `<button data-page="1">1</button>`;
+        if (startPage > 2) buttonsHTML += `<span>...</span>`;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        buttonsHTML += `<button data-page="${i}" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) buttonsHTML += `<span>...</span>`;
+        buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`;
+    }
+
+    buttonsHTML += `<button data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>`;
+    
+    const controlsHTML = `<div class="pagination-controls">${buttonsHTML}</div>`;
+
+    container.innerHTML = `${pageSizeHTML}${infoHTML}${controlsHTML}`;
+};
+
+
+// ================================================================================
 // MODAL & FORM MANAGEMENT
 // ================================================================================
+
+// ... (Rest of the file remains the same from the previous version)
 
 ui.showModal = function(modalId, context = {}) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
-    
     if (modalId === 'statusUpdateModal' || modalId === 'historyModal') {
         const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`);
         if (nameElement) nameElement.textContent = context.customerName || 'N/A';
@@ -214,28 +286,23 @@ ui.showModal = function(modalId, context = {}) {
             if (customerIdElement) customerIdElement.value = context.customerId || '';
         }
     }
-    
     modal.style.display = 'flex';
 }
 
 ui.hideModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
-    
     modal.style.display = 'none';
-    
     if (modalId === 'statusUpdateModal') {
         modal.querySelector('#modalStatusSelect').value = '';
         modal.querySelector('#modalNotesText').value = '';
         modal.querySelector('#modalCustomerId').value = '';
     }
-    
     if (modalId === 'historyModal') {
         document.getElementById('historyTimelineContainer').innerHTML = '';
     }
 }
 
-// ✨ UPDATED: This function is now completely rewritten to support sections and deal-closing highlights
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
     form.innerHTML = ''; 
@@ -276,8 +343,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
-        
-        // ✨ NEW: Add a specific data-attribute to the form group for easy selection
         formGroup.dataset.fieldGroup = field;
         
         let inputHtml = '';
@@ -301,17 +366,12 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     form.appendChild(adminSection);
     form.appendChild(salesSection);
 
-    // ✨ NEW: Attach event listeners for dynamic highlighting
     const lastStatusInput = form.querySelector('[name="last_status"]');
     const status1Input = form.querySelector('[name="status_1"]');
     const closedAmountInput = form.querySelector('[name="closed_amount"]');
     
     const highlightFields = () => {
-        const isClosingAttempt = 
-            (lastStatusInput.value === '100%') || 
-            (status1Input.value === 'ปิดการขาย') || 
-            (closedAmountInput.value && closedAmountInput.value.trim() !== '');
-            
+        const isClosingAttempt = (lastStatusInput.value === '100%') || (status1Input.value === 'ปิดการขาย') || (closedAmountInput.value && closedAmountInput.value.trim() !== '');
         dealClosingFields.forEach(fieldName => {
             const group = form.querySelector(`[data-field-group="${fieldName}"]`);
             if (group) {
@@ -323,13 +383,10 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     [lastStatusInput, status1Input, closedAmountInput].forEach(input => {
         if (input) {
             input.addEventListener('change', highlightFields);
-            input.addEventListener('input', highlightFields); // For text fields
+            input.addEventListener('input', highlightFields);
         }
     });
-
-    // Initial check on form build
     highlightFields();
-
     document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
 };
 
@@ -349,19 +406,13 @@ ui.populateFilterDropdown = function(elementId, options) {
     });
 };
 
-// ================================================================================
-// HISTORY TIMELINE, CONTEXT MENU, etc. (Unchanged)
-// ================================================================================
-
 ui.renderHistoryTimeline = function(historyData) {
     const container = document.getElementById('historyTimelineContainer');
     if (!container) return;
-    
     if (!historyData || historyData.length === 0) {
         container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>';
         return;
     }
-    
     container.innerHTML = historyData.map(item => `
         <div class="timeline-item">
             <div class="timeline-icon">✓</div>
@@ -380,7 +431,6 @@ ui.renderHistoryTimeline = function(historyData) {
 ui.showContextMenu = function(event) {
     const menu = document.getElementById('contextMenu');
     if (!menu) return;
-    
     menu.style.display = 'block';
     menu.style.left = `${event.pageX}px`;
     menu.style.top = `${event.pageY}px`;
