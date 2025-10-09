@@ -727,6 +727,14 @@ body {
     border: 1px solid #cbd5e1;
     border-radius: 8px;
     background: #f8fafc;
+    transition: background-color 0.3s, border-color 0.3s; /* Added for smooth transition */
+}
+
+/* ✨ NEW: Style for Deal Closing Highlight */
+.form-group.highlight-deal-closing input,
+.form-group.highlight-deal-closing select {
+    background-color: #e7f3ff !important; /* Light blue background */
+    border-color: #90caff !important;   /* Slightly darker blue border */
 }
 
 .edit-modal-footer {
@@ -774,7 +782,6 @@ body {
     padding-bottom: 10px;
     border-bottom: 1px solid #e2e8f0;
 }
-/* ✨ UPDATED: Set both sections to a light, readable grey */
 .modal-section.admin-section {
     background-color: #f5f5f5; 
 }
