@@ -83,7 +83,7 @@ const FIELD_MAPPING = {
     'DR.':                { field: 'dr',                section: 'sales' },
     'ยอดที่ปิดได้':      { field: 'closed_amount',     section: 'sales' },
     'วันที่นัดทำหัตถการ':{ field: 'appointment_date',  section: 'sales' },
-    'จัดการ':              { field: null,              section: 'special' }
+    'จัดการ':              { field: null,              section: 'sales' } // ✨ UPDATED this line
 };
 
 ui.FIELD_MAPPING = FIELD_MAPPING;
@@ -191,7 +191,7 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
 }
 
 // ================================================================================
-// ✨ NEW: PAGINATION UI RENDERING
+// PAGINATION UI RENDERING
 // ================================================================================
 
 ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) {
@@ -203,7 +203,6 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
         return;
     }
 
-    // Page size selector
     const pageSizeHTML = `
         <div class="page-size-selector">
             <label for="pageSize">แสดง:</label>
@@ -217,16 +216,13 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
         </div>
     `;
 
-    // Info text
     const startRecord = (currentPage - 1) * pageSize + 1;
     const endRecord = Math.min(currentPage * pageSize, totalRecords);
     const infoHTML = `<div class="pagination-info">แสดง ${startRecord} - ${endRecord} จากทั้งหมด ${totalRecords}</div>`;
 
-    // Page buttons
     let buttonsHTML = '';
     buttonsHTML += `<button data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>`;
 
-    // Logic to show page numbers with ellipsis
     const maxButtons = 5;
     let startPage, endPage;
     if (totalPages <= maxButtons) {
@@ -272,8 +268,6 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
 // ================================================================================
 // MODAL & FORM MANAGEMENT
 // ================================================================================
-
-// ... (Rest of the file remains the same from the previous version)
 
 ui.showModal = function(modalId, context = {}) {
     const modal = document.getElementById(modalId);
