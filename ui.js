@@ -58,38 +58,70 @@ ui.updateUIAfterLogin = function(user) {
 }
 
 // ================================================================================
-// FIELD MAPPING & CONSTANTS
+// ✨ SINGLE SOURCE OF TRUTH: FIELD MAPPING
 // ================================================================================
 
 const FIELD_MAPPING = {
-    '#': null,
-    'วัน/เดือน/ปี': 'date',
-    'ลำดับที่': 'lead_code',
-    'ชื่อลูกค้า': 'name',
-    'เบอร์ติดต่อ': 'phone',
-    'ช่องทางสื่อ': 'channel',
-    'ประเภทหัตถการ': 'procedure',
-    'มัดจำ': 'deposit',
-    'ขอเบอร์ Y/N': 'confirm_y',
-    'มัดจำออนไลน์ Y/N': 'transfer_100',
-    'CS ผู้ส่ง Lead': 'cs_confirm',
-    'เซลล์': 'sales',
-    'อัพเดทการเข้าถึง': 'update_access',
-    'Last Status': 'last_status',
-    'เวลาโทร': 'call_time',
-    'Staus Sale': 'status_1',
-    'เหตุผล': 'reason',
-    'ETC': 'etc',
-    'HN ลูกค้า': 'hn_customer',
-    'วันที่นัด CS': 'old_appointment',
-    'DR.': 'dr',
-    'ยอดที่ปิดได้': 'closed_amount',
-    'วันที่นัดทำหัตถการ': 'appointment_date',
-    'จัดการ': null
+    '#':                  { field: null,              section: 'special' },
+    'วัน/เดือน/ปี':     { field: 'date',              section: 'admin' },
+    'ลำดับที่':           { field: 'lead_code',         section: 'admin' },
+    'ชื่อลูกค้า':         { field: 'name',              section: 'admin' },
+    'เบอร์ติดต่อ':       { field: 'phone',             section: 'admin' },
+    'ช่องทางสื่อ':       { field: 'channel',           section: 'admin' },
+    'ประเภทหัตถการ':  { field: 'procedure',         section: 'admin' },
+    'มัดจำ':               { field: 'deposit',           section: 'admin' },
+    'ขอเบอร์ Y/N':        { field: 'confirm_y',         section: 'admin' },
+    'มัดจำออนไลน์ Y/N': { field: 'transfer_100',      section: 'admin' },
+    'CS ผู้ส่ง Lead':     { field: 'cs_confirm',        section: 'admin' },
+    'เซลล์':               { field: 'sales',             section: 'admin' },
+    'อัพเดทการเข้าถึง':  { field: 'update_access',     section: 'sales' },
+    'Last Status':      { field: 'last_status',       section: 'sales' },
+    'เวลาโทร':            { field: 'call_time',         section: 'sales' },
+    'Staus Sale':       { field: 'status_1',          section: 'sales' },
+    'เหตุผล':              { field: 'reason',            section: 'sales' },
+    'ETC':                { field: 'etc',               section: 'sales' },
+    'HN ลูกค้า':          { field: 'hn_customer',       section: 'sales' },
+    'วันที่นัด CS':       { field: 'old_appointment',   section: 'sales' },
+    'DR.':                { field: 'dr',                section: 'sales' },
+    'ยอดที่ปิดได้':      { field: 'closed_amount',     section: 'sales' },
+    'วันที่นัดทำหัตถการ':{ field: 'appointment_date',  section: 'sales' },
+    'จัดการ':              { field: null,              section: 'special' }
 };
 
 ui.FIELD_MAPPING = FIELD_MAPPING;
 const HEADERS = Object.keys(FIELD_MAPPING);
+
+// ================================================================================
+// ✨ NEW: DYNAMIC TABLE HEADER RENDERING
+// ================================================================================
+
+ui.renderTableHeaders = function() {
+    const thead = document.querySelector('.excel-table thead');
+    if (!thead) return;
+
+    const tr = document.createElement('tr');
+    
+    HEADERS.forEach(headerText => {
+        const th = document.createElement('th');
+        const config = FIELD_MAPPING[headerText];
+
+        th.textContent = headerText;
+
+        if (config.section === 'admin') {
+            th.className = 'header-admin-section';
+        } else if (config.section === 'sales') {
+            th.className = 'header-sales-section';
+        } else if (headerText === '#') {
+            th.className = 'row-number';
+        }
+        
+        tr.appendChild(th);
+    });
+
+    thead.innerHTML = ''; // Clear any existing content
+    thead.appendChild(tr);
+};
+
 
 // ================================================================================
 // TABLE RENDERING
@@ -99,8 +131,6 @@ function createCell(row, fieldName) {
     const td = document.createElement('td');
     td.dataset.field = fieldName;
     td.textContent = row[fieldName] || '';
-    // ✅ [Mobile-First Update] ลบ Logic ที่ไม่จำเป็นสำหรับการแก้ไขในตารางออก
-    // การควบคุมสิทธิ์ทั้งหมดจะอยู่ที่ปุ่มและ class ของแถว (tr)
     return td;
 }
 
@@ -144,8 +174,9 @@ function createRowElement(row, index, currentUser) {
     rowNumberCell.textContent = index + 1;
     tr.appendChild(rowNumberCell);
     
+    // ✨ UPDATED: Loop through HEADERS, skipping the first ('#')
     HEADERS.slice(1).forEach(header => {
-        const fieldName = FIELD_MAPPING[header];
+        const fieldName = FIELD_MAPPING[header].field;
         if (fieldName) {
             tr.appendChild(createCell(row, fieldName));
         } else if (header === 'จัดการ') {
@@ -156,13 +187,13 @@ function createRowElement(row, index, currentUser) {
     return tr;
 }
 
-ui.renderTable = function(customers, currentUser, salesEditableFields) {
+ui.renderTable = function(customers, currentUser) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     
     const fragment = document.createDocumentFragment();
     customers.forEach((row, index) => {
-        fragment.appendChild(createRowElement(row, index, currentUser, salesEditableFields));
+        fragment.appendChild(createRowElement(row, index, currentUser));
     });
     
     tbody.innerHTML = '';
@@ -174,6 +205,7 @@ ui.renderTable = function(customers, currentUser, salesEditableFields) {
 // ================================================================================
 
 ui.showModal = function(modalId, context = {}) {
+    // ... (This function remains unchanged)
     const modal = document.getElementById(modalId);
     if (!modal) return;
     
@@ -190,6 +222,7 @@ ui.showModal = function(modalId, context = {}) {
 }
 
 ui.hideModal = function(modalId) {
+    // ... (This function remains unchanged)
     const modal = document.getElementById(modalId);
     if (!modal) return;
     
@@ -210,14 +243,15 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     const form = document.getElementById('editCustomerForm');
     form.innerHTML = ''; 
 
-    Object.entries(FIELD_MAPPING).forEach(([header, field]) => {
-        if (!field) return; 
+    // ✨ UPDATED: Loop through FIELD_MAPPING to build the form dynamically
+    Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
+        const field = config.field;
+        if (!field) return; // Skip special fields like '#' and 'จัดการ'
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const isSalesUser = currentUser.role === 'sales';
         
-        // Admin can edit everything. Sales can only edit fields in SALES_EDITABLE_FIELDS.
         const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
         const isEditableBySales = isSalesUser && salesEditableFields.includes(field);
         const isEditable = isAdmin || isEditableBySales;
@@ -241,6 +275,7 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 };
 
 ui.populateFilterDropdown = function(elementId, options) {
+    // ... (This function remains unchanged)
     const select = document.getElementById(elementId);
     if (!select) return;
     while (select.options.length > 1) {
@@ -257,10 +292,11 @@ ui.populateFilterDropdown = function(elementId, options) {
 };
 
 // ================================================================================
-// HISTORY TIMELINE, CONTEXT MENU, INLINE EDITING, etc.
+// HISTORY TIMELINE, CONTEXT MENU, etc.
 // ================================================================================
 
 ui.renderHistoryTimeline = function(historyData) {
+    // ... (This function remains unchanged)
     const container = document.getElementById('historyTimelineContainer');
     if (!container) return;
     
@@ -285,6 +321,7 @@ ui.renderHistoryTimeline = function(historyData) {
 }
 
 ui.showContextMenu = function(event) {
+    // ... (This function remains unchanged)
     const menu = document.getElementById('contextMenu');
     if (!menu) return;
     
@@ -294,41 +331,17 @@ ui.showContextMenu = function(event) {
 };
 
 ui.hideContextMenu = function() {
+    // ... (This function remains unchanged)
     const menu = document.getElementById('contextMenu');
     if (menu) menu.style.display = 'none';
 };
 
 ui.createCellEditor = function(cell, value, options) {
-    // ฟังก์ชันนี้ไม่ได้ถูกเรียกใช้งานแล้ว แต่เก็บไว้เผื่ออนาคต
-    cell.classList.add('editing');
-    
-    if (options && Array.isArray(options)) {
-        const optionsHtml = options.map(opt => 
-            `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`
-        ).join('');
-        
-        cell.innerHTML = `
-            <select class="cell-select">
-                <option value="">-- เลือก --</option>
-                ${optionsHtml}
-            </select>
-        `;
-    } else {
-        cell.innerHTML = `<input type="text" class="cell-input" value="${escapeHtml(value)}" />`;
-    }
-    
-    const editor = cell.querySelector('input, select');
-    editor.focus();
-    if (editor.tagName === 'INPUT') {
-        editor.select();
-    }
+    // This function is no longer called but is kept for future reference
 };
 
 ui.revertCellToText = function(cell, value) {
-    if (cell) {
-        cell.classList.remove('editing');
-        cell.textContent = value;
-    }
+    // This function is no longer called but is kept for future reference
 };
 
 window.ui = ui;
