@@ -704,7 +704,6 @@ body {
 .edit-modal-body {
     padding: 20px;
     overflow-y: auto;
-    /* ✨ UPDATED: Removed grid layout from the direct body */
 }
 
 .form-group {
@@ -760,7 +759,7 @@ body {
     cursor: pointer;
 }
 
-/* --- ✅ NEW: Modal Section Styles --- */
+/* --- Modal Section Styles --- */
 .modal-section {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
@@ -775,10 +774,13 @@ body {
     padding-bottom: 10px;
     border-bottom: 1px solid #e2e8f0;
 }
-.modal-section.sales-section {
-    background-color: #f7f9fc; /* A light, subtle grey */
+/* ✨ UPDATED: Set both sections to a light, readable grey */
+.modal-section.admin-section {
+    background-color: #f5f5f5; 
 }
-/* This will ensure the form groups are still laid out correctly within the sections */
+.modal-section.sales-section {
+    background-color: #f5f5f5;
+}
 .modal-section-content {
     display: grid;
     grid-template-columns: 1fr;
