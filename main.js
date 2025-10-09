@@ -58,6 +58,9 @@ async function initializeApp() {
     try {
         if (!window.supabaseClient || !window.api || !window.ui) throw new Error('Dependencies not loaded');
         
+        // ✨ NEW: Render dynamic headers as soon as the app starts
+        ui.renderTableHeaders();
+
         const session = await api.getSession();
         if (!session) {
             window.location.replace('login.html');
@@ -98,7 +101,7 @@ async function initializeApp() {
 // ================================================================================
 
 function renderFullTable() {
-    ui.renderTable(state.customers, state.currentUser, SALES_EDITABLE_FIELDS);
+    ui.renderTable(state.customers, state.currentUser);
     updateDashboardStats();
     applyFilters();
 }
@@ -181,10 +184,12 @@ async function handleSaveEditForm(event) {
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
         
         const historyPromises = [];
-        for (const key in updatedData) {
-            if (originalCustomer[key] !== updatedData[key]) {
-                const fieldLabel = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h] === key) || key;
-                const logNote = `แก้ไข '${fieldLabel}' จาก '${originalCustomer[key] || ''}' เป็น '${updatedData[key]}'`;
+        for (const [key, value] of Object.entries(updatedData)) {
+            // Find the original value, handling type differences if necessary
+            if (String(originalCustomer[key] || '') !== String(value)) {
+                // Find the display name (header) for the field key
+                const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h].field === key) || key;
+                const logNote = `แก้ไข '${header}' จาก '${originalCustomer[key] || ''}' เป็น '${value}'`;
                 historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
             }
         }
@@ -242,64 +247,12 @@ async function handleAddCustomer() {
 }
 
 // ================================================================================
-// INLINE CELL EDITING FUNCTIONS
+// INLINE CELL EDITING FUNCTIONS (DISABLED)
 // ================================================================================
 
-/**
- * ✅ [Mobile-First Update] ปิดการใช้งานฟังก์ชันดับเบิลคลิกเพื่อแก้ไข
- * ตอนนี้การแก้ไขทั้งหมดจะต้องทำผ่านฟอร์ม Modal เท่านั้น
- */
 async function handleCellDoubleClick(event) {
     ui.showStatus('กรุณาใช้ปุ่ม "แก้ไข" เพื่อทำการเปลี่ยนแปลงข้อมูล', false);
     return; 
-}
-
-async function handleCellEditSave(cell, originalValue) {
-    // ฟังก์ชันนี้ไม่ได้ถูกเรียกใช้งานแล้ว แต่เก็บไว้เผื่ออนาคต
-    if (!state.editingCell) return;
-    
-    const editor = cell.querySelector('input, select');
-    const newValue = editor.value.trim();
-    const rowId = cell.parentElement.dataset.id;
-    const field = cell.dataset.field;
-    
-    if (field === 'status_1' && newValue === 'ปิดการขาย') {
-        const rowData = state.customers.find(c => c.id == rowId);
-        if (!rowData.closed_amount) {
-            ui.showStatus("สำหรับสถานะ 'ปิดการขาย' กรุณาใส่ 'ยอดที่ปิดได้' ก่อน", true);
-            ui.revertCellToText(cell, originalValue);
-            state.editingCell = null;
-            return;
-        }
-    }
-
-    state.editingCell = null;
-    if (newValue === originalValue) {
-        ui.revertCellToText(cell, originalValue);
-        return;
-    }
-
-    ui.revertCellToText(cell, newValue);
-    
-    try {
-        const updatedCustomer = await api.updateCustomerCell(rowId, field, newValue);
-        
-        const fieldLabel = Object.keys(ui.FIELD_MAPPING).find(key => ui.FIELD_MAPPING[key] === field) || field;
-        const logNote = `แก้ไขข้อมูล '${fieldLabel}' จาก '${originalValue}' เป็น '${newValue}'`;
-        await api.addStatusUpdate(rowId, 'แก้ไขข้อมูล', logNote, state.currentUser.id);
-
-        const customerIndex = state.customers.findIndex(c => c.id == rowId);
-        if (customerIndex !== -1) {
-            state.customers[customerIndex] = updatedCustomer;
-        }
-        
-        renderFullTable(); 
-        ui.showStatus('แก้ไขข้อมูลสำเร็จ', false);
-
-    } catch (error) {
-        ui.showStatus(error.message, true);
-        ui.revertCellToText(cell, originalValue);
-    }
 }
 
 // ================================================================================
@@ -355,7 +308,7 @@ async function handleSubmitStatusUpdate() {
     ui.showLoading(true);
     try {
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
-        const updatedCustomer = await api.updateCustomerCell(customerId, 'last_status', newStatus);
+        const updatedCustomer = await api.updateCustomerCell(customerId, 'status_1', newStatus);
         
         const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
         if (index !== -1) {
@@ -365,7 +318,8 @@ async function handleSubmitStatusUpdate() {
         renderFullTable();
         ui.hideModal('statusUpdateModal');
         ui.showStatus('อัปเดตสถานะสำเร็จ', false);
-    } catch (error) {
+    } catch (error)
+ {
         ui.showStatus(error.message, true);
     } finally {
         ui.showLoading(false);
@@ -380,7 +334,6 @@ function handleContextMenu(event) {
     const row = event.target.closest('tr');
     if (!row || !row.dataset.id) return;
 
-    // Admin/Adminsitrator only context menu
     if (state.currentUser.role === 'sales') {
         event.preventDefault();
         return;
@@ -398,13 +351,6 @@ async function handleContextMenuItemClick(event) {
 
     if (action === 'delete') {
         const customerToDelete = state.customers.find(c => c.id == state.contextMenuRowId);
-        const isOwner = customerToDelete.sales === state.currentUser.username;
-        const isAdmin = state.currentUser.role === 'admin' || state.currentUser.role === 'administrator';
-
-        if (!isAdmin && !isOwner) {
-            ui.showStatus('คุณสามารถลบได้เฉพาะ Lead ของคุณเท่านั้น', true);
-            return;
-        }
         
         if (confirm(`คุณต้องการลบลูกค้า "${customerToDelete?.name || 'รายนี้'}" ใช่หรือไม่?`)) {
             ui.showLoading(true);
