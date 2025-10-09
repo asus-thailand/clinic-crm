@@ -130,19 +130,7 @@ body {
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
 .excel-table thead th { font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; position: sticky; top: 0; z-index: 100; height: 45px; vertical-align: middle; user-select: none; }
 
-/* ✨ REMOVED old fix */
-/* .excel-table thead th:last-child { padding-right: 30px; } */
-
-/* ✨ NEW, MORE ROBUST FIX for scrollbar overlap */
-.excel-table thead tr::after {
-    content: '';
-    position: sticky;
-    top: 0;
-    right: 0;
-    width: 17px; /* Approximate width of a scrollbar */
-    background-color: #f0f0f0; /* A neutral background for the spacer */
-    z-index: 101; /* Must be higher than th z-index */
-}
+.excel-table thead tr::after { content: ''; position: sticky; top: 0; right: 0; width: 17px; background-color: #f0f0f0; z-index: 101; }
 
 .row-number { background: #e7e6e6 !important; color: var(--text-color-black) !important; font-weight: normal; text-align: center; border: 1px solid var(--border-color-dark); width: 40px; min-width: 40px; position: sticky; left: 0; z-index: 50; }
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
@@ -154,7 +142,16 @@ body {
 .row-deal-closed:hover td { background-color: #89d87a !important; }
 
 /* --- Pagination Styles --- */
-.pagination-container { background: #f8f9fa; padding: 10px 20px; border-top: 1px solid var(--border-color-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+.pagination-container {
+    background: #f8f9fa;
+    padding: 8px 20px; /* ✨ UPDATED: Reduced vertical padding */
+    border-top: 1px solid var(--border-color-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px; /* ✨ UPDATED: Reduced gap */
+}
 .pagination-controls button { padding: 6px 12px; font-size: 12px; margin: 0 2px; border: 1px solid var(--border-color-medium); border-radius: var(--border-radius-small); background: #fff; cursor: pointer; }
 .pagination-controls button:hover { background: #f0f0f0; }
 .pagination-controls button.active { background: var(--info-color); color: #fff; border-color: var(--info-color); }
