@@ -23,7 +23,7 @@ const DROPDOWN_OPTIONS = {
 };
 
 const SALES_EDITABLE_FIELDS = [
-    'last_status', 'call_time', 'status_1', 'reason', 
+    'update_access', 'last_status', 'call_time', 'status_1', 'reason', 
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
@@ -58,7 +58,6 @@ async function initializeApp() {
     try {
         if (!window.supabaseClient || !window.api || !window.ui) throw new Error('Dependencies not loaded');
         
-        // ✨ NEW: Render dynamic headers as soon as the app starts
         ui.renderTableHeaders();
 
         const session = await api.getSession();
@@ -81,7 +80,7 @@ async function initializeApp() {
         state.customers = customers || [];
         state.salesList = salesList || [];
         
-        const statuses = [...new Set(state.customers.map(c => c.status_1).filter(Boolean))].sort();
+        const statuses = [...new Set(state.customers.map(c => c.last_status).filter(Boolean))].sort();
 
         renderFullTable();
         ui.populateFilterDropdown('salesFilter', state.salesList);
@@ -124,7 +123,7 @@ function applyFilters() {
 
         const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
         const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
-        const matchesStatus = !status || customer.status_1 === status;
+        const matchesStatus = !status || customer.last_status === status;
         const matchesSales = !sales || customer.sales === sales;
 
         if (matchesSearch && matchesStatus && matchesSales) {
@@ -137,6 +136,42 @@ function applyFilters() {
         }
     });
 }
+
+// ================================================================================
+// ✨ NEW: State Machine Logic for Status Transitions
+// ================================================================================
+
+/**
+ * คำนวณสถานะถัดไปที่สามารถเลือกได้ตาม Logic ที่กำหนด
+ * @param {string | null} currentStatus - สถานะปัจจุบันของลูกค้า
+ * @returns {string[]} - Array ของสถานะที่สามารถเลือกได้
+ */
+function getAllowedNextStatuses(currentStatus) {
+    const specialStatuses = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
+    
+    if (!currentStatus || currentStatus.trim() === '') {
+        return ["status 1", ...specialStatuses];
+    }
+    
+    switch (currentStatus) {
+        case "status 1":
+            return ["status 2", ...specialStatuses];
+        case "status 2":
+            return ["status 3", ...specialStatuses];
+        case "status 3":
+            return ["status 4", ...specialStatuses];
+        case "status 4":
+            return [...specialStatuses]; // หลังจาก status 4 ไปได้แค่สถานะพิเศษ
+        default:
+            // ถ้าเป็นสถานะพิเศษอยู่แล้ว ก็ยังสามารถเปลี่ยนไปเป็นสถานะพิเศษอื่นๆ ได้
+            if (specialStatuses.includes(currentStatus)) {
+                return [...specialStatuses];
+            }
+            // Fallback สำหรับกรณีอื่นๆ
+            return ["status 1", ...specialStatuses];
+    }
+}
+
 
 // ================================================================================
 // EDIT MODAL HANDLERS
@@ -185,10 +220,9 @@ async function handleSaveEditForm(event) {
         
         const historyPromises = [];
         for (const [key, value] of Object.entries(updatedData)) {
-            // Find the original value, handling type differences if necessary
             if (String(originalCustomer[key] || '') !== String(value)) {
-                // Find the display name (header) for the field key
-                const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h].field === key) || key;
+                const allFields = { ...ui.FIELD_MAPPING, 'Staus Sale': { field: 'status_1'}, 'เหตุผล': { field: 'reason'} };
+                const header = Object.keys(allFields).find(h => allFields[h].field === key) || key;
                 const logNote = `แก้ไข '${header}' จาก '${originalCustomer[key] || ''}' เป็น '${value}'`;
                 historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
             }
@@ -247,17 +281,35 @@ async function handleAddCustomer() {
 }
 
 // ================================================================================
-// INLINE CELL EDITING FUNCTIONS (DISABLED)
+// TABLE INTERACTIONS & STATUS UPDATE
 // ================================================================================
 
-async function handleCellDoubleClick(event) {
-    ui.showStatus('กรุณาใช้ปุ่ม "แก้ไข" เพื่อทำการเปลี่ยนแปลงข้อมูล', false);
-    return; 
+/**
+ * ✨ NEW: ฟังก์ชันใหม่สำหรับเปิด Modal อัปเดตสถานะพร้อมสร้าง Dropdown แบบ Dynamic
+ * @param {object} customer - ข้อมูลลูกค้าที่ต้องการอัปเดต
+ */
+function showUpdateStatusModal(customer) {
+    const select = document.getElementById('modalStatusSelect');
+    if (!select) return;
+
+    // 1. หาตัวเลือกที่สามารถเลือกได้
+    const allowedStatuses = getAllowedNextStatuses(customer.status_1);
+
+    // 2. สร้าง Dropdown จากตัวเลือกที่ถูกต้องเท่านั้น
+    select.innerHTML = '<option value="">-- เลือกสถานะ --</option>'; // เริ่มต้นด้วยตัวเลือกว่าง
+    allowedStatuses.forEach(opt => {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt;
+        optionEl.textContent = opt;
+        select.appendChild(optionEl);
+    });
+
+    // 3. แสดง Modal
+    ui.showModal('statusUpdateModal', { 
+        customerId: customer.id, 
+        customerName: customer.name || customer.lead_code || 'N/A' 
+    });
 }
-
-// ================================================================================
-// TABLE INTERACTIONS
-// ================================================================================
 
 function handleTableClick(event) {
     const target = event.target;
@@ -272,16 +324,17 @@ function handleTableClick(event) {
     if (!id) return;
 
     const customer = state.customers.find(c => c.id == id);
-    const name = customer ? (customer.name || customer.lead_code || customer.phone || 'N/A') : 'N/A';
+    if (!customer) return;
     
     if (action === 'edit-customer') {
         showEditModal(id);
     }
+    // ✨ UPDATED: เรียกใช้ฟังก์ชันใหม่ที่สร้าง Dropdown แบบ Dynamic
     if (action === 'update-status') {
-        ui.showModal('statusUpdateModal', { customerId: id, customerName: name });
+        showUpdateStatusModal(customer);
     }
     if (action === 'view-history') {
-        handleViewHistory(id, name);
+        handleViewHistory(id, customer.name);
     }
 }
 
@@ -298,17 +351,34 @@ async function handleViewHistory(customerId, customerName) {
     }
 }
 
+// ✨ UPDATED: เพิ่ม Logic การตรวจสอบ "เหตุผล"
 async function handleSubmitStatusUpdate() {
     const customerId = document.getElementById('modalCustomerId').value;
     const newStatus = document.getElementById('modalStatusSelect').value;
     const notes = document.getElementById('modalNotesText').value.trim();
     
-    if (!newStatus) return ui.showStatus('กรุณาเลือกสถานะ', true);
+    if (!newStatus) {
+        return ui.showStatus('กรุณาเลือกสถานะ', true);
+    }
+
+    // ✨ VALIDATION: ตรวจสอบว่าต้องกรอกเหตุผลหรือไม่
+    const requiresReason = ["status 1", "status 2", "status 3", "status 4"].includes(newStatus);
+    if (requiresReason && !notes) {
+        return ui.showStatus('สำหรับ Status 1-4 กรุณากรอกเหตุผล/บันทึกเพิ่มเติม', true);
+    }
 
     ui.showLoading(true);
+
     try {
+        const updateData = {
+            status_1: newStatus,
+            reason: notes,
+            last_status: newStatus 
+        };
+
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
-        const updatedCustomer = await api.updateCustomerCell(customerId, 'status_1', newStatus);
+
+        const updatedCustomer = await api.updateCustomer(customerId, updateData);
         
         const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
         if (index !== -1) {
@@ -318,19 +388,20 @@ async function handleSubmitStatusUpdate() {
         renderFullTable();
         ui.hideModal('statusUpdateModal');
         ui.showStatus('อัปเดตสถานะสำเร็จ', false);
-    } catch (error)
- {
-        ui.showStatus(error.message, true);
+
+    } catch (error) {
+        ui.showStatus("เกิดข้อผิดพลาดในการอัปเดต: " + error.message, true);
     } finally {
         ui.showLoading(false);
     }
 }
 
 // ================================================================================
-// CONTEXT MENU
+// CONTEXT MENU & OTHER FUNCTIONS
 // ================================================================================
 
 function handleContextMenu(event) {
+    // ... (This function remains unchanged)
     const row = event.target.closest('tr');
     if (!row || !row.dataset.id) return;
 
@@ -345,6 +416,7 @@ function handleContextMenu(event) {
 }
 
 async function handleContextMenuItemClick(event) {
+    // ... (This function remains unchanged)
     const action = event.target.dataset.action;
     if (!action || !state.contextMenuRowId) return;
     ui.hideContextMenu();
@@ -369,6 +441,8 @@ async function handleContextMenuItemClick(event) {
     state.contextMenuRowId = null;
 }
 
+// REMOVED: The old populateStatusModalDropdown is no longer needed
+
 // ================================================================================
 // EVENT LISTENERS SETUP
 // ================================================================================
@@ -384,7 +458,6 @@ function setupEventListeners() {
 
     const tableBody = document.getElementById('tableBody');
     tableBody?.addEventListener('click', handleTableClick);
-    tableBody?.addEventListener('dblclick', handleCellDoubleClick);
     tableBody?.addEventListener('contextmenu', handleContextMenu);
     
     const contextMenu = document.getElementById('contextMenu');
