@@ -70,8 +70,6 @@ async function initializeApp() {
         state.currentUser = { id: session.user.id, ...userProfile };
         ui.updateUIAfterLogin(state.currentUser);
 
-        // ✅ BUG FIX: Changed the data fetching logic to be sequential and robust.
-        // This removes the call to the non-existent 'api.fetchDistinctColumn' function.
         const [customers, salesList] = await Promise.all([
             api.fetchAllCustomers(),
             api.fetchSalesList()
@@ -80,12 +78,9 @@ async function initializeApp() {
         state.customers = customers || [];
         state.salesList = salesList || [];
         
-        // Create a distinct list of statuses from the fetched customer data.
         const statuses = [...new Set(state.customers.map(c => c.status_1).filter(Boolean))].sort();
 
-        // Render the full table initially
         renderFullTable();
-        // Populate filters with dynamic data
         ui.populateFilterDropdown('salesFilter', state.salesList);
         ui.populateFilterDropdown('statusFilter', statuses);
 
@@ -103,7 +98,6 @@ async function initializeApp() {
 // ================================================================================
 
 function renderFullTable() {
-    // ✅ LOGIC: ส่ง state.currentUser ไปให้ ui.renderTable เพื่อใช้ตรวจสอบสิทธิ์
     ui.renderTable(state.customers, state.currentUser, SALES_EDITABLE_FIELDS);
     updateDashboardStats();
     applyFilters();
@@ -251,65 +245,17 @@ async function handleAddCustomer() {
 // INLINE CELL EDITING FUNCTIONS
 // ================================================================================
 
+/**
+ * ✅ [Mobile-First Update] ปิดการใช้งานฟังก์ชันดับเบิลคลิกเพื่อแก้ไข
+ * ตอนนี้การแก้ไขทั้งหมดจะต้องทำผ่านฟอร์ม Modal เท่านั้น
+ */
 async function handleCellDoubleClick(event) {
-    const cell = event.target.closest('td');
-    
-    // ✅ LOGIC: เพิ่มการตรวจสอบสิทธิ์ "บอร์ดใคร บอร์ดมัน"
-    if (!cell || cell.classList.contains('row-number') || cell.classList.contains('actions-cell')) return;
-
-    const rowId = cell.parentElement.dataset.id;
-    const customer = state.customers.find(c => c.id == rowId);
-    if (!customer) return;
-
-    const currentUser = state.currentUser;
-    // Admin/Administrator สามารถแก้ไขได้ทั้งหมด
-    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
-    // Sales สามารถแก้ไขได้เฉพาะของตัวเอง
-    const isOwner = customer.sales === currentUser.username;
-
-    if (!isAdmin && !isOwner) {
-        ui.showStatus('คุณสามารถแก้ไขได้เฉพาะ Lead ของคุณเท่านั้น', true);
-        return; // หยุดการทำงานทันที
-    }
-    
-    if (cell.classList.contains('non-editable')) {
-        ui.showStatus('คุณไม่มีสิทธิ์แก้ไขฟิลด์นี้', true);
-        return;
-    }
-    if (state.editingCell && state.editingCell !== cell) {
-        const oldValue = state.editingCell.dataset.originalValue;
-        ui.revertCellToText(state.editingCell, oldValue);
-    }
-
-    state.editingCell = cell;
-    const field = cell.dataset.field;
-    const currentValue = cell.textContent.trim();
-    cell.dataset.originalValue = currentValue;
-
-    const options = (field === 'sales') ? state.salesList : DROPDOWN_OPTIONS[field];
-    ui.createCellEditor(cell, currentValue, options);
-
-    const editor = cell.querySelector('input, select');
-    if (!editor) return;
-
-    const handleSave = () => {
-        if (state.editingCell === cell) handleCellEditSave(cell, currentValue);
-    };
-    const handleCancel = () => {
-        if (state.editingCell === cell) {
-            ui.revertCellToText(cell, currentValue);
-            state.editingCell = null;
-        }
-    };
-
-    editor.addEventListener('blur', handleSave);
-    editor.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); handleSave(); } 
-        else if (e.key === 'Escape') { e.preventDefault(); handleCancel(); }
-    });
+    ui.showStatus('กรุณาใช้ปุ่ม "แก้ไข" เพื่อทำการเปลี่ยนแปลงข้อมูล', false);
+    return; 
 }
 
 async function handleCellEditSave(cell, originalValue) {
+    // ฟังก์ชันนี้ไม่ได้ถูกเรียกใช้งานแล้ว แต่เก็บไว้เผื่ออนาคต
     if (!state.editingCell) return;
     
     const editor = cell.querySelector('input, select');
@@ -365,7 +311,6 @@ function handleTableClick(event) {
     const action = target.dataset.action;
     if (!action) return;
 
-    // ✅ LOGIC: ป้องกันการคลิกปุ่มที่ถูก disabled
     if (target.disabled) {
         return;
     }
@@ -435,8 +380,8 @@ function handleContextMenu(event) {
     const row = event.target.closest('tr');
     if (!row || !row.dataset.id) return;
 
+    // Admin/Adminsitrator only context menu
     if (state.currentUser.role === 'sales') {
-        ui.showStatus('คุณไม่มีสิทธิ์ใช้งานเมนูนี้', true);
         event.preventDefault();
         return;
     }
@@ -452,12 +397,15 @@ async function handleContextMenuItemClick(event) {
     ui.hideContextMenu();
 
     if (action === 'delete') {
-        if (state.currentUser.role === 'sales') {
-            ui.showStatus('คุณไม่มีสิทธิ์ลบข้อมูล', true);
+        const customerToDelete = state.customers.find(c => c.id == state.contextMenuRowId);
+        const isOwner = customerToDelete.sales === state.currentUser.username;
+        const isAdmin = state.currentUser.role === 'admin' || state.currentUser.role === 'administrator';
+
+        if (!isAdmin && !isOwner) {
+            ui.showStatus('คุณสามารถลบได้เฉพาะ Lead ของคุณเท่านั้น', true);
             return;
         }
         
-        const customerToDelete = state.customers.find(c => c.id == state.contextMenuRowId);
         if (confirm(`คุณต้องการลบลูกค้า "${customerToDelete?.name || 'รายนี้'}" ใช่หรือไม่?`)) {
             ui.showLoading(true);
             try {
