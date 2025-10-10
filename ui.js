@@ -72,7 +72,7 @@ ui.updateUIAfterLogin = function(user) {
 }
 
 // ================================================================================
-// SINGLE SOURCE OF TRUTH: FIELD MAPPING
+// SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED)
 // ================================================================================
 
 const FIELD_MAPPING = {
@@ -97,23 +97,25 @@ const FIELD_MAPPING = {
     'DR.':                { field: 'dr', section: 'sales' },
     'ยอดที่ปิดได้':      { field: 'closed_amount', section: 'sales' },
     'วันที่นัดทำหัตถการ':{ field: 'appointment_date', section: 'sales' },
-    'จัดการ':              { field: null, section: 'sales' } 
+    'จัดการ':              { field: null, section: 'sales' },
+    'Status Sale':      { field: 'status_1', section: 'sales', isHeader: false },
+    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false }
 };
 
 ui.FIELD_MAPPING = FIELD_MAPPING;
-const HEADERS = Object.keys(FIELD_MAPPING);
 
 // ================================================================================
-// DYNAMIC TABLE HEADER RENDERING
+// DYNAMIC TABLE HEADER RENDERING (REFACTORED)
 // ================================================================================
 
 ui.renderTableHeaders = function() {
     const thead = document.querySelector('.excel-table thead');
     if (!thead) return;
     const tr = document.createElement('tr');
-    HEADERS.forEach(headerText => {
+    Object.entries(FIELD_MAPPING).forEach(([headerText, config]) => {
+        if (config.isHeader === false) return;
+
         const th = document.createElement('th');
-        const config = FIELD_MAPPING[headerText];
         th.textContent = headerText;
         if (config.section === 'admin') { th.className = 'header-admin-section'; }
         else if (config.section === 'sales') { th.className = 'header-sales-section'; }
@@ -125,7 +127,7 @@ ui.renderTableHeaders = function() {
 };
 
 // ================================================================================
-// TABLE RENDERING
+// TABLE RENDERING (REFACTORED)
 // ================================================================================
 
 function createCell(row, fieldName) {
@@ -167,8 +169,9 @@ function createRowElement(row, index, page, pageSize) {
     rowNumberCell.className = 'row-number';
     rowNumberCell.textContent = (page - 1) * pageSize + index + 1;
     tr.appendChild(rowNumberCell);
-    HEADERS.slice(1).forEach(header => {
-        const config = FIELD_MAPPING[header];
+    Object.entries(FIELD_MAPPING).slice(1).forEach(([header, config]) => {
+        if (config.isHeader === false) return;
+
         if (header === 'จัดการ') {
             tr.appendChild(createActionsCell(row, window.state.currentUser));
         } else if (config && config.field) {
@@ -190,7 +193,7 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
 }
 
 // ================================================================================
-// MODAL & FORM MANAGEMENT
+// MODAL & FORM MANAGEMENT (REFACTORED)
 // ================================================================================
 
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
@@ -210,16 +213,10 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     const salesContent = document.createElement('div');
     salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
-
-    const allEditableFields = {
-        ...FIELD_MAPPING,
-        'Staus Sale': { field: 'status_1', section: 'sales'},
-        'เหตุผล': { field: 'reason', section: 'sales' }
-    };
     
     const dealClosingFields = ['last_status', 'status_1', 'closed_amount'];
 
-    Object.entries(allEditableFields).forEach(([header, config]) => {
+    Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
         if (!field) return; 
 
@@ -228,7 +225,8 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
-        const isEditableBySales = isSalesUser && salesEditableFields.includes(field);
+        const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason'];
+        const isEditableBySales = isSalesUser && allSalesEditableFields.includes(field);
         const isEditable = (isAdmin || isEditableBySales) && field !== 'lead_code';
 
         const formGroup = document.createElement('div');
@@ -236,7 +234,9 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         formGroup.dataset.fieldGroup = field;
         
         let inputHtml = '';
-        if (options) {
+        if (field === 'reason') {
+            inputHtml = `<textarea name="${field}" ${!isEditable ? 'disabled' : ''}>${escapeHtml(value)}</textarea>`;
+        } else if (options) {
             const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('');
             inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
         } else {
@@ -296,7 +296,37 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
 ui.showModal = function(modalId, context = {}) { const modal = document.getElementById(modalId); if (!modal) return; if (modalId === 'statusUpdateModal' || modalId === 'historyModal') { const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`); if (nameElement) nameElement.textContent = context.customerName || 'N/A'; if (modalId === 'statusUpdateModal') { const customerIdElement = modal.querySelector('#modalCustomerId'); if (customerIdElement) customerIdElement.value = context.customerId || ''; } } modal.style.display = 'flex'; };
 ui.hideModal = function(modalId) { const modal = document.getElementById(modalId); if (!modal) return; modal.style.display = 'none'; if (modalId === 'statusUpdateModal') { modal.querySelector('#modalStatusSelect').value = ''; modal.querySelector('#modalNotesText').value = ''; modal.querySelector('#modalCustomerId').value = ''; } if (modalId === 'historyModal') { document.getElementById('historyTimelineContainer').innerHTML = ''; } };
 ui.populateFilterDropdown = function(elementId, options) { const select = document.getElementById(elementId); if (!select) return; while (select.options.length > 1) { select.remove(1); } (options || []).forEach(option => { if (option) { const optElement = document.createElement('option'); optElement.value = option; optElement.textContent = option; select.appendChild(optElement); } }); };
-ui.renderHistoryTimeline = function(historyData) { const container = document.getElementById('historyTimelineContainer'); if (!container) return; if (!historyData || historyData.length === 0) { container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>'; return; } container.innerHTML = historyData.map(item => `<div class="timeline-item"><div class="timeline-icon">✓</div><div class="timeline-content"><div class="timeline-status">${escapeHtml(item.status)}</div><div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div><div class="timeline-footer">โดย: ${escapeHtml(item.users ? item.users.username : 'Unknown')} | ${new Date(item.created_at).toLocaleString('th-TH')}</div></div></div>`).join(''); };
+ui.renderHistoryTimeline = function(historyData) {
+    const container = document.getElementById('historyTimelineContainer');
+    if (!container) return;
+    if (!historyData || historyData.length === 0) {
+        container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>';
+        return;
+    }
+    // *** จุดที่แก้ไข: เพิ่ม Logic การกำหนด class ตาม role ของผู้ใช้ ***
+    container.innerHTML = historyData.map(item => {
+        let roleClass = 'history-default'; // คลาสเริ่มต้น
+        if (item.users && item.users.role) {
+            const role = item.users.role.toLowerCase();
+            if (role === 'admin' || role === 'administrator') {
+                roleClass = 'history-admin';
+            } else if (role === 'sales') {
+                roleClass = 'history-sales';
+            }
+        }
+        return `
+            <div class="timeline-item ${roleClass}">
+                <div class="timeline-icon">✓</div>
+                <div class="timeline-content">
+                    <div class="timeline-status">${escapeHtml(item.status)}</div>
+                    <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
+                    <div class="timeline-footer">
+                        โดย: ${escapeHtml(item.users ? item.users.username : 'Unknown')} | ${new Date(item.created_at).toLocaleString('th-TH')}
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+};
 ui.showContextMenu = function(event) { const menu = document.getElementById('contextMenu'); if (!menu) return; menu.style.display = 'block'; menu.style.left = `${event.pageX}px`; menu.style.top = `${event.pageY}px`; };
 ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
 
