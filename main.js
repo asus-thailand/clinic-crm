@@ -198,9 +198,6 @@ function setDateFilterPreset(preset) {
 // EVENT LISTENERS SETUP
 // ================================================================================
 
-/**
- * ✨ NEW: Debounce helper function to delay execution of a function.
- */
 function debounce(func, delay = 300) {
     let timeoutId;
     return (...args) => {
@@ -220,7 +217,6 @@ function setupEventListeners() {
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('refreshButton')?.addEventListener('click', initializeApp);
     
-    // ✨ UPDATED: Search input now uses the debounce function
     document.getElementById('searchInput')?.addEventListener('input', debounce(e => {
         state.activeFilters.search = e.target.value;
         state.pagination.currentPage = 1;
