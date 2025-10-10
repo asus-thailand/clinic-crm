@@ -28,42 +28,21 @@ const SALES_EDITABLE_FIELDS = [
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
-// ================================================================================
-// ✨ NEW: Smart Date Parsing Function
-// ================================================================================
-
-/**
- * Parses a date string which could be in YYYY-MM-DD or DD/MM/BBBB (Buddhist year) format.
- * @param {string} dateStr - The date string to parse.
- * @returns {Date|null} - A valid Date object or null if parsing fails.
- */
 function parseDateString(dateStr) {
     if (!dateStr) return null;
-
-    // Check for DD/MM/BBBB format (e.g., 25/9/2568)
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length === 3) {
             const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in JS
+            const month = parseInt(parts[1], 10) - 1;
             let year = parseInt(parts[2], 10);
-            
-            // Convert from Buddhist year to Gregorian year if necessary
-            if (year > 2500) {
-                year -= 543;
-            }
-            
+            if (year > 2500) { year -= 543; }
             return new Date(year, month, day);
         }
     }
-
-    // Assume YYYY-MM-DD format (e.g., 2025-10-09)
-    // Adding T00:00:00 ensures it's parsed in the local timezone
     const date = new Date(dateStr + 'T00:00:00');
-    // Check if the date is valid
     return isNaN(date.getTime()) ? null : date;
 }
-
 
 // ================================================================================
 // INITIALIZATION
@@ -116,16 +95,11 @@ async function initializeApp() {
 function updateVisibleData() {
     let dateFiltered = state.customers;
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
-        
-        // ✨ FINAL FIX: Use numeric timestamps for 100% accurate comparison.
         const startTimestamp = state.dateFilter.startDate.getTime();
         const endTimestamp = new Date(state.dateFilter.endDate).setHours(23, 59, 59, 999);
-
         dateFiltered = state.customers.filter(c => {
-            // ✨ FINAL FIX: Use the new smart parsing function.
             const customerDate = parseDateString(c.date);
             if (!customerDate) return false;
-
             const customerTimestamp = customerDate.getTime();
             return customerTimestamp >= startTimestamp && customerTimestamp <= endTimestamp;
         });
@@ -154,7 +128,7 @@ function updateVisibleData() {
 }
 
 // ================================================================================
-// (The rest of the file is unchanged)
+// DASHBOARD & FILTERS
 // ================================================================================
 function updateDashboardStats() {
     const dataSet = state.filteredCustomers; 
@@ -188,6 +162,10 @@ function setDateFilterPreset(preset) {
     updateVisibleData();
 }
 
+// ================================================================================
+// EDIT MODAL & STATUS LOGIC
+// ================================================================================
+
 function getAllowedNextStatuses(currentStatus) {
     const specialStatuses = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
     if (!currentStatus || currentStatus.trim() === '') return ["status 1", ...specialStatuses];
@@ -205,7 +183,8 @@ function showUpdateStatusModal(customer) {
     const select = document.getElementById('modalStatusSelect');
     if (!select) return;
     const currentUser = state.currentUser;
-    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'administrator';
+    const userRole = currentUser.role.toLowerCase();
+    const isAdmin = userRole === 'admin' || userRole === 'administrator';
     let allowedStatuses;
     if (isAdmin) {
         allowedStatuses = DROPDOWN_OPTIONS.status_1;
@@ -304,6 +283,13 @@ async function handleAddCustomer() {
         const newLeadCode = `${datePart}-${numberPart}`;
 
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', newLeadCode);
+        
+        if (newCustomer) {
+            await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `ระบบสร้าง Lead อัตโนมัติ`, state.currentUser.id);
+        }
+        
+        newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
         state.customers.unshift(newCustomer);
         
         updateVisibleData();
@@ -369,7 +355,8 @@ async function handleSubmitStatusUpdate() {
 function handleContextMenu(event) {
     const row = event.target.closest('tr');
     if (!row || !row.dataset.id) return;
-    if (state.currentUser.role === 'sales') { event.preventDefault(); return; }
+    const userRole = state.currentUser.role.toLowerCase();
+    if (userRole === 'sales') { event.preventDefault(); return; }
     event.preventDefault();
     state.contextMenuRowId = row.dataset.id;
     ui.showContextMenu(event);
