@@ -151,7 +151,13 @@ api.deleteCustomer = async function(customerId) {
 // ================================================================================
 api.fetchStatusHistory = async function(customerId) {
     try {
-        const { data, error } = await window.supabaseClient.from('customer_status_history').select('*, users(username)').eq('customer_id', customerId).order('created_at', { ascending: false });
+        // *** จุดที่แก้ไข: เพิ่มการดึง 'role' จากตาราง 'users' ***
+        const { data, error } = await window.supabaseClient
+            .from('customer_status_history')
+            .select('*, users(username, role)') 
+            .eq('customer_id', customerId)
+            .order('created_at', { ascending: false });
+        
         if (error) throw error;
         return data || [];
     } catch (error) {
@@ -169,7 +175,7 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
         return data;
     } catch (error) {
         console.error("API ERROR in addStatusUpdate:", error);
-        return null;
+        throw new Error('Could not add status update.');
     }
 }
 
