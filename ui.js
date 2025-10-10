@@ -75,6 +75,7 @@ ui.updateUIAfterLogin = function(user) {
 // SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED)
 // ================================================================================
 
+// ✨ UPDATED: Added 'Status Sale' as a visible column in the table.
 const FIELD_MAPPING = {
     '#':                  { field: null, section: 'special' },
     'วัน/เดือน/ปี':     { field: 'date', section: 'admin' },
@@ -89,17 +90,17 @@ const FIELD_MAPPING = {
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
+    'Status Sale':      { field: 'status_1', section: 'sales' }, // This field will now be displayed as a column
     'Last Status':      { field: 'last_status', section: 'sales' },
     'เวลาโทร':            { field: 'call_time', section: 'sales' },
+    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false }, // 'reason' is still hidden from the main table
     'ETC':                { field: 'etc', section: 'sales' },
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
     'DR.':                { field: 'dr', section: 'sales' },
     'ยอดที่ปิดได้':      { field: 'closed_amount', section: 'sales' },
     'วันที่นัดทำหัตถการ':{ field: 'appointment_date', section: 'sales' },
-    'จัดการ':              { field: null, section: 'sales' },
-    'Status Sale':      { field: 'status_1', section: 'sales', isHeader: false },
-    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false }
+    'จัดการ':              { field: null, section: 'sales' }
 };
 
 ui.FIELD_MAPPING = FIELD_MAPPING;
@@ -113,7 +114,7 @@ ui.renderTableHeaders = function() {
     if (!thead) return;
     const tr = document.createElement('tr');
     Object.entries(FIELD_MAPPING).forEach(([headerText, config]) => {
-        if (config.isHeader === false) return;
+        if (config.isHeader === false) return; // This will now only skip 'เหตุผล'
 
         const th = document.createElement('th');
         th.textContent = headerText;
@@ -303,9 +304,8 @@ ui.renderHistoryTimeline = function(historyData) {
         container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>';
         return;
     }
-    // *** จุดที่แก้ไข: เพิ่ม Logic การกำหนด class ตาม role ของผู้ใช้ ***
     container.innerHTML = historyData.map(item => {
-        let roleClass = 'history-default'; // คลาสเริ่มต้น
+        let roleClass = 'history-default';
         if (item.users && item.users.role) {
             const role = item.users.role.toLowerCase();
             if (role === 'admin' || role === 'administrator') {
