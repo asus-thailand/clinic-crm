@@ -212,7 +212,7 @@ body {
 .modal-input-group select, .modal-input-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: var(--border-radius-small); font-size: 14px; }
 .timeline-container { max-height: 60vh; overflow-y: auto; padding-right: 15px; }
 
-/* History Timeline Styles */
+/* ✨ UPDATED: History Timeline Styles */
 .timeline-item { 
     display: flex; 
     position: relative; 
@@ -220,9 +220,7 @@ body {
     padding-left: 40px; 
     margin-bottom: 8px;
     border-radius: var(--border-radius-small);
-    border: 1px solid transparent; /* Make default border transparent */
-    background-color: transparent; /* Make default background transparent */
-    border-left: none;
+    border: 1px solid var(--border-color-light);
 }
 .timeline-item::before { 
     content: ''; 
@@ -256,28 +254,31 @@ body {
     z-index: 2;
 }
 .timeline-content { flex: 1; }
-
-/* ✨ UPDATED: Base styling for the status tag */
 .timeline-status { 
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: var(--border-radius-small);
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 8px;
+    font-weight: 600; 
+    font-size: 16px; 
+    margin-bottom: 4px;
+    /* Resetting status to a neutral look */
+    display: inline;
+    padding: 0;
+    border-radius: 0;
+    background-color: transparent;
+    color: var(--text-color-primary);
 }
-
 .timeline-notes { font-size: 14px; color: #333; margin-bottom: 6px; white-space: pre-wrap; }
 .timeline-footer { font-size: 12px; color: #888; }
 
-/* Role-based coloring for the status tag ONLY */
-.timeline-item.history-admin .timeline-status {
-    background-color: #d1fae5; /* Pastel Green BG */
-    color: #065f46; /* Dark Green text for readability */
+/* Role-based coloring for the ENTIRE history item */
+.timeline-item.history-default {
+    background-color: var(--bg-color-white);
 }
-.timeline-item.history-sales .timeline-status {
+.timeline-item.history-admin {
+    background-color: #d1fae5; /* Pastel Green BG */
+    border-color: #a7f3d0;
+}
+.timeline-item.history-sales {
     background-color: #ffedd5; /* Pastel Orange BG */
-    color: #9a3412; /* Dark Orange text for readability */
+    border-color: #fed7aa;
 }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
