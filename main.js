@@ -28,6 +28,27 @@ const SALES_EDITABLE_FIELDS = [
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
+/**
+ * แปลงค่าวันที่จากรูปแบบไทย พ.ศ. (เช่น "24/9/2568")
+ * ให้เป็นรูปแบบมาตรฐาน ISO (เช่น "2025-09-24")
+ * @param {string} thaiDateString - วันที่ในรูปแบบ "DD/MM/YYYY" (พ.ศ.)
+ * @returns {string|null} - วันที่ในรูปแบบ "YYYY-MM-DD" (ค.ศ.) หรือ null ถ้าแปลงไม่ได้
+ */
+function convertThaiBEToISO(thaiDateString) {
+  if (!thaiDateString || typeof thaiDateString !== 'string' || !thaiDateString.includes('/')) {
+    return null;
+  }
+  const parts = thaiDateString.split('/');
+  if (parts.length !== 3) {
+    return null;
+  }
+  const day = parts[0];
+  const month = parts[1];
+  const buddhistYear = parseInt(parts[2], 10);
+  const gregorianYear = buddhistYear - 543;
+  return `${gregorianYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
 function normalizeDateStringToYYYYMMDD(dateStr) {
     if (!dateStr || typeof dateStr !== 'string') return null;
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -214,18 +235,7 @@ function setupEventListeners() {
 
     const startDateFilter = document.getElementById('startDateFilter');
     const endDateFilter = document.getElementById('endDateFilter');
-    function handleCustomDateChange() {
-        const start = startDateFilter.value;
-        const end = endDateFilter.value;
-        if (start && end && start <= end) {
-            state.dateFilter.startDate = start;
-            state.dateFilter.endDate = end;
-            state.dateFilter.preset = 'custom';
-            state.pagination.currentPage = 1;
-            document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => btn.classList.remove('active'));
-            updateVisibleData();
-        }
-    }
+    
     startDateFilter?.addEventListener('change', handleCustomDateChange);
     endDateFilter?.addEventListener('change', handleCustomDateChange);
 
@@ -261,6 +271,30 @@ function setupEventListeners() {
 // ================================================================================
 // HANDLERS
 // ================================================================================
+
+function handleCustomDateChange() {
+    let start = document.getElementById('startDateFilter').value;
+    let end = document.getElementById('endDateFilter').value;
+
+    const convertedStart = convertThaiBEToISO(start);
+    if (convertedStart) {
+        start = convertedStart;
+    }
+    const convertedEnd = convertThaiBEToISO(end);
+    if (convertedEnd) {
+        end = convertedEnd;
+    }
+
+    if (start && end && start <= end) {
+        state.dateFilter.startDate = start;
+        state.dateFilter.endDate = end;
+        state.dateFilter.preset = 'custom';
+        state.pagination.currentPage = 1;
+        document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => btn.classList.remove('active'));
+        updateVisibleData();
+    }
+}
+
 function getAllowedNextStatuses(currentStatus) {
     const specialStatuses = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
     if (!currentStatus || currentStatus.trim() === '') return ["status 1", ...specialStatuses];
@@ -336,25 +370,21 @@ async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
 }
 
-// ✨ UPDATED: handleAddCustomer is now much simpler.
 async function handleAddCustomer() {
     ui.showLoading(true);
     try {
-        // The lead_code generation logic is removed.
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A');
         
-        // Add a history entry for the new customer creation.
         if (newCustomer) { 
             await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `ระบบสร้าง Lead อัตโนมัติ`, state.currentUser.id); 
         }
         
-        // Pre-fill current time and add to the top of the list.
         const now = new Date();
         newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         state.customers.unshift(newCustomer);
         
         updateVisibleData();
-        showEditModal(newCustomer.id); // Open the edit modal for the new customer.
+        showEditModal(newCustomer.id);
         ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
     } catch (error) {
         ui.showStatus(error.message, true);
