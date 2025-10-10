@@ -25,9 +25,9 @@
     --error-color: #dc3545;
     --info-color: #007bff;
     
-    /* Header color variables */
-    --header-bg-admin: #70ad47; /* Green for Admin Section */
-    --header-bg-sales: #ffc000;  /* Yellow for Sales Section */
+    /* ✨ UPDATED: Header color variables for a cohesive theme */
+    --header-bg-admin: #5a67d8;  /* Indigo - Was Green */
+    --header-bg-sales: #a3bffa;  /* Light Blue - Was Yellow */
 
     --admin-cell-bg: #e2efda;
     --status-cell-bg: #fce4ec;
@@ -211,7 +211,7 @@ body {
 .modal-input-group select, .modal-input-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: var(--border-radius-small); font-size: 14px; }
 .timeline-container { max-height: 60vh; overflow-y: auto; padding-right: 15px; }
 
-/* *** จุดที่แก้ไข: ปรับปรุงสไตล์ของ Timeline และเพิ่มสีตาม Role *** */
+/* History Timeline Styles */
 .timeline-item { 
     display: flex; 
     position: relative; 
@@ -261,11 +261,11 @@ body {
 /* Role-based coloring for history timeline */
 .timeline-item.history-admin {
     border-left: 5px solid var(--header-bg-admin);
-    background-color: #f0f7f0;
+    background-color: #f0f2ff;
 }
 .timeline-item.history-sales {
     border-left: 5px solid var(--header-bg-sales);
-    background-color: #fffaf0;
+    background-color: #f5f9ff;
 }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
