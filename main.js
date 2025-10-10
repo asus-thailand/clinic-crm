@@ -1,12 +1,32 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - UI LAYER (COMPLETE FIXED VERSION 100%)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PERFORMANCE ENHANCED & BUG FIXED)
 // ================================================================================
 
-const ui = {};
+const state = {
+    currentUser: null,
+    customers: [],        
+    filteredCustomers: [], 
+    salesList: [],
+    activeFilters: { search: '', status: '', sales: '' },
+    dateFilter: { startDate: null, endDate: null, preset: 'all' },
+    pagination: { currentPage: 1, pageSize: 50 },
+    editingCustomerId: null
+};
 
-// ================================================================================
-// UTILITY FUNCTIONS
-// ================================================================================
+const DROPDOWN_OPTIONS = {
+    channel: ["-เพื่อนแนะนำ/", "-Walk-In/", "-PHONE-IN/", "-Line@/", "-Fbc By หมอธีร์ (ปลูกผม)", "-Fbc By หมอธีร์ (หัตถการอื่น)", "-FBC HAIR CLINIC", "-Fbc ตาสองชั้น ยกคิ้ว เสริมจิ้มูก", "-Fbc ปรับรูปหน้า Botox Filler HIFU", "-เว็บไซต์", "-AGENCY", "-IG", "-Tiktok "],
+    procedure: ["ตา Dr.T", "ตาทีมแพทย์", "ปลูกผม", "ปลูกหนวด/เครา", "ปลูกคิ้ว", "FaceLift", "จมูก/ปาก/คาง", "Thermage", "Ultraformer", "Filler", "BOTOX", "Laser กำจัดขน", "SKIN อื่น ๆ", "ตา Dr.T/ปลูกผม", "ตา/SKIN", "ผม/SKIN", "ตา/อื่นๆ", "ผม/อื่นๆ", "ตาทีมแพทย์/ปลูกผม"],
+    confirm_y: ["Y", "N"],
+    transfer_100: ["Y", "N"],
+    status_1: ["status 1", "status 2", "status 3", "status 4", "ไม่สนใจ", "ปิดการขาย", "ตามต่อ"],
+    cs_confirm: ["CSX", "CSY"],
+    last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
+};
+
+const SALES_EDITABLE_FIELDS = [
+    'update_access', 'last_status', 'call_time', 'status_1', 'reason', 
+    'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
+];
 
 function parseDateString(dateStr) {
     if (!dateStr) return null;
@@ -24,272 +44,428 @@ function parseDateString(dateStr) {
     return isNaN(date.getTime()) ? null : date;
 }
 
-function formatDateToDMY(dateStr) {
-    const dateObj = parseDateString(dateStr);
-    if (!dateObj) return dateStr || '';
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const year = dateObj.getFullYear();
-    return `${day}/${month}/${year}`;
-}
-
-function escapeHtml(str) {
-    if (str === null || str === undefined) return '';
-    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
-}
-
 // ================================================================================
-// LOADING & STATUS INDICATORS
+// INITIALIZATION
 // ================================================================================
 
-ui.showLoading = function(isLoading) {
-    document.getElementById('loadingOverlay')?.classList.toggle('show', isLoading);
-}
+async function initializeApp() {
+    console.log('Starting app initialization...');
+    ui.showLoading(true);
+    try {
+        if (!window.supabaseClient || !window.api || !window.ui) throw new Error('Dependencies not loaded');
+        
+        ui.renderTableHeaders();
+        const session = await api.getSession();
+        if (!session) { window.location.replace('login.html'); return; }
+        
+        let userProfile = await api.getUserProfile(session.user.id);
+        if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
+        
+        state.currentUser = { id: session.user.id, ...userProfile };
+        window.state = state; 
+        ui.updateUIAfterLogin(state.currentUser);
 
-let statusTimeoutId = null;
-ui.showStatus = function(message, isError = false) {
-    const indicator = document.getElementById('statusIndicator');
-    if (!indicator) return;
-    clearTimeout(statusTimeoutId);
-    indicator.textContent = message;
-    indicator.className = `status-indicator show ${isError ? 'error' : 'success'}`;
-    statusTimeoutId = setTimeout(() => indicator.classList.remove('show'), 3000);
-}
+        const [customers, salesList] = await Promise.all([
+            api.fetchAllCustomers(),
+            api.fetchSalesList()
+        ]);
+        
+        state.customers = customers || [];
+        state.salesList = salesList || [];
+        
+        const statuses = [...new Set(state.customers.map(c => c.last_status).filter(Boolean))].sort();
+        ui.populateFilterDropdown('salesFilter', state.salesList);
+        ui.populateFilterDropdown('statusFilter', statuses);
 
-// ================================================================================
-// USER INTERFACE UPDATES
-// ================================================================================
-
-ui.updateUIAfterLogin = function(user) {
-    const userBadge = document.querySelector('.user-badge');
-    if (userBadge && user) {
-        const userRole = user.role || 'sales'; 
-        const role = userRole.charAt(0).toUpperCase() + userRole.slice(1);
-        userBadge.textContent = `${role} - ${user.username}`;
-        const roleColors = { 'administrator': '#dc3545', 'admin': '#007bff', 'sales': '#28a745' };
-        userBadge.style.backgroundColor = roleColors[userRole.toLowerCase()] || '#6c757d';
+        updateVisibleData(); 
+        ui.showStatus('โหลดข้อมูลสำเร็จ', false);
+        
+    } catch (error) {
+        console.error('Initialization failed:', error);
+        ui.showStatus('เกิดข้อผิดพลาด: ' + error.message, true);
+    } finally {
+        ui.showLoading(false);
     }
 }
 
 // ================================================================================
-// SINGLE SOURCE OF TRUTH: FIELD MAPPING
+// MASTER DATA PROCESSING & RENDERING PIPELINE
 // ================================================================================
 
-const FIELD_MAPPING = {
-    '#':                  { field: null, section: 'special' },
-    'วัน/เดือน/ปี':     { field: 'date', section: 'admin' },
-    'ลำดับที่':           { field: 'lead_code', section: 'admin' },
-    'ชื่อลูกค้า':         { field: 'name', section: 'admin' },
-    'เบอร์ติดต่อ':       { field: 'phone', section: 'admin' },
-    'ช่องทางสื่อ':       { field: 'channel', section: 'admin' },
-    'ประเภทหัตถการ':  { field: 'procedure', section: 'admin' },
-    'มัดจำ':               { field: 'deposit', section: 'admin' },
-    'ขอเบอร์ Y/N':        { field: 'confirm_y', section: 'admin' },
-    'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
-    'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
-    'เซลล์':               { field: 'sales', section: 'admin' },
-    'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
-    'Last Status':      { field: 'last_status', section: 'sales' },
-    'เวลาโทร':            { field: 'call_time', section: 'sales' },
-    'ETC':                { field: 'etc', section: 'sales' },
-    'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
-    'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
-    'DR.':                { field: 'dr', section: 'sales' },
-    'ยอดที่ปิดได้':      { field: 'closed_amount', section: 'sales' },
-    'วันที่นัดทำหัตถการ':{ field: 'appointment_date', section: 'sales' },
-    'จัดการ':              { field: null, section: 'sales' } 
-};
-
-ui.FIELD_MAPPING = FIELD_MAPPING;
-const HEADERS = Object.keys(FIELD_MAPPING);
-
-// ================================================================================
-// DYNAMIC TABLE HEADER RENDERING
-// ================================================================================
-
-ui.renderTableHeaders = function() {
-    const thead = document.querySelector('.excel-table thead');
-    if (!thead) return;
-    const tr = document.createElement('tr');
-    HEADERS.forEach(headerText => {
-        const th = document.createElement('th');
-        const config = FIELD_MAPPING[headerText];
-        th.textContent = headerText;
-        if (config.section === 'admin') { th.className = 'header-admin-section'; }
-        else if (config.section === 'sales') { th.className = 'header-sales-section'; }
-        else if (headerText === '#') { th.className = 'row-number'; }
-        tr.appendChild(th);
-    });
-    thead.innerHTML = ''; 
-    thead.appendChild(tr);
-};
-
-// ================================================================================
-// TABLE RENDERING
-// ================================================================================
-
-function createCell(row, fieldName) {
-    const td = document.createElement('td');
-    td.dataset.field = fieldName;
-    const dateFields = ['date', 'old_appointment', 'appointment_date'];
-    if (dateFields.includes(fieldName)) {
-        td.textContent = formatDateToDMY(row[fieldName]);
-    } else {
-        td.textContent = row[fieldName] || '';
-    }
-    return td;
-}
-
-function createActionsCell(row, currentUser) {
-    const td = document.createElement('td');
-    td.className = 'actions-cell';
-    const displayName = row.name || row.lead_code || row.phone || 'N/A';
-
-    // ✨ FIXED: Add a null check for currentUser and currentUser.role
-    const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
-    const isAdmin = userRole === 'admin' || userRole === 'administrator';
-    const isOwner = currentUser && row.sales === currentUser.username;
-    const canEdit = isAdmin || isOwner;
-
-    const disabledAttribute = !canEdit ? 'disabled' : '';
-
-    td.innerHTML = `
-        <button class="btn-edit" data-action="edit-customer" data-id="${row.id}" ${disabledAttribute}>แก้ไข</button>
-        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(displayName)}" ${disabledAttribute}>อัปเดต</button>
-        <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(displayName)}">ประวัติ</button>
-    `;
-    return td;
-}
-
-function createRowElement(row, index, page, pageSize) {
-    const tr = document.createElement('tr');
-    tr.dataset.id = row.id;
-    if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
-        tr.classList.add('row-deal-closed');
-    }
-    const rowNumberCell = document.createElement('td');
-    rowNumberCell.className = 'row-number';
-    rowNumberCell.textContent = (page - 1) * pageSize + index + 1;
-    tr.appendChild(rowNumberCell);
-    HEADERS.slice(1).forEach(header => {
-        const config = FIELD_MAPPING[header];
-        if (header === 'จัดการ') {
-            tr.appendChild(createActionsCell(row, window.state.currentUser));
-        } else if (config && config.field) {
-            tr.appendChild(createCell(row, config.field));
-        }
-    });
-    return tr;
-}
-
-ui.renderTable = function(paginatedCustomers, page, pageSize) {
-    const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    const fragment = document.createDocumentFragment();
-    paginatedCustomers.forEach((row, index) => {
-        fragment.appendChild(createRowElement(row, index, page, pageSize));
-    });
-    tbody.innerHTML = '';
-    tbody.appendChild(fragment);
-}
-
-// ================================================================================
-// MODAL & FORM MANAGEMENT
-// ================================================================================
-
-ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
-    const form = document.getElementById('editCustomerForm');
-    form.innerHTML = ''; 
-
-    const adminSection = document.createElement('div');
-    adminSection.className = 'modal-section admin-section';
-    adminSection.innerHTML = '<h3 class="modal-section-title">ส่วนของแอดมิน (Admin Section)</h3>';
-    const adminContent = document.createElement('div');
-    adminContent.className = 'modal-section-content';
-    adminSection.appendChild(adminContent);
-
-    const salesSection = document.createElement('div');
-    salesSection.className = 'modal-section sales-section';
-    salesSection.innerHTML = '<h3 class="modal-section-title">ส่วนของเซลล์ (Sales Section)</h3>';
-    const salesContent = document.createElement('div');
-    salesContent.className = 'modal-section-content';
-    salesSection.appendChild(salesContent);
-
-    const allEditableFields = {
-        ...FIELD_MAPPING,
-        'Staus Sale': { field: 'status_1', section: 'sales'},
-        'เหตุผล': { field: 'reason', section: 'sales' }
-    };
-    
-    const dealClosingFields = ['last_status', 'status_1', 'closed_amount'];
-
-    Object.entries(allEditableFields).forEach(([header, config]) => {
-        const field = config.field;
-        if (!field) return; 
-
-        const value = customer[field] || '';
-        const options = (field === 'sales') ? salesList : dropdownOptions[field];
-        
-        // ✨ FIXED: Add a null check for currentUser and currentUser.role
-        const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
-        const isAdmin = userRole === 'admin' || userRole === 'administrator';
-        const isSalesUser = userRole === 'sales';
-
-        const isEditableBySales = isSalesUser && salesEditableFields.includes(field);
-        const isEditable = (isAdmin || isEditableBySales) && field !== 'lead_code';
-
-        const formGroup = document.createElement('div');
-        formGroup.className = 'form-group';
-        formGroup.dataset.fieldGroup = field;
-        
-        let inputHtml = '';
-        if (options) {
-            const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('');
-            inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
-        } else {
-            const fieldType = (field === 'date' || field === 'appointment_date' || field === 'old_appointment') ? 'date' : 'text';
-            inputHtml = `<input type="${fieldType}" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
-        }
-        
-        formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
-        
-        if (config.section === 'admin') {
-            adminContent.appendChild(formGroup);
-        } else if (config.section === 'sales') {
-            salesContent.appendChild(formGroup);
-        }
-    });
-
-    form.appendChild(adminSection);
-    form.appendChild(salesSection);
-
-    const lastStatusInput = form.querySelector('[name="last_status"]');
-    const status1Input = form.querySelector('[name="status_1"]');
-    const closedAmountInput = form.querySelector('[name="closed_amount"]');
-    const highlightFields = () => {
-        const isClosingAttempt = (lastStatusInput.value === '100%') || (status1Input.value === 'ปิดการขาย') || (closedAmountInput.value && closedAmountInput.value.trim() !== '');
-        dealClosingFields.forEach(fieldName => {
-            const group = form.querySelector(`[data-field-group="${fieldName}"]`);
-            if (group) { group.classList.toggle('highlight-deal-closing', isClosingAttempt); }
+function updateVisibleData() {
+    let dateFiltered = state.customers;
+    if (state.dateFilter.startDate && state.dateFilter.endDate) {
+        const startTimestamp = state.dateFilter.startDate.getTime();
+        const endTimestamp = new Date(state.dateFilter.endDate).setHours(23, 59, 59, 999);
+        dateFiltered = state.customers.filter(c => {
+            const customerDate = parseDateString(c.date);
+            if (!customerDate) return false;
+            const customerTimestamp = customerDate.getTime();
+            return customerTimestamp >= startTimestamp && customerTimestamp <= endTimestamp;
         });
-    };
-    [lastStatusInput, status1Input, closedAmountInput].forEach(input => {
-        if (input) {
-            input.addEventListener('change', highlightFields);
-            input.addEventListener('input', highlightFields);
+    }
+
+    const { search, status, sales } = state.activeFilters;
+    const lowerCaseSearch = search.toLowerCase();
+    state.filteredCustomers = dateFiltered.filter(customer => {
+        const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
+        const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
+        const matchesStatus = !status || customer.last_status === status;
+        const matchesSales = !sales || customer.sales === sales;
+        return matchesSearch && matchesStatus && matchesSales;
+    });
+
+    const { currentPage, pageSize } = state.pagination;
+    const totalRecords = state.filteredCustomers.length;
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedCustomers = state.filteredCustomers.slice(startIndex, endIndex);
+
+    ui.renderTable(paginatedCustomers, currentPage, pageSize);
+    ui.renderPaginationControls(totalPages, currentPage, totalRecords, pageSize);
+    updateDashboardStats(); 
+}
+
+// ================================================================================
+// DASHBOARD & FILTERS
+// ================================================================================
+function updateDashboardStats() {
+    const dataSet = state.filteredCustomers; 
+    document.getElementById('totalCustomers').textContent = dataSet.length;
+    const today = new Date().toISOString().split('T')[0];
+    const todayCustomers = dataSet.filter(c => c.date === today).length;
+    document.getElementById('todayCustomers').textContent = todayCustomers;
+    const pendingCustomers = dataSet.filter(c => c.status_1 === 'ตามต่อ').length;
+    document.getElementById('pendingCustomers').textContent = pendingCustomers;
+    const closedDeals = dataSet.filter(c => c.status_1 === 'ปิดการขาย' && c.last_status === '100%' && c.closed_amount).length;
+    document.getElementById('closedDeals').textContent = closedDeals;
+}
+
+function setDateFilterPreset(preset) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let startDate = new Date(today);
+    let endDate = new Date(today);
+    switch(preset) {
+        case '7d': startDate.setDate(today.getDate() - 6); break;
+        case '30d': startDate.setDate(today.getDate() - 29); break;
+        case 'today': break;
+        case 'all': startDate = null; endDate = null; break;
+    }
+    state.dateFilter = { startDate, endDate, preset };
+    document.getElementById('startDateFilter').valueAsDate = startDate;
+    document.getElementById('endDateFilter').valueAsDate = endDate;
+    document.querySelectorAll('.btn-date-filter').forEach(btn => btn.classList.toggle('active', btn.dataset.preset === preset));
+    if (preset === 'all') document.getElementById('clearDateFilter').classList.add('active');
+    state.pagination.currentPage = 1;
+    updateVisibleData();
+}
+
+// ================================================================================
+// EDIT MODAL & STATUS LOGIC
+// ================================================================================
+
+function getAllowedNextStatuses(currentStatus) {
+    const specialStatuses = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
+    if (!currentStatus || currentStatus.trim() === '') return ["status 1", ...specialStatuses];
+    switch (currentStatus) {
+        case "status 1": return ["status 2", ...specialStatuses];
+        case "status 2": return ["status 3", ...specialStatuses];
+        case "status 3": return ["status 4", ...specialStatuses];
+        case "status 4": return [...specialStatuses];
+        default: if (specialStatuses.includes(currentStatus)) return [...specialStatuses];
+            return ["status 1", ...specialStatuses];
+    }
+}
+
+function showUpdateStatusModal(customer) {
+    const select = document.getElementById('modalStatusSelect');
+    if (!select) return;
+    
+    const userRole = (state.currentUser && state.currentUser.role) ? state.currentUser.role.toLowerCase() : 'sales';
+    const isAdmin = userRole === 'admin' || userRole === 'administrator';
+    
+    let allowedStatuses;
+    if (isAdmin) {
+        allowedStatuses = DROPDOWN_OPTIONS.status_1;
+    } else {
+        allowedStatuses = getAllowedNextStatuses(customer.status_1);
+    }
+    select.innerHTML = '<option value="">-- เลือกสถานะ --</option>';
+    allowedStatuses.forEach(opt => {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt;
+        optionEl.textContent = opt;
+        select.appendChild(optionEl);
+    });
+    ui.showModal('statusUpdateModal', { 
+        customerId: customer.id, 
+        customerName: customer.name || customer.lead_code || 'N/A' 
+    });
+}
+
+function showEditModal(customerId) {
+    const customer = state.customers.find(c => c.id == customerId);
+    if (!customer) { ui.showStatus('ไม่พบข้อมูลลูกค้า', true); return; }
+    state.editingCustomerId = customerId;
+    ui.buildEditForm(customer, state.currentUser, SALES_EDITABLE_FIELDS, state.salesList, DROPDOWN_OPTIONS);
+    document.getElementById('editCustomerModal').classList.add('show');
+}
+
+function hideEditModal() {
+    state.editingCustomerId = null;
+    document.getElementById('editCustomerModal').classList.remove('show');
+}
+
+async function handleSaveEditForm(event) {
+    event.preventDefault();
+    if (!state.editingCustomerId) return;
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const updatedData = {};
+    for (const [key, value] of formData.entries()) { updatedData[key] = value; }
+    const originalCustomer = state.customers.find(c => c.id == state.editingCustomerId);
+
+    const isClosingAttempt = updatedData.last_status === '100%' || updatedData.status_1 === 'ปิดการขาย' || (updatedData.closed_amount && updatedData.closed_amount.trim() !== '');
+    if (isClosingAttempt) {
+        const isClosingComplete = updatedData.last_status === '100%' && updatedData.status_1 === 'ปิดการขาย' && (updatedData.closed_amount && updatedData.closed_amount.trim() !== '');
+        if (!isClosingComplete) {
+            ui.showStatus('การปิดการขายต้องกรอก: Last Status (100%), Status Sale (ปิดการขาย), และ ยอดที่ปิดได้ ให้ครบถ้วน', true);
+            return;
+        }
+    }
+
+    ui.showLoading(true);
+    try {
+        const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
+        
+        const historyPromises = [];
+        for (const [key, value] of Object.entries(updatedData)) {
+            if (String(originalCustomer[key] || '') !== String(value)) {
+                const allFields = { ...ui.FIELD_MAPPING, 'Staus Sale': { field: 'status_1'}, 'เหตุผล': { field: 'reason'} };
+                const header = Object.keys(allFields).find(h => allFields[h].field === key) || key;
+                const logNote = `แก้ไข '${header}' จาก '${originalCustomer[key] || ''}' เป็น '${value}'`;
+                historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
+            }
+        }
+        if (historyPromises.length > 0) { await Promise.all(historyPromises); }
+        
+        const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
+        if (index !== -1) { state.customers[index] = updatedCustomer; }
+        
+        hideEditModal();
+        updateVisibleData();
+        ui.showStatus('บันทึกข้อมูลสำเร็จ', false);
+    } catch (error) {
+        console.error('Save failed:', error);
+        ui.showStatus('บันทึกข้อมูลไม่สำเร็จ: ' + error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+async function handleLogout() {
+    if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
+}
+
+async function handleAddCustomer() {
+    ui.showLoading(true);
+    try {
+        const todaysCount = await api.getTodaysLeadCount();
+        const nextNumber = todaysCount + 1;
+        const now = new Date();
+        const year = String(now.getFullYear()).slice(-2);
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const datePart = `${year}${month}${day}`;
+        const numberPart = String(nextNumber).padStart(3, '0');
+        const newLeadCode = `${datePart}-${numberPart}`;
+
+        const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', newLeadCode);
+        
+        if (newCustomer) {
+            await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `ระบบสร้าง Lead อัตโนมัติ`, state.currentUser.id);
+        }
+        
+        newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        state.customers.unshift(newCustomer);
+        
+        updateVisibleData();
+        showEditModal(newCustomer.id);
+        ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
+    } catch (error) {
+        ui.showStatus(error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+function handleTableClick(event) {
+    const target = event.target;
+    const action = target.dataset.action;
+    if (!action || target.disabled) return;
+    const id = target.closest('[data-id]')?.dataset.id;
+    if (!id) return;
+    const customer = state.customers.find(c => c.id == id);
+    if (!customer) return;
+    if (action === 'edit-customer') { showEditModal(id); }
+    if (action === 'update-status') { showUpdateStatusModal(customer); }
+    if (action === 'view-history') { handleViewHistory(id, customer.name); }
+}
+
+async function handleViewHistory(customerId, customerName) {
+    ui.showModal('historyModal', { customerName });
+    ui.showLoading(true);
+    try {
+        const historyData = await api.fetchStatusHistory(customerId);
+        ui.renderHistoryTimeline(historyData);
+    } catch (error) {
+        ui.showStatus(error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+async function handleSubmitStatusUpdate() {
+    const customerId = document.getElementById('modalCustomerId').value;
+    const newStatus = document.getElementById('modalStatusSelect').value;
+    const notes = document.getElementById('modalNotesText').value.trim();
+    if (!newStatus) return ui.showStatus('กรุณาเลือกสถานะ', true);
+    const requiresReason = ["status 1", "status 2", "status 3", "status 4"].includes(newStatus);
+    if (requiresReason && !notes) { return ui.showStatus('สำหรับ Status 1-4 กรุณากรอกเหตุผล/บันทึกเพิ่มเติม', true); }
+    ui.showLoading(true);
+    try {
+        const updateData = { status_1: newStatus, reason: notes, last_status: newStatus };
+        await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
+        const updatedCustomer = await api.updateCustomer(customerId, updateData);
+        const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
+        if (index !== -1) { state.customers[index] = updatedCustomer; }
+        updateVisibleData();
+        ui.hideModal('statusUpdateModal');
+        ui.showStatus('อัปเดตสถานะสำเร็จ', false);
+    } catch (error) {
+        ui.showStatus("เกิดข้อผิดพลาดในการอัปเดต: " + error.message, true);
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+function handleContextMenu(event) {
+    const row = event.target.closest('tr');
+    if (!row || !row.dataset.id) return;
+    
+    const userRole = (state.currentUser && state.currentUser.role) ? state.currentUser.role.toLowerCase() : 'sales';
+    if (userRole === 'sales') {
+        event.preventDefault();
+        return;
+    }
+    
+    event.preventDefault();
+    state.contextMenuRowId = row.dataset.id;
+    ui.showContextMenu(event);
+}
+
+async function handleContextMenuItemClick(event) {
+    const action = event.target.dataset.action;
+    if (!action || !state.contextMenuRowId) return;
+    ui.hideContextMenu();
+    if (action === 'delete') {
+        const customerToDelete = state.customers.find(c => c.id == state.contextMenuRowId);
+        if (confirm(`คุณต้องการลบลูกค้า "${customerToDelete?.name || 'รายนี้'}" ใช่หรือไม่?`)) {
+            ui.showLoading(true);
+            try {
+                await api.deleteCustomer(state.contextMenuRowId);
+                state.customers = state.customers.filter(c => c.id != state.contextMenuRowId);
+                updateVisibleData();
+                ui.showStatus('ลบข้อมูลสำเร็จ', false);
+            } catch (error) {
+                ui.showStatus(error.message, true);
+            } finally {
+                ui.showLoading(false);
+            }
+        }
+    }
+    state.contextMenuRowId = null;
+}
+
+// ================================================================================
+// EVENT LISTENERS SETUP
+// ================================================================================
+
+function setupEventListeners() {
+    document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
+    document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
+    document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
+    document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
+    document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
+    document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
+    document.getElementById('refreshButton')?.addEventListener('click', initializeApp);
+    
+    document.getElementById('searchInput')?.addEventListener('input', e => { state.activeFilters.search = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
+    document.getElementById('statusFilter')?.addEventListener('change', e => { state.activeFilters.status = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
+    document.getElementById('salesFilter')?.addEventListener('change', e => { state.activeFilters.sales = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
+
+    document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => { button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset)); });
+    document.getElementById('clearDateFilter')?.addEventListener('click', () => setDateFilterPreset('all'));
+
+    const startDateFilter = document.getElementById('startDateFilter');
+    const endDateFilter = document.getElementById('endDateFilter');
+
+    function handleCustomDateChange() {
+        const start = startDateFilter.valueAsDate;
+        const end = endDateFilter.valueAsDate;
+
+        if (start && end && start <= end) {
+            state.dateFilter.startDate = start;
+            state.dateFilter.endDate = end;
+            state.dateFilter.preset = 'custom';
+            state.pagination.currentPage = 1;
+            
+            document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => btn.classList.remove('active'));
+            
+            updateVisibleData();
+        }
+    }
+    startDateFilter?.addEventListener('change', handleCustomDateChange);
+    endDateFilter?.addEventListener('change', handleCustomDateChange);
+
+    document.getElementById('paginationContainer')?.addEventListener('click', event => {
+        const button = event.target.closest('button');
+        if (button && button.dataset.page) {
+            const page = button.dataset.page;
+            if (page === 'prev') { if (state.pagination.currentPage > 1) state.pagination.currentPage--; } 
+            else if (page === 'next') {
+                const totalPages = Math.ceil(state.filteredCustomers.length / state.pagination.pageSize);
+                if (state.pagination.currentPage < totalPages) state.pagination.currentPage++;
+            } else { state.pagination.currentPage = parseInt(page); }
+            updateVisibleData();
         }
     });
-    highlightFields();
-    document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
-};
+    document.getElementById('paginationContainer')?.addEventListener('change', event => {
+        if (event.target.id === 'pageSize') {
+            state.pagination.pageSize = parseInt(event.target.value);
+            state.pagination.currentPage = 1; 
+            updateVisibleData();
+        }
+    });
 
-// ... (Rest of ui.js is unchanged)
-ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) { /* ... */ };
-ui.showModal = function(modalId, context = {}) { /* ... */ };
-ui.hideModal = function(modalId) { /* ... */ };
-ui.populateFilterDropdown = function(elementId, options) { /* ... */ };
-ui.renderHistoryTimeline = function(historyData) { /* ... */ };
-ui.showContextMenu = function(event) { /* ... */ };
-ui.hideContextMenu = function() { /* ... */ };
+    const tableBody = document.getElementById('tableBody');
+    tableBody?.addEventListener('click', handleTableClick);
+    tableBody?.addEventListener('contextmenu', handleContextMenu);
+    const contextMenu = document.getElementById('contextMenu');
+    contextMenu?.addEventListener('click', handleContextMenuItemClick);
+    window.addEventListener('click', (event) => { if (contextMenu && !contextMenu.contains(event.target)) { ui.hideContextMenu(); } });
+    document.querySelectorAll('[data-modal-close]').forEach(btn => { btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose)); });
+}
 
-window.ui = ui;
+// ================================================================================
+// APPLICATION START
+// ================================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+    setupEventListeners();
+});
