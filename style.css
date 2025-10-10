@@ -129,52 +129,63 @@ body {
 .excel-container { background: var(--bg-color-white); margin: 20px auto 0; max-width: 1400px; border-radius: var(--border-radius-large); overflow: hidden; box-shadow: var(--shadow-medium); }
 .table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
-
-.excel-table thead th { 
-    background-color: #f8f9fa; /* Add a base background for all headers */
-    font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; position: sticky; top: 0; z-index: 100; height: 45px; vertical-align: middle; user-select: none; 
-}
+.excel-table thead th { font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; position: sticky; top: 0; z-index: 100; height: 45px; vertical-align: middle; user-select: none; }
 .excel-table thead tr::after { content: ''; position: sticky; top: 0; right: 0; width: 17px; background-color: #f0f0f0; z-index: 101; }
-
-.row-number { 
-    position: sticky;
-    left: 0;
-    background: #e7e6e6 !important; 
-    color: var(--text-color-black) !important; 
-    font-weight: normal;
-    text-align: center;
-    border: 1px solid var(--border-color-dark);
-    width: 40px; 
-    min-width: 40px; 
-    z-index: 51; 
-}
-
-/* ✨ NEW: Freeze the 4th column (Customer Name) */
-.excel-table th:nth-child(4),
-.excel-table td:nth-child(4) {
-    position: sticky;
-    left: 40px; /* Width of the '#' column */
-    background-color: #f8f9fa;
-    min-width: 150px;
-    z-index: 50;
-    border-right: 2px solid #ddd; /* Add a separator line */
-}
 
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
 .header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
-
-/* Make sure sticky headers have the correct background when they are also colored */
-.excel-table th.header-admin-section:nth-child(4),
-.excel-table th.header-sales-section:nth-child(4) {
-    background-color: var(--header-bg-admin) !important;
-}
-
 
 .excel-table td { border: 1px solid var(--border-color-medium); padding: 3px 6px; height: 22px; background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px; }
 .actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
 .excel-table td:not(.row-number):not(.actions-cell) { cursor: default; }
 .row-deal-closed td { background-color: #9ceb8d !important; font-weight: bold; }
 .row-deal-closed:hover td { background-color: #89d87a !important; }
+
+/* --- ✨ NEW/UPDATED: Freeze Column Styles --- */
+.row-number,
+.excel-table th:nth-child(2), .excel-table td:nth-child(2),
+.excel-table th:nth-child(3), .excel-table td:nth-child(3),
+.excel-table th:nth-child(4), .excel-table td:nth-child(4) {
+    position: sticky;
+    background: #f8f9fa !important;
+}
+
+.row-number {
+    left: 0;
+    z-index: 53;
+    width: 40px;
+    min-width: 40px;
+}
+
+.excel-table th:nth-child(2), .excel-table td:nth-child(2) {
+    left: 40px; /* Width of '#' */
+    z-index: 52;
+    width: 100px;
+    min-width: 100px;
+}
+
+.excel-table th:nth-child(3), .excel-table td:nth-child(3) {
+    left: 140px; /* 40 + 100 */
+    z-index: 51;
+    width: 100px;
+    min-width: 100px;
+}
+
+.excel-table th:nth-child(4), .excel-table td:nth-child(4) {
+    left: 240px; /* 140 + 100 */
+    z-index: 50;
+    width: 150px;
+    min-width: 150px;
+    border-right: 2px solid #ddd;
+}
+
+/* Ensure original header colors are maintained on sticky columns */
+.excel-table th.header-admin-section:nth-child(2),
+.excel-table th.header-admin-section:nth-child(3),
+.excel-table th.header-admin-section:nth-child(4) {
+    background-color: var(--header-bg-admin) !important;
+}
+
 
 /* --- Pagination Styles --- */
 .pagination-container { background: #f8f9fa; padding: 8px 20px; border-top: 1px solid var(--border-color-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
