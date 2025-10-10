@@ -272,15 +272,13 @@ async function handleLogout() {
 async function handleAddCustomer() {
     ui.showLoading(true);
     try {
-        const todaysCount = await api.getTodaysLeadCount();
-        const nextNumber = todaysCount + 1;
+        const monthlyCount = await api.getCurrentMonthLeadCount();
+        const nextNumber = monthlyCount + 1;
         const now = new Date();
-        const year = String(now.getFullYear()).slice(-2);
         const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const datePart = `${year}${month}${day}`;
-        const numberPart = String(nextNumber).padStart(3, '0');
-        const newLeadCode = `${datePart}-${numberPart}`;
+        const buddhistYear = String(now.getFullYear() + 543).slice(-2);
+        const numberPart = String(nextNumber).padStart(4, '0');
+        const newLeadCode = `${month}-${buddhistYear}-${numberPart}`;
 
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', newLeadCode);
         
