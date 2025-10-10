@@ -52,7 +52,7 @@
     </div>
 
     <div class="toolbar">
-        <div class="main-filters">
+        <div class="toolbar-left">
             <div class="search-container">
                 <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า...">
                 <span class="search-icon">🔍</span>
@@ -63,17 +63,21 @@
             <select class="filter-select" id="salesFilter">
                 <option value="">ทุกเซลล์</option>
             </select>
-            <button class="btn btn-primary" id="addUserButton">+ เพิ่มลูกค้า</button>
-            <button class="btn" style="background: #6c757d;" id="refreshButton">🔄 รีเฟรช</button>
         </div>
-        <div class="date-filter-container">
-            <button class="btn-date-filter" data-preset="today">วันนี้</button>
-            <button class="btn-date-filter" data-preset="7d">7 วัน</button>
-            <button class="btn-date-filter" data-preset="30d">30 วัน</button>
-            <input type="date" id="startDateFilter" class="date-input">
-            <span class="date-separator">ถึง</span>
-            <input type="date" id="endDateFilter" class="date-input">
-            <button class="btn-date-filter" id="clearDateFilter">ทั้งหมด</button>
+        <div class="toolbar-right">
+            <div class="date-filter-container">
+                <button class="btn-date-filter" data-preset="today">วันนี้</button>
+                <button class="btn-date-filter" data-preset="7d">7 วัน</button>
+                <button class="btn-date-filter" data-preset="30d">30 วัน</button>
+                <input type="date" id="startDateFilter" class="date-input">
+                <span class="date-separator">ถึง</span>
+                <input type="date" id="endDateFilter" class="date-input">
+                <button class="btn-date-filter" id="clearDateFilter">ทั้งหมด</button>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="addUserButton">+ เพิ่มลูกค้า</button>
+                <button class="btn" style="background: #6c757d;" id="refreshButton">🔄 รีเฟรช</button>
+            </div>
         </div>
     </div>
 
@@ -86,10 +90,9 @@
                 </tbody>
             </table>
         </div>
-    </div>
-
-    <div class="pagination-container" id="paginationContainer">
+        <div class="pagination-container" id="paginationContainer">
         </div>
+    </div>
 
     <div class="context-menu" id="contextMenu">
         <div class="context-menu-item" data-action="edit">✏️ แก้ไข</div>
