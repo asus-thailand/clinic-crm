@@ -28,41 +28,20 @@ const SALES_EDITABLE_FIELDS = [
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
-// ================================================================================
-// ✨ NEW: Definitive Date Normalization Function
-// ================================================================================
-
-/**
- * Normalizes any known date string format (DD/MM/BBBB or YYYY-MM-DD)
- * into a standard YYYY-MM-DD string for reliable comparison.
- * @param {string} dateStr - The date string to normalize.
- * @returns {string|null} - A YYYY-MM-DD string or null.
- */
-function normalizeDateStringToYYYYMMDD(dateStr) {
-    if (!dateStr || typeof dateStr !== 'string') return null;
-
-    // If already in YYYY-MM-DD format, return as is.
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        return dateStr;
-    }
-
-    // Handle DD/MM/BBBB format
+function parseDateString(dateStr) {
+    if (!dateStr) return null;
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length === 3) {
-            const day = parts[0].padStart(2, '0');
-            const month = parts[1].padStart(2, '0');
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
             let year = parseInt(parts[2], 10);
-            
-            if (year > 2500) { // Convert from Buddhist year
-                year -= 543;
-            }
-            return `${year}-${month}-${day}`;
+            if (year > 2500) { year -= 543; }
+            return new Date(year, month, day);
         }
     }
-    
-    // Return null if format is unrecognized
-    return null;
+    const date = new Date(dateStr + 'T00:00:00');
+    return isNaN(date.getTime()) ? null : date;
 }
 
 // ================================================================================
@@ -91,7 +70,6 @@ async function initializeApp() {
             api.fetchSalesList()
         ]);
         
-        // ✨ NEW: Normalize all dates upfront upon loading data
         (customers || []).forEach(c => {
             c.date = normalizeDateStringToYYYYMMDD(c.date);
         });
@@ -118,10 +96,26 @@ async function initializeApp() {
 // MASTER DATA PROCESSING & RENDERING PIPELINE
 // ================================================================================
 
+function normalizeDateStringToYYYYMMDD(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+    }
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            let year = parseInt(parts[2], 10);
+            if (year > 2500) { year -= 543; }
+            return `${year}-${month}-${day}`;
+        }
+    }
+    return null;
+}
+
 function updateVisibleData() {
     let dateFiltered = state.customers;
-    
-    // ✨ FINAL FIX: Use direct string comparison. This is now 100% reliable.
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
         dateFiltered = state.customers.filter(c => {
             if (!c.date) return false;
@@ -166,11 +160,9 @@ function updateDashboardStats() {
     document.getElementById('closedDeals').textContent = closedDeals;
 }
 
-// ✨ UPDATED: Use YYYY-MM-DD strings directly from the input's value
 function setDateFilterPreset(preset) {
     const today = new Date();
     let startDate, endDate;
-
     switch(preset) {
         case '7d':
             endDate = new Date(today);
@@ -191,17 +183,13 @@ function setDateFilterPreset(preset) {
             endDate = null;
             break;
     }
-    
     const startDateString = startDate ? startDate.toISOString().split('T')[0] : '';
     const endDateString = endDate ? endDate.toISOString().split('T')[0] : '';
-
     state.dateFilter = { startDate: startDateString, endDate: endDateString, preset };
-
     document.getElementById('startDateFilter').value = startDateString;
     document.getElementById('endDateFilter').value = endDateString;
     document.querySelectorAll('.btn-date-filter').forEach(btn => btn.classList.toggle('active', btn.dataset.preset === preset));
     if (preset === 'all') document.getElementById('clearDateFilter').classList.add('active');
-    
     state.pagination.currentPage = 1;
     updateVisibleData();
 }
@@ -210,38 +198,89 @@ function setDateFilterPreset(preset) {
 // EVENT LISTENERS SETUP
 // ================================================================================
 
+/**
+ * ✨ NEW: Debounce helper function to delay execution of a function.
+ */
+function debounce(func, delay = 300) {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            func.apply(this, args);
+        }, delay);
+    };
+}
+
 function setupEventListeners() {
-    // ... other listeners ...
+    document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
+    document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
+    document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
+    document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
+    document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
+    document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
+    document.getElementById('refreshButton')?.addEventListener('click', initializeApp);
     
-    // ✨ UPDATED: Logic for custom date filters using string values
+    // ✨ UPDATED: Search input now uses the debounce function
+    document.getElementById('searchInput')?.addEventListener('input', debounce(e => {
+        state.activeFilters.search = e.target.value;
+        state.pagination.currentPage = 1;
+        updateVisibleData();
+    }));
+
+    document.getElementById('statusFilter')?.addEventListener('change', e => { state.activeFilters.status = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
+    document.getElementById('salesFilter')?.addEventListener('change', e => { state.activeFilters.sales = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); });
+    document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => { button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset)); });
+    document.getElementById('clearDateFilter')?.addEventListener('click', () => setDateFilterPreset('all'));
+
     const startDateFilter = document.getElementById('startDateFilter');
     const endDateFilter = document.getElementById('endDateFilter');
-
     function handleCustomDateChange() {
-        const start = startDateFilter.value; // Get YYYY-MM-DD string
-        const end = endDateFilter.value;     // Get YYYY-MM-DD string
-
+        const start = startDateFilter.value;
+        const end = endDateFilter.value;
         if (start && end && start <= end) {
             state.dateFilter.startDate = start;
             state.dateFilter.endDate = end;
             state.dateFilter.preset = 'custom';
             state.pagination.currentPage = 1;
-            
             document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => btn.classList.remove('active'));
-            
             updateVisibleData();
         }
     }
     startDateFilter?.addEventListener('change', handleCustomDateChange);
     endDateFilter?.addEventListener('change', handleCustomDateChange);
 
-    // ... (rest of the listeners)
+    document.getElementById('paginationContainer')?.addEventListener('click', event => {
+        const button = event.target.closest('button');
+        if (button && button.dataset.page) {
+            const page = button.dataset.page;
+            if (page === 'prev') { if (state.pagination.currentPage > 1) state.pagination.currentPage--; } 
+            else if (page === 'next') {
+                const totalPages = Math.ceil(state.filteredCustomers.length / state.pagination.pageSize);
+                if (state.pagination.currentPage < totalPages) state.pagination.currentPage++;
+            } else { state.pagination.currentPage = parseInt(page); }
+            updateVisibleData();
+        }
+    });
+    document.getElementById('paginationContainer')?.addEventListener('change', event => {
+        if (event.target.id === 'pageSize') {
+            state.pagination.pageSize = parseInt(event.target.value);
+            state.pagination.currentPage = 1; 
+            updateVisibleData();
+        }
+    });
+
+    const tableBody = document.getElementById('tableBody');
+    tableBody?.addEventListener('click', handleTableClick);
+    tableBody?.addEventListener('contextmenu', handleContextMenu);
+    const contextMenu = document.getElementById('contextMenu');
+    contextMenu?.addEventListener('click', handleContextMenuItemClick);
+    window.addEventListener('click', (event) => { if (contextMenu && !contextMenu.contains(event.target)) { ui.hideContextMenu(); } });
+    document.querySelectorAll('[data-modal-close]').forEach(btn => { btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose)); });
 }
 
 // ================================================================================
 // (The rest of the file is unchanged, functions are included for completeness)
 // ================================================================================
-
 function getAllowedNextStatuses(currentStatus) {
     const specialStatuses = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
     if (!currentStatus || currentStatus.trim() === '') return ["status 1", ...specialStatuses];
@@ -254,7 +293,6 @@ function getAllowedNextStatuses(currentStatus) {
             return ["status 1", ...specialStatuses];
     }
 }
-
 function showUpdateStatusModal(customer) {
     const select = document.getElementById('modalStatusSelect');
     if (!select) return;
@@ -266,7 +304,6 @@ function showUpdateStatusModal(customer) {
     allowedStatuses.forEach(opt => { const optionEl = document.createElement('option'); optionEl.value = opt; optionEl.textContent = opt; select.appendChild(optionEl); });
     ui.showModal('statusUpdateModal', { customerId: customer.id, customerName: customer.name || customer.lead_code || 'N/A' });
 }
-
 function showEditModal(customerId) {
     const customer = state.customers.find(c => c.id == customerId);
     if (!customer) { ui.showStatus('ไม่พบข้อมูลลูกค้า', true); return; }
@@ -274,12 +311,10 @@ function showEditModal(customerId) {
     ui.buildEditForm(customer, state.currentUser, SALES_EDITABLE_FIELDS, state.salesList, DROPDOWN_OPTIONS);
     document.getElementById('editCustomerModal').classList.add('show');
 }
-
 function hideEditModal() {
     state.editingCustomerId = null;
     document.getElementById('editCustomerModal').classList.remove('show');
 }
-
 async function handleSaveEditForm(event) {
     event.preventDefault();
     if (!state.editingCustomerId) return;
@@ -318,11 +353,9 @@ async function handleSaveEditForm(event) {
         ui.showLoading(false);
     }
 }
-
 async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
 }
-
 async function handleAddCustomer() {
     ui.showLoading(true);
     try {
@@ -346,7 +379,6 @@ async function handleAddCustomer() {
         ui.showLoading(false);
     }
 }
-
 function handleTableClick(event) {
     const target = event.target;
     const action = target.dataset.action;
@@ -359,7 +391,6 @@ function handleTableClick(event) {
     if (action === 'update-status') { showUpdateStatusModal(customer); }
     if (action === 'view-history') { handleViewHistory(id, customer.name); }
 }
-
 async function handleViewHistory(customerId, customerName) {
     ui.showModal('historyModal', { customerName });
     ui.showLoading(true);
@@ -372,7 +403,6 @@ async function handleViewHistory(customerId, customerName) {
         ui.showLoading(false);
     }
 }
-
 async function handleSubmitStatusUpdate() {
     const customerId = document.getElementById('modalCustomerId').value;
     const newStatus = document.getElementById('modalStatusSelect').value;
@@ -396,7 +426,6 @@ async function handleSubmitStatusUpdate() {
         ui.showLoading(false);
     }
 }
-
 function handleContextMenu(event) {
     const row = event.target.closest('tr');
     if (!row || !row.dataset.id) return;
@@ -406,7 +435,6 @@ function handleContextMenu(event) {
     state.contextMenuRowId = row.dataset.id;
     ui.showContextMenu(event);
 }
-
 async function handleContextMenuItemClick(event) {
     const action = event.target.dataset.action;
     if (!action || !state.contextMenuRowId) return;
@@ -429,6 +457,10 @@ async function handleContextMenuItemClick(event) {
     }
     state.contextMenuRowId = null;
 }
+
+// ================================================================================
+// APPLICATION START
+// ================================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
