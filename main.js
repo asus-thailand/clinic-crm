@@ -28,12 +28,6 @@ const SALES_EDITABLE_FIELDS = [
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
-/**
- * แปลงค่าวันที่จากรูปแบบไทย พ.ศ. (เช่น "24/9/2568")
- * ให้เป็นรูปแบบมาตรฐาน ISO (เช่น "2025-09-24")
- * @param {string} thaiDateString - วันที่ในรูปแบบ "DD/MM/YYYY" (พ.ศ.)
- * @returns {string|null} - วันที่ในรูปแบบ "YYYY-MM-DD" (ค.ศ.) หรือ null ถ้าแปลงไม่ได้
- */
 function convertThaiBEToISO(thaiDateString) {
   if (!thaiDateString || typeof thaiDateString !== 'string' || !thaiDateString.includes('/')) {
     return null;
@@ -135,7 +129,7 @@ function updateVisibleData() {
         const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
         const matchesStatus = !status || customer.last_status === status;
         const matchesSales = !sales || customer.sales === sales;
-        return matchesSearch && matchesStatus && matchesSales;
+        return matchesSearch && matchesStatus && sales;
     });
 
     const { currentPage, pageSize } = state.pagination;
@@ -370,6 +364,7 @@ async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
 }
 
+// ฟังก์ชันนี้ถูกแก้ไข ไม่ต้องคำนวณ lead_code เอง
 async function handleAddCustomer() {
     ui.showLoading(true);
     try {
