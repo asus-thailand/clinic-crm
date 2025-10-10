@@ -145,7 +145,6 @@ function createActionsCell(row, currentUser) {
     td.className = 'actions-cell';
     const displayName = row.name || row.lead_code || row.phone || 'N/A';
 
-    // ✨ FIXED: Add a null check for currentUser and currentUser.role
     const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     const isOwner = currentUser && row.sales === currentUser.username;
@@ -230,11 +229,9 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         
-        // ✨ FIXED: Add a null check for currentUser and currentUser.role
         const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
-
         const isEditableBySales = isSalesUser && salesEditableFields.includes(field);
         const isEditable = (isAdmin || isEditableBySales) && field !== 'lead_code';
 
@@ -282,14 +279,29 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     highlightFields();
     document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
 };
-
-// ... (Rest of ui.js is unchanged)
-ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) { /* ... */ };
-ui.showModal = function(modalId, context = {}) { /* ... */ };
-ui.hideModal = function(modalId) { /* ... */ };
-ui.populateFilterDropdown = function(elementId, options) { /* ... */ };
-ui.renderHistoryTimeline = function(historyData) { /* ... */ };
-ui.showContextMenu = function(event) { /* ... */ };
-ui.hideContextMenu = function() { /* ... */ };
+ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) {
+    const container = document.getElementById('paginationContainer');
+    if (!container) return;
+    if (totalRecords === 0) { container.innerHTML = '<div class="pagination-info">ไม่พบข้อมูล</div>'; return; }
+    const pageSizeHTML = `<div class="page-size-selector"><label for="pageSize">แสดง:</label><select id="pageSize"><option value="25" ${pageSize == 25 ? 'selected' : ''}>25</option><option value="50" ${pageSize == 50 ? 'selected' : ''}>50</option><option value="100" ${pageSize == 100 ? 'selected' : ''}>100</option><option value="200" ${pageSize == 200 ? 'selected' : ''}>200</option></select><span>แถว</span></div>`;
+    const startRecord = (currentPage - 1) * pageSize + 1;
+    const endRecord = Math.min(currentPage * pageSize, totalRecords);
+    const infoHTML = `<div class="pagination-info">แสดง ${startRecord} - ${endRecord} จากทั้งหมด ${totalRecords}</div>`;
+    let buttonsHTML = `<button data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>`;
+    const maxButtons = 5; let startPage, endPage;
+    if (totalPages <= maxButtons) { startPage = 1; endPage = totalPages; } else { const maxPagesBeforeCurrent = Math.floor(maxButtons / 2); const maxPagesAfterCurrent = Math.ceil(maxButtons / 2) - 1; if (currentPage <= maxPagesBeforeCurrent) { startPage = 1; endPage = maxButtons; } else if (currentPage + maxPagesAfterCurrent >= totalPages) { startPage = totalPages - maxButtons + 1; endPage = totalPages; } else { startPage = currentPage - maxPagesBeforeCurrent; endPage = currentPage + maxPagesAfterCurrent; } }
+    if (startPage > 1) { buttonsHTML += `<button data-page="1">1</button>`; if (startPage > 2) buttonsHTML += `<span>...</span>`; }
+    for (let i = startPage; i <= endPage; i++) { buttonsHTML += `<button data-page="${i}" class="${i === currentPage ? 'active' : ''}">${i}</button>`; }
+    if (endPage < totalPages) { if (endPage < totalPages - 1) buttonsHTML += `<span>...</span>`; buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`; }
+    buttonsHTML += `<button data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>`;
+    const controlsHTML = `<div class="pagination-controls">${buttonsHTML}</div>`;
+    container.innerHTML = `${pageSizeHTML}${infoHTML}${controlsHTML}`;
+};
+ui.showModal = function(modalId, context = {}) { const modal = document.getElementById(modalId); if (!modal) return; if (modalId === 'statusUpdateModal' || modalId === 'historyModal') { const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`); if (nameElement) nameElement.textContent = context.customerName || 'N/A'; if (modalId === 'statusUpdateModal') { const customerIdElement = modal.querySelector('#modalCustomerId'); if (customerIdElement) customerIdElement.value = context.customerId || ''; } } modal.style.display = 'flex'; };
+ui.hideModal = function(modalId) { const modal = document.getElementById(modalId); if (!modal) return; modal.style.display = 'none'; if (modalId === 'statusUpdateModal') { modal.querySelector('#modalStatusSelect').value = ''; modal.querySelector('#modalNotesText').value = ''; modal.querySelector('#modalCustomerId').value = ''; } if (modalId === 'historyModal') { document.getElementById('historyTimelineContainer').innerHTML = ''; } };
+ui.populateFilterDropdown = function(elementId, options) { const select = document.getElementById(elementId); if (!select) return; while (select.options.length > 1) { select.remove(1); } (options || []).forEach(option => { if (option) { const optElement = document.createElement('option'); optElement.value = option; optElement.textContent = option; select.appendChild(optElement); } }); };
+ui.renderHistoryTimeline = function(historyData) { const container = document.getElementById('historyTimelineContainer'); if (!container) return; if (!historyData || historyData.length === 0) { container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>'; return; } container.innerHTML = historyData.map(item => `<div class="timeline-item"><div class="timeline-icon">✓</div><div class="timeline-content"><div class="timeline-status">${escapeHtml(item.status)}</div><div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div><div class="timeline-footer">โดย: ${escapeHtml(item.users ? item.users.username : 'Unknown')} | ${new Date(item.created_at).toLocaleString('th-TH')}</div></div></div>`).join(''); };
+ui.showContextMenu = function(event) { const menu = document.getElementById('contextMenu'); if (!menu) return; menu.style.display = 'block'; menu.style.left = `${event.pageX}px`; menu.style.top = `${event.pageY}px`; };
+ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
 
 window.ui = ui;
