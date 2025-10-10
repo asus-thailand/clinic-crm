@@ -335,22 +335,26 @@ async function handleSaveEditForm(event) {
 async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
 }
+
+// ✨ UPDATED: handleAddCustomer is now much simpler.
 async function handleAddCustomer() {
     ui.showLoading(true);
     try {
-        const monthlyCount = await api.getCurrentMonthLeadCount();
-        const nextNumber = monthlyCount + 1;
+        // The lead_code generation logic is removed.
+        const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A');
+        
+        // Add a history entry for the new customer creation.
+        if (newCustomer) { 
+            await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `ระบบสร้าง Lead อัตโนมัติ`, state.currentUser.id); 
+        }
+        
+        // Pre-fill current time and add to the top of the list.
         const now = new Date();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const buddhistYear = String(now.getFullYear() + 543).slice(-2);
-        const numberPart = String(nextNumber).padStart(4, '0');
-        const newLeadCode = `${month}-${buddhistYear}-${numberPart}`;
-        const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', newLeadCode);
-        if (newCustomer) { await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `ระบบสร้าง Lead อัตโนมัติ`, state.currentUser.id); }
         newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         state.customers.unshift(newCustomer);
+        
         updateVisibleData();
-        showEditModal(newCustomer.id);
+        showEditModal(newCustomer.id); // Open the edit modal for the new customer.
         ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
     } catch (error) {
         ui.showStatus(error.message, true);
@@ -358,6 +362,7 @@ async function handleAddCustomer() {
         ui.showLoading(false);
     }
 }
+
 function handleTableClick(event) {
     const target = event.target;
     const action = target.dataset.action;
