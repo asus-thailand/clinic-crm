@@ -144,14 +144,11 @@ function createActionsCell(row, currentUser) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
     const displayName = row.name || row.lead_code || row.phone || 'N/A';
-
     const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     const isOwner = currentUser && row.sales === currentUser.username;
     const canEdit = isAdmin || isOwner;
-
     const disabledAttribute = !canEdit ? 'disabled' : '';
-
     td.innerHTML = `
         <button class="btn-edit" data-action="edit-customer" data-id="${row.id}" ${disabledAttribute}>แก้ไข</button>
         <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(displayName)}" ${disabledAttribute}>อัปเดต</button>
@@ -228,7 +225,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
-        
         const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
