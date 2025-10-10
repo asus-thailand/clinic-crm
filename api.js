@@ -1,191 +1,176 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PERFORMANCE ENHANCED & BUG FIXED)
+// BEAUTY CLINIC CRM - API LAYER (COMPLETE FIXED VERSION 100%)
 // ================================================================================
 
-const state = {
-    currentUser: null,
-    customers: [],        
-    filteredCustomers: [], 
-    salesList: [],
-    activeFilters: { search: '', status: '', sales: '' },
-    dateFilter: { startDate: null, endDate: null, preset: 'all' },
-    pagination: { currentPage: 1, pageSize: 50 },
-    editingCustomerId: null
-};
-
-const DROPDOWN_OPTIONS = {
-    // ... (unchanged)
-};
-
-const SALES_EDITABLE_FIELDS = [
-    'update_access', 'last_status', 'call_time', 'status_1', 'reason', 
-    'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
-];
-
-function parseDateString(dateStr) {
-    if (!dateStr) return null;
-    if (dateStr.includes('/')) {
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-            const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1;
-            let year = parseInt(parts[2], 10);
-            if (year > 2500) { year -= 543; }
-            return new Date(year, month, day);
-        }
-    }
-    const date = new Date(dateStr + 'T00:00:00');
-    return isNaN(date.getTime()) ? null : date;
-}
+const api = {};
 
 // ================================================================================
-// INITIALIZATION
+// AUTHENTICATION APIs
 // ================================================================================
 
-async function initializeApp() {
-    console.log('Starting app initialization...');
-    ui.showLoading(true);
+api.getSession = async function() {
     try {
-        if (!window.supabaseClient || !window.api || !window.ui) throw new Error('Dependencies not loaded');
-        
-        ui.renderTableHeaders();
-        const session = await api.getSession();
-        if (!session) { window.location.replace('login.html'); return; }
-        
-        let userProfile = await api.getUserProfile(session.user.id);
-        if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
-        
-        state.currentUser = { id: session.user.id, ...userProfile };
-        window.state = state; 
-        ui.updateUIAfterLogin(state.currentUser);
-
-        const [customers, salesList] = await Promise.all([
-            api.fetchAllCustomers(),
-            api.fetchSalesList()
-        ]);
-        
-        state.customers = customers || [];
-        state.salesList = salesList || [];
-        
-        const statuses = [...new Set(state.customers.map(c => c.last_status).filter(Boolean))].sort();
-        ui.populateFilterDropdown('salesFilter', state.salesList);
-        ui.populateFilterDropdown('statusFilter', statuses);
-
-        updateVisibleData(); 
-        ui.showStatus('โหลดข้อมูลสำเร็จ', false);
-        
+        const { data, error } = await window.supabaseClient.auth.getSession();
+        if (error) throw error;
+        return data.session;
     } catch (error) {
-        console.error('Initialization failed:', error);
-        ui.showStatus('เกิดข้อผิดพลาด: ' + error.message, true);
-    } finally {
-        ui.showLoading(false);
+        console.error("API ERROR in getSession:", error);
+        throw new Error('Could not get session.');
     }
 }
 
-// ================================================================================
-// MASTER DATA PROCESSING & RENDERING PIPELINE
-// ================================================================================
-
-function updateVisibleData() {
-    let dateFiltered = state.customers;
-    if (state.dateFilter.startDate && state.dateFilter.endDate) {
-        const startTimestamp = state.dateFilter.startDate.getTime();
-        const endTimestamp = new Date(state.dateFilter.endDate).setHours(23, 59, 59, 999);
-        dateFiltered = state.customers.filter(c => {
-            const customerDate = parseDateString(c.date);
-            if (!customerDate) return false;
-            const customerTimestamp = customerDate.getTime();
-            return customerTimestamp >= startTimestamp && customerTimestamp <= endTimestamp;
-        });
-    }
-
-    const { search, status, sales } = state.activeFilters;
-    const lowerCaseSearch = search.toLowerCase();
-    state.filteredCustomers = dateFiltered.filter(customer => {
-        const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
-        const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
-        const matchesStatus = !status || customer.last_status === status;
-        const matchesSales = !sales || customer.sales === sales;
-        return matchesSearch && matchesStatus && matchesSales;
-    });
-
-    const { currentPage, pageSize } = state.pagination;
-    const totalRecords = state.filteredCustomers.length;
-    const totalPages = Math.ceil(totalRecords / pageSize);
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedCustomers = state.filteredCustomers.slice(startIndex, endIndex);
-
-    ui.renderTable(paginatedCustomers, currentPage, pageSize);
-    ui.renderPaginationControls(totalPages, currentPage, totalRecords, pageSize);
-    updateDashboardStats(); 
-}
-
-// ================================================================================
-// USER ACTIONS & MODALS
-// ================================================================================
-
-/**
- * ✨ UPDATED: This function now generates lead code in MM-BB-XXXX format.
- */
-async function handleAddCustomer() {
-    ui.showLoading(true);
+api.signOut = async function() {
     try {
-        // 1. Get current month's lead count
-        const monthlyCount = await api.getCurrentMonthLeadCount();
-        const nextNumber = monthlyCount + 1;
-
-        // 2. Format the date part (MM-BB)
-        const now = new Date();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const buddhistYear = String(now.getFullYear() + 543).slice(-2);
-        
-        // 3. Format the number part (XXXX)
-        const numberPart = String(nextNumber).padStart(4, '0');
-        
-        // 4. Combine to create the new lead code
-        const newLeadCode = `${month}-${buddhistYear}-${numberPart}`;
-
-        // 5. Add customer with the new lead code
-        const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', newLeadCode);
-        
-        if (newCustomer) {
-            await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `ระบบสร้าง Lead อัตโนมัติ`, state.currentUser.id);
-        }
-        
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        newCustomer.call_time = `${hours}:${minutes}`;
-
-        state.customers.unshift(newCustomer);
-        
-        updateVisibleData();
-        showEditModal(newCustomer.id);
-        ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
+        const { error } = await window.supabaseClient.auth.signOut();
+        if (error) throw error;
     } catch (error) {
-        ui.showStatus(error.message, true);
-    } finally {
-        ui.showLoading(false);
+        console.error("API ERROR in signOut:", error);
+        throw new Error('Failed to sign out.');
     }
 }
 
-// ... (The rest of the file remains unchanged)
-function updateDashboardStats() { /* ... */ }
-function setDateFilterPreset(preset) { /* ... */ }
-function getAllowedNextStatuses(currentStatus) { /* ... */ }
-function showUpdateStatusModal(customer) { /* ... */ }
-function showEditModal(customerId) { /* ... */ }
-function hideEditModal() { /* ... */ }
-async function handleSaveEditForm(event) { /* ... */ }
-async function handleLogout() { /* ... */ }
-function handleTableClick(event) { /* ... */ }
-async function handleViewHistory(customerId, customerName) { /* ... */ }
-async function handleSubmitStatusUpdate() { /* ... */ }
-function handleContextMenu(event) { /* ... */ }
-async function handleContextMenuItemClick(event) { /* ... */ }
-function setupEventListeners() { /* ... */ }
+// ================================================================================
+// USER PROFILE APIs
+// ================================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
-    setupEventListeners();
-});
+api.getUserProfile = async function(userId) {
+    try {
+        const { data, error } = await window.supabaseClient.from('users').select('role, username, full_name').eq('id', userId).single();
+        if (error && error.code !== 'PGRST116') throw error;
+        return data;
+    } catch (error) {
+        console.error("API ERROR in getUserProfile:", error);
+        throw new Error('Could not get user profile.');
+    }
+}
+
+api.createDefaultUserProfile = async function(user) {
+    try {
+        const username = user.email.split('@')[0];
+        const { data, error } = await window.supabaseClient.from('users').insert({ id: user.id, username, full_name: username, role: 'sales' }).select().single();
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error("API ERROR in createDefaultUserProfile:", error);
+        throw new Error('Failed to create user profile.');
+    }
+}
+
+api.fetchSalesList = async function() {
+    try {
+        const { data, error } = await window.supabaseClient.from('users').select('username').eq('role', 'sales').not('username', 'is', null);
+        if (error) throw error;
+        return (data || []).map(u => u.username);
+    } catch (error) {
+        console.error("API ERROR in fetchSalesList:", error);
+        throw new Error('Could not fetch sales list.');
+    }
+}
+
+// ================================================================================
+// CUSTOMER APIs
+// ================================================================================
+
+api.fetchAllCustomers = async function() {
+    try {
+        const { data, error } = await window.supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error("API ERROR in fetchAllCustomers:", error);
+        throw new Error('Could not fetch customer data.');
+    }
+}
+
+api.getCurrentMonthLeadCount = async function() {
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const firstDayOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0];
+
+    try {
+        const { count, error } = await window.supabaseClient
+            .from('customers')
+            .select('*', { count: 'exact', head: true })
+            .gte('date', firstDayOfMonth)
+            .lt('date', firstDayOfNextMonth);
+        
+        if (error) throw error;
+        return count || 0;
+    } catch (error) {
+        console.error("API ERROR in getCurrentMonthLeadCount:", error);
+        throw new Error('Could not get current month\'s lead count.');
+    }
+}
+
+api.addCustomer = async function(salesName, leadCode) {
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('customers')
+            .insert({
+                sales: salesName,
+                date: new Date().toISOString().split('T')[0],
+                lead_code: leadCode
+            })
+            .select()
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error("API ERROR in addCustomer:", error);
+        throw new Error('Could not add a new customer.');
+    }
+}
+
+api.updateCustomer = async function(customerId, customerData) {
+    try {
+        delete customerData.id;
+        delete customerData.created_at;
+        const { data, error } = await window.supabaseClient.from('customers').update(customerData).eq('id', customerId).select().single();
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error("API ERROR in updateCustomer:", error);
+        throw new Error('Could not update customer data.');
+    }
+}
+
+api.deleteCustomer = async function(customerId) {
+    try {
+        const { error } = await window.supabaseClient.from('customers').delete().eq('id', customerId);
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error("API ERROR in deleteCustomer:", error);
+        throw new Error('Could not delete customer.');
+    }
+}
+
+// ================================================================================
+// STATUS HISTORY APIs
+// ================================================================================
+api.fetchStatusHistory = async function(customerId) {
+    try {
+        const { data, error } = await window.supabaseClient.from('customer_status_history').select('*, users(username)').eq('customer_id', customerId).order('created_at', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error("API ERROR in fetchStatusHistory:", error);
+        throw new Error('Could not fetch status history.');
+    }
+}
+
+api.addStatusUpdate = async function(customerId, status, notes, userId) {
+    try {
+        const insertData = { customer_id: customerId, status: status, notes: notes };
+        if (userId) { insertData.updated_by = userId; }
+        const { data, error } = await window.supabaseClient.from('customer_status_history').insert(insertData).select().single();
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error("API ERROR in addStatusUpdate:", error);
+        return null;
+    }
+}
+
+window.api = api;
