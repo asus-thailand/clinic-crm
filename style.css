@@ -127,13 +127,49 @@ body {
 
 /* --- 7. Excel Table --- */
 .excel-container { background: var(--bg-color-white); margin: 20px auto 0; max-width: 1400px; border-radius: var(--border-radius-large); overflow: hidden; box-shadow: var(--shadow-medium); }
-.table-wrapper { overflow: auto; max-height: calc(100vh - 450px); position: relative; }
+.table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
-.excel-table thead th { font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; position: sticky; top: 0; z-index: 100; height: 45px; vertical-align: middle; user-select: none; }
+
+.excel-table thead th { 
+    background-color: #f8f9fa; /* Add a base background for all headers */
+    font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; position: sticky; top: 0; z-index: 100; height: 45px; vertical-align: middle; user-select: none; 
+}
 .excel-table thead tr::after { content: ''; position: sticky; top: 0; right: 0; width: 17px; background-color: #f0f0f0; z-index: 101; }
-.row-number { background: #e7e6e6 !important; color: var(--text-color-black) !important; font-weight: normal; text-align: center; border: 1px solid var(--border-color-dark); width: 40px; min-width: 40px; position: sticky; left: 0; z-index: 50; }
+
+.row-number { 
+    position: sticky;
+    left: 0;
+    background: #e7e6e6 !important; 
+    color: var(--text-color-black) !important; 
+    font-weight: normal;
+    text-align: center;
+    border: 1px solid var(--border-color-dark);
+    width: 40px; 
+    min-width: 40px; 
+    z-index: 51; 
+}
+
+/* ✨ NEW: Freeze the 4th column (Customer Name) */
+.excel-table th:nth-child(4),
+.excel-table td:nth-child(4) {
+    position: sticky;
+    left: 40px; /* Width of the '#' column */
+    background-color: #f8f9fa;
+    min-width: 150px;
+    z-index: 50;
+    border-right: 2px solid #ddd; /* Add a separator line */
+}
+
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
 .header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
+
+/* Make sure sticky headers have the correct background when they are also colored */
+.excel-table th.header-admin-section:nth-child(4),
+.excel-table th.header-sales-section:nth-child(4) {
+    background-color: var(--header-bg-admin) !important;
+}
+
+
 .excel-table td { border: 1px solid var(--border-color-medium); padding: 3px 6px; height: 22px; background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px; }
 .actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
 .excel-table td:not(.row-number):not(.actions-cell) { cursor: default; }
@@ -148,7 +184,6 @@ body {
 .pagination-controls button:disabled { background: #e9ecef; color: #ccc; cursor: not-allowed; }
 .pagination-info, .page-size-selector { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-color-secondary); }
 .page-size-selector select { padding: 6px; border-radius: var(--border-radius-small); border: 1px solid var(--border-color-medium); }
-
 
 /* --- 9. Indicators & Modals --- */
 .context-menu { position: absolute; background: var(--bg-color-white); border: 1px solid #ccc; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); z-index: 1000; display: none; min-width: 150px; border-radius: var(--border-radius-small); overflow: hidden; }
@@ -204,15 +239,8 @@ body {
 .btn-cancel { padding: 10px 25px; font-size: 16px; font-weight: 600; background: #e2e8f0; color: #1e293b; border: none; border-radius: 8px; cursor: pointer; }
 .modal-section { border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
 .modal-section-title { font-size: 16px; font-weight: 600; color: #475569; margin: -5px 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
-
-/* ✨ UPDATED: Changed background color as requested */
-.modal-section.admin-section {
-    background-color: #d1d1d1;
-}
-.modal-section.sales-section {
-    background-color: #d1d1d1;
-}
-
+.modal-section.admin-section { background-color: #d1d1d1; }
+.modal-section.sales-section { background-color: #d1d1d1; }
 .modal-section-content { display: grid; grid-template-columns: 1fr; gap: 15px; }
 @media (min-width: 640px) { .modal-section-content { grid-template-columns: 1fr 1fr; } }
 .hidden { display: none; }
