@@ -63,7 +63,7 @@ body {
 .header {
     background: var(--primary-gradient);
     color: var(--text-color-white);
-    padding: 15px 10px; /* ✨ UPDATED */
+    padding: 15px 10px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.1);
     position: sticky;
     top: 0;
@@ -74,7 +74,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 100%; /* ✨ UPDATED */
+    width: 100%;
     margin: 0 auto;
 }
 .logo { display: flex; align-items: center; gap: 15px; }
@@ -104,7 +104,7 @@ body {
 .search-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-color-secondary); }
 
 /* --- 5. Stats Dashboard --- */
-.stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 10px; } /* ✨ UPDATED */
+.stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 10px; }
 .stat-card { background: var(--bg-color-white); padding: 20px; border-radius: var(--border-radius-large); box-shadow: var(--shadow-light); border-left: 4px solid var(--info-color); transition: all 0.3s ease; }
 .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
 .stat-title { font-size: 14px; color: var(--text-color-secondary); margin-bottom: 8px; }
@@ -114,7 +114,7 @@ body {
 .stat-down { color: var(--error-color); }
 
 /* --- 6. Toolbar --- */
-.toolbar { background: var(--bg-color-white); border-bottom: 1px solid var(--border-color-light); padding: 15px 10px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; margin: 0 10px; } /* ✨ UPDATED */
+.toolbar { background: var(--bg-color-white); border-bottom: 1px solid var(--border-color-light); padding: 15px 10px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; margin: 0 10px; }
 .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
 .toolbar-right { justify-content: flex-end; }
 .action-buttons { display: flex; gap: 15px; }
@@ -126,26 +126,27 @@ body {
 .date-separator { color: var(--text-color-secondary); }
 
 /* --- 7. Excel Table --- */
-.excel-container { background: var(--bg-color-white); margin: 20px 10px 0; border-radius: var(--border-radius-large); overflow: hidden; box-shadow: var(--shadow-medium); } /* ✨ UPDATED */
+.excel-container { background: var(--bg-color-white); margin: 20px 10px 0; border-radius: var(--border-radius-large); overflow: hidden; box-shadow: var(--shadow-medium); }
 .table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
 
-/* ✨ UPDATED: Removed all sticky positioning styles */
+/* ✨ UPDATED: Re-added sticky header styles */
 .excel-table thead th { 
     font-weight: bold; 
     text-align: center; 
     border: 1px solid var(--border-color-dark); 
     padding: 8px 6px; 
-    /* position: sticky; REMOVED */
-    /* top: 0; REMOVED */
-    /* z-index: 100; REMOVED */
-    background-color: #f0f0f0; /* Added a default background for header */
+    position: sticky; /* ADDED */
+    top: 0; /* ADDED */
+    z-index: 100; /* ADDED */
     height: 45px; 
     vertical-align: middle; 
     user-select: none; 
 }
+
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
 .header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
+
 .excel-table td { 
     border: 1px solid var(--border-color-medium); 
     padding: 3px 6px; 
@@ -155,8 +156,6 @@ body {
     vertical-align: middle; 
     font-size: 11px; 
 }
-
-/* REMOVED all sticky column selectors and properties */
 
 .actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
 .excel-table td:not(.row-number):not(.actions-cell) { cursor: default; }
