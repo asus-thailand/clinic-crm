@@ -130,12 +130,12 @@ body {
 .table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
 
-/* ✨ UPDATED: Re-added sticky header and column styles */
+/* Styles for sticky header */
 .excel-table thead th { 
     font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; 
     position: sticky; 
     top: 0; 
-    z-index: 100; 
+    z-index: 100; /* z-index for the main header row */
     height: 45px; vertical-align: middle; user-select: none; 
 }
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
@@ -147,10 +147,7 @@ body {
 }
 
 /* Styles for the first 4 sticky columns */
-.excel-table th:nth-child(1), .excel-table td:nth-child(1),
-.excel-table th:nth-child(2), .excel-table td:nth-child(2),
-.excel-table th:nth-child(3), .excel-table td:nth-child(3),
-.excel-table th:nth-child(4), .excel-table td:nth-child(4) {
+.excel-table th:nth-child(-n+4), .excel-table td:nth-child(-n+4) {
     position: sticky;
     background-color: #f8f9fa; /* Background to prevent transparency */
 }
@@ -169,10 +166,13 @@ body {
     border-right: 2px solid #ccc; /* Visual separator */
 }
 
+/* ✨ UPDATED: z-index for the corner cells to ensure they are on top */
+.excel-table thead th:nth-child(-n+4) {
+    z-index: 101; /* Higher z-index for the top-left corner cells */
+}
+
 /* Ensure sticky header cells also get their correct background */
-.excel-table th.header-admin-section:nth-child(2),
-.excel-table th.header-admin-section:nth-child(3),
-.excel-table th.header-admin-section:nth-child(4) {
+.excel-table th.header-admin-section:nth-child(-n+4) {
     background-color: var(--header-bg-admin) !important;
 }
 
