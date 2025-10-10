@@ -90,7 +90,7 @@ body {
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-primary { background: var(--info-color); color: var(--text-color-white); padding: 10px 20px; }
 .btn-primary:hover { background: #0056b3; }
-.btn-update, .btn-history, .btn-edit { padding: 4px 8px; font-size: 10px; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color: 0.2s; margin: 0 2px; }
+.btn-update, .btn-history, .btn-edit { padding: 4px 8px; font-size: 10px; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; margin: 0 2px; }
 .btn-edit { background-color: #ffc107; }
 .btn-edit:hover { background-color: #e0a800; }
 .btn-update { background-color: var(--info-color); }
@@ -136,7 +136,7 @@ body {
 .table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
 
-/* ✨ UPDATED: General sticky header rule */
+/* General sticky header rule */
 .excel-table thead th { 
     font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; 
     position: sticky; 
@@ -149,7 +149,7 @@ body {
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
 .header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
 
-/* ✨ NEW/UPDATED: Freeze Column Styles */
+/* ✨ UPDATED: Freeze Column Styles */
 .excel-table th:nth-child(1), .excel-table td:nth-child(1),
 .excel-table th:nth-child(2), .excel-table td:nth-child(2),
 .excel-table th:nth-child(3), .excel-table td:nth-child(3),
@@ -198,7 +198,6 @@ body {
 .excel-table th.header-admin-section:nth-child(4) {
     background-color: var(--header-bg-admin) !important;
 }
-
 
 .excel-table td { border: 1px solid var(--border-color-medium); padding: 3px 6px; height: 22px; background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px; }
 .actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
