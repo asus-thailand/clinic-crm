@@ -130,31 +130,50 @@ body {
 .table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
 
-/* ✨ UPDATED: Re-added sticky header styles */
+/* ✨ UPDATED: Re-added sticky header and column styles */
 .excel-table thead th { 
-    font-weight: bold; 
-    text-align: center; 
-    border: 1px solid var(--border-color-dark); 
-    padding: 8px 6px; 
-    position: sticky; /* ADDED */
-    top: 0; /* ADDED */
-    z-index: 100; /* ADDED */
-    height: 45px; 
-    vertical-align: middle; 
-    user-select: none; 
+    font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; 
+    position: sticky; 
+    top: 0; 
+    z-index: 100; 
+    height: 45px; vertical-align: middle; user-select: none; 
 }
-
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
 .header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
 
 .excel-table td { 
-    border: 1px solid var(--border-color-medium); 
-    padding: 3px 6px; 
-    height: 22px; 
-    background: var(--bg-color-white); 
-    position: relative; 
-    vertical-align: middle; 
-    font-size: 11px; 
+    border: 1px solid var(--border-color-medium); padding: 3px 6px; height: 22px; 
+    background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px; 
+}
+
+/* Styles for the first 4 sticky columns */
+.excel-table th:nth-child(1), .excel-table td:nth-child(1),
+.excel-table th:nth-child(2), .excel-table td:nth-child(2),
+.excel-table th:nth-child(3), .excel-table td:nth-child(3),
+.excel-table th:nth-child(4), .excel-table td:nth-child(4) {
+    position: sticky;
+    background-color: #f8f9fa; /* Background to prevent transparency */
+}
+
+.excel-table th:nth-child(1), .excel-table td:nth-child(1) { 
+    left: 0; z-index: 53; width: 40px; min-width: 40px; background: #e7e6e6 !important; 
+}
+.excel-table th:nth-child(2), .excel-table td:nth-child(2) { 
+    left: 40px; z-index: 52; width: 100px; min-width: 100px; 
+}
+.excel-table th:nth-child(3), .excel-table td:nth-child(3) { 
+    left: 140px; z-index: 51; width: 100px; min-width: 100px; 
+}
+.excel-table th:nth-child(4), .excel-table td:nth-child(4) { 
+    left: 240px; z-index: 50; width: 150px; min-width: 150px; 
+    border-right: 2px solid #ccc; /* Visual separator */
+}
+
+/* Ensure sticky header cells also get their correct background */
+.excel-table th.header-admin-section:nth-child(2),
+.excel-table th.header-admin-section:nth-child(3),
+.excel-table th.header-admin-section:nth-child(4) {
+    background-color: var(--header-bg-admin) !important;
 }
 
 .actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
