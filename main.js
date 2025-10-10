@@ -28,20 +28,22 @@ const SALES_EDITABLE_FIELDS = [
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
-function parseDateString(dateStr) {
-    if (!dateStr) return null;
+function normalizeDateStringToYYYYMMDD(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+    }
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length === 3) {
-            const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1;
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
             let year = parseInt(parts[2], 10);
             if (year > 2500) { year -= 543; }
-            return new Date(year, month, day);
+            return `${year}-${month}-${day}`;
         }
     }
-    const date = new Date(dateStr + 'T00:00:00');
-    return isNaN(date.getTime()) ? null : date;
+    return null;
 }
 
 // ================================================================================
@@ -95,24 +97,6 @@ async function initializeApp() {
 // ================================================================================
 // MASTER DATA PROCESSING & RENDERING PIPELINE
 // ================================================================================
-
-function normalizeDateStringToYYYYMMDD(dateStr) {
-    if (!dateStr || typeof dateStr !== 'string') return null;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        return dateStr;
-    }
-    if (dateStr.includes('/')) {
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-            const day = parts[0].padStart(2, '0');
-            const month = parts[1].padStart(2, '0');
-            let year = parseInt(parts[2], 10);
-            if (year > 2500) { year -= 543; }
-            return `${year}-${month}-${day}`;
-        }
-    }
-    return null;
-}
 
 function updateVisibleData() {
     let dateFiltered = state.customers;
@@ -275,7 +259,7 @@ function setupEventListeners() {
 }
 
 // ================================================================================
-// (The rest of the file is unchanged, functions are included for completeness)
+// HANDLERS
 // ================================================================================
 function getAllowedNextStatuses(currentStatus) {
     const specialStatuses = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
@@ -330,8 +314,7 @@ async function handleSaveEditForm(event) {
         const historyPromises = [];
         for (const [key, value] of Object.entries(updatedData)) {
             if (String(originalCustomer[key] || '') !== String(value)) {
-                const allFields = { ...ui.FIELD_MAPPING, 'Staus Sale': { field: 'status_1'}, 'เหตุผล': { field: 'reason'} };
-                const header = Object.keys(allFields).find(h => allFields[h].field === key) || key;
+                const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h].field === key) || key;
                 const logNote = `แก้ไข '${header}' จาก '${originalCustomer[key] || ''}' เป็น '${value}'`;
                 historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
             }
