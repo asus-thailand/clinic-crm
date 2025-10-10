@@ -129,7 +129,8 @@ function updateVisibleData() {
         const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
         const matchesStatus = !status || customer.last_status === status;
         const matchesSales = !sales || customer.sales === sales;
-        return matchesSearch && matchesStatus && sales;
+        // ✨ UPDATED: Corrected the typo from 'sales' to 'matchesSales'
+        return matchesSearch && matchesStatus && matchesSales;
     });
 
     const { currentPage, pageSize } = state.pagination;
@@ -364,7 +365,6 @@ async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
 }
 
-// ฟังก์ชันนี้ถูกแก้ไข ไม่ต้องคำนวณ lead_code เอง
 async function handleAddCustomer() {
     ui.showLoading(true);
     try {
