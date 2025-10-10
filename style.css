@@ -4,6 +4,7 @@
 
 /* --- 1. CSS Variables (Theme Configuration) --- */
 :root {
+    /* Theme colors */
     --primary-color: #667eea;
     --secondary-color: #764ba2;
     --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
@@ -25,9 +26,9 @@
     --error-color: #dc3545;
     --info-color: #007bff;
     
-    /* ✨ UPDATED: Header color variables for a cohesive theme */
-    --header-bg-admin: #5a67d8;  /* Indigo - Was Green */
-    --header-bg-sales: #a3bffa;  /* Light Blue - Was Yellow */
+    /* Header color variables for table */
+    --header-bg-admin: #5a67d8;  /* Indigo */
+    --header-bg-sales: #a3bffa;  /* Light Blue */
 
     --admin-cell-bg: #e2efda;
     --status-cell-bg: #fce4ec;
@@ -258,14 +259,14 @@ body {
 .timeline-notes { font-size: 14px; color: #333; margin-bottom: 6px; white-space: pre-wrap; }
 .timeline-footer { font-size: 12px; color: #888; }
 
-/* Role-based coloring for history timeline */
+/* ✨ UPDATED: Role-based coloring for history timeline with pastel colors */
 .timeline-item.history-admin {
-    border-left: 5px solid var(--header-bg-admin);
-    background-color: #f0f2ff;
+    border-left: 5px solid #6ee7b7; /* Pastel Green Border */
+    background-color: #d1fae5; /* Lighter Pastel Green BG */
 }
 .timeline-item.history-sales {
-    border-left: 5px solid var(--header-bg-sales);
-    background-color: #f5f9ff;
+    border-left: 5px solid #fb923c; /* Pastel Orange Border */
+    background-color: #ffedd5; /* Lighter Pastel Orange BG */
 }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
