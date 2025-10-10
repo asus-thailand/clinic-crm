@@ -166,7 +166,7 @@ body {
     border-right: 2px solid #ccc; /* Visual separator */
 }
 
-/* ✨ UPDATED: z-index for the corner cells to ensure they are on top */
+/* z-index for the corner cells to ensure they are on top */
 .excel-table thead th:nth-child(-n+4) {
     z-index: 101; /* Higher z-index for the top-left corner cells */
 }
@@ -210,14 +210,64 @@ body {
 .modal-input-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
 .modal-input-group select, .modal-input-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: var(--border-radius-small); font-size: 14px; }
 .timeline-container { max-height: 60vh; overflow-y: auto; padding-right: 15px; }
-.timeline-item { display: flex; margin-bottom: 20px; position: relative; padding-left: 30px; }
-.timeline-item::before { content: ''; position: absolute; left: 8px; top: 5px; bottom: -20px; width: 2px; background-color: #e9ecef; }
-.timeline-item:last-child::before { display: none; }
-.timeline-icon { position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; background-color: #6c757d; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; }
+
+/* *** จุดที่แก้ไข: ปรับปรุงสไตล์ของ Timeline และเพิ่มสีตาม Role *** */
+.timeline-item { 
+    display: flex; 
+    position: relative; 
+    padding: 12px;
+    padding-left: 40px; 
+    margin-bottom: 8px;
+    border-radius: var(--border-radius-small);
+    border: 1px solid var(--border-color-light);
+    background-color: var(--bg-color-white);
+}
+.timeline-item::before { 
+    content: ''; 
+    position: absolute; 
+    left: 21px; /* Center with icon */
+    top: -8px; 
+    bottom: -8px; 
+    width: 2px; 
+    background-color: #e9ecef; 
+}
+.timeline-container > .timeline-item:first-child::before {
+    top: 12px; /* Adjust for first item */
+}
+.timeline-container > .timeline-item:last-child::before {
+    bottom: 12px; /* Adjust for last item */
+}
+.timeline-icon { 
+    position: absolute; 
+    left: 12px; 
+    top: 12px; 
+    width: 20px; 
+    height: 20px; 
+    border-radius: 50%; 
+    background-color: #6c757d; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    color: white; 
+    font-size: 12px; 
+    font-weight: bold; 
+    z-index: 2;
+}
 .timeline-content { flex: 1; }
 .timeline-status { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
 .timeline-notes { font-size: 14px; color: #333; margin-bottom: 6px; white-space: pre-wrap; }
 .timeline-footer { font-size: 12px; color: #888; }
+
+/* Role-based coloring for history timeline */
+.timeline-item.history-admin {
+    border-left: 5px solid var(--header-bg-admin);
+    background-color: #f0f7f0;
+}
+.timeline-item.history-sales {
+    border-left: 5px solid var(--header-bg-sales);
+    background-color: #fffaf0;
+}
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
