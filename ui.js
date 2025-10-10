@@ -63,23 +63,13 @@ ui.showStatus = function(message, isError = false) {
 ui.updateUIAfterLogin = function(user) {
     const userBadge = document.querySelector('.user-badge');
     if (userBadge && user) {
-        // ✨ FIXED: Add a check for user.role to prevent crash if it's null.
-        const userRole = user.role || 'sales'; // Default to 'sales' if role is not set.
-
+        const userRole = user.role || 'sales'; 
         const role = userRole.charAt(0).toUpperCase() + userRole.slice(1);
         userBadge.textContent = `${role} - ${user.username}`;
-        
-        const roleColors = { 
-            'administrator': '#dc3545', 
-            'admin': '#007bff', 
-            'sales': '#28a745' 
-        };
-        
-        // This is now safe because userRole is guaranteed to be a string.
+        const roleColors = { 'administrator': '#dc3545', 'admin': '#007bff', 'sales': '#28a745' };
         userBadge.style.backgroundColor = roleColors[userRole.toLowerCase()] || '#6c757d';
     }
 }
-
 
 // ================================================================================
 // SINGLE SOURCE OF TRUTH: FIELD MAPPING
@@ -154,11 +144,15 @@ function createActionsCell(row, currentUser) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
     const displayName = row.name || row.lead_code || row.phone || 'N/A';
-    const userRole = (currentUser.role || '').toLowerCase();
+
+    // ✨ FIXED: Add a null check for currentUser and currentUser.role
+    const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
-    const isOwner = row.sales === currentUser.username;
+    const isOwner = currentUser && row.sales === currentUser.username;
     const canEdit = isAdmin || isOwner;
+
     const disabledAttribute = !canEdit ? 'disabled' : '';
+
     td.innerHTML = `
         <button class="btn-edit" data-action="edit-customer" data-id="${row.id}" ${disabledAttribute}>แก้ไข</button>
         <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(displayName)}" ${disabledAttribute}>อัปเดต</button>
@@ -235,9 +229,12 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
-        const userRole = (currentUser.role || '').toLowerCase();
+        
+        // ✨ FIXED: Add a null check for currentUser and currentUser.role
+        const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
+
         const isEditableBySales = isSalesUser && salesEditableFields.includes(field);
         const isEditable = (isAdmin || isEditableBySales) && field !== 'lead_code';
 
