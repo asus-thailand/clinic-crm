@@ -129,7 +129,8 @@ function updateVisibleData() {
         const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
         const matchesStatus = !status || customer.last_status === status;
         const matchesSales = !sales || customer.sales === sales;
-        // ✨ UPDATED: แก้ไข Typo จาก 'sales' เป็น 'matchesSales'
+        
+        // *** จุดที่แก้ไข: แก้ไข Bug การกรองข้อมูล ***
         return matchesSearch && matchesStatus && matchesSales;
     });
 
