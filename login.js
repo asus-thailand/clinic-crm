@@ -206,4 +206,4 @@ document.addEventListener('DOMContentLoaded', () => {
         emailInput.focus();
     }
 });
-// *** จุดที่แก้ไข: ลบปีกกา '}' ที่เกินมา ***
+// *** จุดที่แก้ไข: ลบปีกกา '}' ที่เกินมา ณ จุดนี้ ***
