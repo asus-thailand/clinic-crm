@@ -75,7 +75,6 @@ ui.updateUIAfterLogin = function(user) {
 // SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED)
 // ================================================================================
 
-// ✨ UPDATED: Added 'Status Sale' as a visible column in the table.
 const FIELD_MAPPING = {
     '#':                  { field: null, section: 'special' },
     'วัน/เดือน/ปี':     { field: 'date', section: 'admin' },
@@ -90,10 +89,10 @@ const FIELD_MAPPING = {
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
-    'Status Sale':      { field: 'status_1', section: 'sales' }, // This field will now be displayed as a column
+    'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
     'เวลาโทร':            { field: 'call_time', section: 'sales' },
-    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false }, // 'reason' is still hidden from the main table
+    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
     'ETC':                { field: 'etc', section: 'sales' },
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
@@ -114,7 +113,7 @@ ui.renderTableHeaders = function() {
     if (!thead) return;
     const tr = document.createElement('tr');
     Object.entries(FIELD_MAPPING).forEach(([headerText, config]) => {
-        if (config.isHeader === false) return; // This will now only skip 'เหตุผล'
+        if (config.isHeader === false) return;
 
         const th = document.createElement('th');
         th.textContent = headerText;
@@ -250,7 +249,7 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         if (config.section === 'admin') {
             adminContent.appendChild(formGroup);
         } else if (config.section === 'sales') {
-            salesContent.appendChild(formGroup);
+            salesContent.appendChild(salesContent);
         }
     });
 
@@ -331,3 +330,4 @@ ui.showContextMenu = function(event) { const menu = document.getElementById('con
 ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
 
 window.ui = ui;
+// *** จุดที่แก้ไข: ลบปีกกา '}' ที่เกินมา ณ จุดนี้ ***
