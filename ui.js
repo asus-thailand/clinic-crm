@@ -92,11 +92,10 @@ const FIELD_MAPPING = {
     'ช่องทางสื่อ':       { field: 'channel', section: 'admin' },
     'ประเภทหัตถการ':  { field: 'procedure', section: 'admin' },
     'มัดจำ':               { field: 'deposit', section: 'admin' },
-    'ขอเบอร์':        { field: 'confirm_y', section: 'admin' },
-    'มัดจำ': { field: 'transfer_100', section: 'admin' },
+    'ขอเบอร์ Y/N':        { field: 'confirm_y', section: 'admin' },
+    'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
-    // [MODIFIED] เปลี่ยนชื่อจาก 'เวลาโทร' เป็น 'เวลาลงข้อมูล'
     'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' }, 
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
@@ -184,16 +183,22 @@ function createRowElement(row, index, page, pageSize) {
         tr.classList.add('row-deal-closed');
     }
 
-    if (row.date) {
+    // --- [MODIFIED] ปรับปรุงตรรกะการไฮไลท์เคสค้างแบบ 2 ระดับ ---
+    if (row.date && !tr.classList.contains('row-deal-closed')) {
         const today = new Date();
         today.setHours(0, 0, 0, 0); 
         const caseDate = new Date(row.date);
         const timeDiff = today.getTime() - caseDate.getTime();
         const daysOld = Math.floor(timeDiff / (1000 * 3600 * 24));
-        if (daysOld > 21 && !tr.classList.contains('row-deal-closed')) {
-            tr.classList.add('row-stale-case');
+
+        // ตรวจสอบเงื่อนไขที่นานที่สุดก่อน (สำคัญ)
+        if (daysOld > 21) {
+            tr.classList.add('row-stale-case-21'); // ระดับวิกฤต
+        } else if (daysOld > 15) {
+            tr.classList.add('row-stale-case-15'); // ระดับแจ้งเตือน
         }
     }
+    // --- สิ้นสุดส่วนที่แก้ไข ---
 
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
@@ -372,4 +377,3 @@ ui.showContextMenu = function(event) { const menu = document.getElementById('con
 ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
 
 window.ui = ui;
-
