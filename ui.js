@@ -10,14 +10,11 @@ const ui = {};
 
 function parseDateString(dateStr) {
     if (!dateStr) return null;
-    // This function assumes dateStr is already in YYYY-MM-DD format
-    // due to normalization at data fetch.
     const date = new Date(dateStr + 'T00:00:00');
     return isNaN(date.getTime()) ? null : date;
 }
 
 function formatDateToDMY(dateStr) {
-    // Input is expected to be YYYY-MM-DD
     if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || '';
     const dateObj = parseDateString(dateStr);
     if (!dateObj) return dateStr || '';
@@ -27,11 +24,8 @@ function formatDateToDMY(dateStr) {
     return `${day}/${month}/${year}`;
 }
 
-// [BUG FIXED] - Replaced with a more robust XSS prevention method.
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
-    // Using textContent is the recommended way to prevent XSS.
-    // The browser handles the escaping of all special characters.
     const div = document.createElement('div');
     div.textContent = String(str);
     return div.innerHTML;
@@ -63,7 +57,6 @@ ui.showStatus = function(message, isError = false) {
 ui.updateUIAfterLogin = function(user) {
     const userBadge = document.querySelector('.user-badge');
     if (userBadge && user) {
-        // [BUG FIXED] Ensure role is always lowercased for consistent styling
         const userRole = (user.role || 'sales').toLowerCase(); 
         const role = userRole.charAt(0).toUpperCase() + userRole.slice(1);
         userBadge.textContent = `${role} - ${user.username}`;
@@ -72,13 +65,26 @@ ui.updateUIAfterLogin = function(user) {
     }
 }
 
+// [NEW] ฟังก์ชันสำหรับอัปเดตสัญลักษณ์การเรียงลำดับ
+ui.updateSortIndicator = function(column, direction) {
+    document.querySelectorAll('th[data-sortable]').forEach(th => {
+        const indicator = th.querySelector('.sort-indicator');
+        if (th.dataset.sortable === column) {
+            indicator.textContent = direction === 'asc' ? ' ▲' : ' ▼';
+        } else {
+            indicator.textContent = '';
+        }
+    });
+};
+
+
 // ================================================================================
 // SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED)
 // ================================================================================
 
 const FIELD_MAPPING = {
     '#':                  { field: null, section: 'special' },
-    'วัน/เดือน/ปี':     { field: 'date', section: 'admin' },
+    'วัน/เดือน/ปี':     { field: 'date', section: 'admin', sortable: true }, // [NEW] เพิ่ม property `sortable`
     'ลำดับที่':           { field: 'lead_code', section: 'admin' },
     'ชื่อลูกค้า':         { field: 'name', section: 'admin' },
     'เบอร์ติดต่อ':       { field: 'phone', section: 'admin' },
@@ -117,10 +123,19 @@ ui.renderTableHeaders = function() {
         if (config.isHeader === false) return;
 
         const th = document.createElement('th');
-        th.textContent = headerText;
-        if (config.section === 'admin') { th.className = 'header-admin-section'; }
-        else if (config.section === 'sales') { th.className = 'header-sales-section'; }
-        else if (headerText === '#') { th.className = 'row-number'; }
+        // [NEW] ทำให้ Header คลิกได้และเพิ่มสัญลักษณ์
+        if (config.sortable) {
+            th.dataset.sortable = config.field;
+            th.className = 'sortable-header';
+            th.innerHTML = `${headerText}<span class="sort-indicator"></span>`;
+        } else {
+            th.textContent = headerText;
+        }
+
+        if (config.section === 'admin') { th.classList.add('header-admin-section'); }
+        else if (config.section === 'sales') { th.classList.add('header-sales-section'); }
+        else if (headerText === '#') { th.classList.add('row-number'); }
+        
         tr.appendChild(th);
     });
     thead.innerHTML = ''; 
@@ -136,7 +151,6 @@ function createCell(row, fieldName) {
     td.dataset.field = fieldName;
     const dateFields = ['date', 'old_appointment', 'appointment_date'];
     if (dateFields.includes(fieldName)) {
-        // Date is already normalized to YYYY-MM-DD, so just format it for display.
         td.textContent = formatDateToDMY(row[fieldName]);
     } else {
         td.textContent = row[fieldName] || '';
@@ -148,7 +162,6 @@ function createActionsCell(row, currentUser) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
     const displayName = row.name || row.lead_code || row.phone || 'N/A';
-    // [BUG FIXED] Always use .toLowerCase() for reliable role checking
     const userRole = (currentUser?.role || 'sales').toLowerCase();
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     const isOwner = currentUser && row.sales === currentUser.username;
@@ -225,7 +238,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
-        // [BUG FIXED] Always use .toLowerCase() for reliable role checking
         const userRole = (currentUser?.role || 'sales').toLowerCase();
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
@@ -245,7 +257,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
         } else {
             const fieldType = (field === 'date' || field === 'appointment_date' || field === 'old_appointment') ? 'date' : 'text';
-            // Value for date input must be YYYY-MM-DD, which is now guaranteed by normalization
             inputHtml = `<input type="${fieldType}" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
         }
         
@@ -254,7 +265,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         if (config.section === 'admin') {
             adminContent.appendChild(formGroup);
         } else if (config.section === 'sales') {
-            // [BUG FIXED] Critical bug where the element appended itself.
             salesContent.appendChild(formGroup);
         }
     });
@@ -298,7 +308,6 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
     if (endPage < totalPages) { if (endPage < totalPages - 1) buttonsHTML += `<span>...</span>`; buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`; }
     buttonsHTML += `<button data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>`;
     const controlsHTML = `<div class="pagination-controls">${buttonsHTML}</div>`;
-    // The original code was complete, this confirms the logic is sound.
     container.innerHTML = `${pageSizeHTML}${infoHTML}${controlsHTML}`;
 };
 
