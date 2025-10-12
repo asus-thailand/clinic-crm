@@ -92,8 +92,8 @@ const FIELD_MAPPING = {
     'ช่องทางสื่อ':       { field: 'channel', section: 'admin' },
     'ประเภทหัตถการ':  { field: 'procedure', section: 'admin' },
     'มัดจำ':               { field: 'deposit', section: 'admin' },
-    'ขอเบอร์ Y/N':        { field: 'confirm_y', section: 'admin' },
-    'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
+    'ขอเบอร์':        { field: 'confirm_y', section: 'admin' },
+    'มัดจำ': { field: 'transfer_100', section: 'admin' },
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
     // [MODIFIED] เปลี่ยนชื่อจาก 'เวลาโทร' เป็น 'เวลาลงข้อมูล'
@@ -372,3 +372,4 @@ ui.showContextMenu = function(event) { const menu = document.getElementById('con
 ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
 
 window.ui = ui;
+
