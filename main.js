@@ -2,6 +2,12 @@
 // BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PERFORMANCE ENHANCED & BUG FIXED)
 // ================================================================================
 
+// [BUG FIXED] Added a global error handler for uncaught promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+    ui.showStatus('เกิดข้อผิดพลาดที่ไม่คาดคิดในระบบ', true);
+});
+
 const state = {
     currentUser: null,
     customers: [],        
@@ -28,38 +34,44 @@ const SALES_EDITABLE_FIELDS = [
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
-function convertThaiBEToISO(thaiDateString) {
-  if (!thaiDateString || typeof thaiDateString !== 'string' || !thaiDateString.includes('/')) {
-    return null;
-  }
-  const parts = thaiDateString.split('/');
-  if (parts.length !== 3) {
-    return null;
-  }
-  const day = parts[0];
-  const month = parts[1];
-  const buddhistYear = parseInt(parts[2], 10);
-  const gregorianYear = buddhistYear - 543;
-  return `${gregorianYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-}
-
+// [BUG FIXED] Improved and simplified date normalization function
 function normalizeDateStringToYYYYMMDD(dateStr) {
     if (!dateStr || typeof dateStr !== 'string') return null;
+    
+    // If already in YYYY-MM-DD, return it
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
         return dateStr;
     }
+
+    // Handle DD/MM/YYYY (including Buddhist Era)
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length === 3) {
             const day = parts[0].padStart(2, '0');
             const month = parts[1].padStart(2, '0');
             let year = parseInt(parts[2], 10);
-            if (year > 2500) { year -= 543; }
+
+            // Convert B.E. to A.D.
+            if (year > 2500) { 
+                year -= 543;
+            }
             return `${year}-${month}-${day}`;
         }
     }
-    return null;
+    
+    // Attempt to parse other formats (e.g., from a date picker)
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return null; // Invalid date
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    } catch (e) {
+        return null;
+    }
 }
+
 
 // ================================================================================
 // INITIALIZATION
@@ -87,8 +99,12 @@ async function initializeApp() {
             api.fetchSalesList()
         ]);
         
+        // [BUG FIXED] Normalize all date fields immediately after fetching
+        // This ensures data consistency throughout the app.
         (customers || []).forEach(c => {
             c.date = normalizeDateStringToYYYYMMDD(c.date);
+            c.old_appointment = normalizeDateStringToYYYYMMDD(c.old_appointment);
+            c.appointment_date = normalizeDateStringToYYYYMMDD(c.appointment_date);
         });
 
         state.customers = customers || [];
@@ -124,13 +140,15 @@ function updateVisibleData() {
 
     const { search, status, sales } = state.activeFilters;
     const lowerCaseSearch = search.toLowerCase();
+    
     state.filteredCustomers = dateFiltered.filter(customer => {
         const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
         const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
-        const matchesStatus = !status || customer.last_status === status;
+        
+        // [BUG FIXED] Make filter robust against null/whitespace values
+        const matchesStatus = !status || (customer.last_status || '').trim() === status;
         const matchesSales = !sales || customer.sales === sales;
         
-        // *** จุดที่แก้ไข: แก้ไข Bug การกรองข้อมูล ***
         return matchesSearch && matchesStatus && matchesSales;
     });
 
@@ -216,7 +234,15 @@ function setupEventListeners() {
     document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
     document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
-    document.getElementById('refreshButton')?.addEventListener('click', initializeApp);
+    
+    // [BUG FIXED] Refresh button now clears filters for better UX
+    document.getElementById('refreshButton')?.addEventListener('click', () => {
+        state.activeFilters = { search: '', status: '', sales: '' };
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('salesFilter').value = '';
+        initializeApp();
+    });
     
     document.getElementById('searchInput')?.addEventListener('input', debounce(e => {
         state.activeFilters.search = e.target.value;
@@ -232,8 +258,10 @@ function setupEventListeners() {
     const startDateFilter = document.getElementById('startDateFilter');
     const endDateFilter = document.getElementById('endDateFilter');
     
-    startDateFilter?.addEventListener('change', handleCustomDateChange);
-    endDateFilter?.addEventListener('change', handleCustomDateChange);
+    // [BUG FIXED] Added debounce to date filters for performance
+    const debouncedDateChange = debounce(handleCustomDateChange, 500);
+    startDateFilter?.addEventListener('change', debouncedDateChange);
+    endDateFilter?.addEventListener('change', debouncedDateChange);
 
     document.getElementById('paginationContainer')?.addEventListener('click', event => {
         const button = event.target.closest('button');
@@ -272,15 +300,6 @@ function handleCustomDateChange() {
     let start = document.getElementById('startDateFilter').value;
     let end = document.getElementById('endDateFilter').value;
 
-    const convertedStart = convertThaiBEToISO(start);
-    if (convertedStart) {
-        start = convertedStart;
-    }
-    const convertedEnd = convertThaiBEToISO(end);
-    if (convertedEnd) {
-        end = convertedEnd;
-    }
-
     if (start && end && start <= end) {
         state.dateFilter.startDate = start;
         state.dateFilter.endDate = end;
@@ -303,10 +322,12 @@ function getAllowedNextStatuses(currentStatus) {
             return ["status 1", ...specialStatuses];
     }
 }
+
 function showUpdateStatusModal(customer) {
     const select = document.getElementById('modalStatusSelect');
     if (!select) return;
-    const userRole = (state.currentUser && state.currentUser.role) ? state.currentUser.role.toLowerCase() : 'sales';
+    // [BUG FIXED] Always use .toLowerCase() for reliable role checking
+    const userRole = (state.currentUser?.role || 'sales').toLowerCase();
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     let allowedStatuses;
     if (isAdmin) { allowedStatuses = DROPDOWN_OPTIONS.status_1; } else { allowedStatuses = getAllowedNextStatuses(customer.status_1); }
@@ -314,6 +335,7 @@ function showUpdateStatusModal(customer) {
     allowedStatuses.forEach(opt => { const optionEl = document.createElement('option'); optionEl.value = opt; optionEl.textContent = opt; select.appendChild(optionEl); });
     ui.showModal('statusUpdateModal', { customerId: customer.id, customerName: customer.name || customer.lead_code || 'N/A' });
 }
+
 function showEditModal(customerId) {
     const customer = state.customers.find(c => c.id == customerId);
     if (!customer) { ui.showStatus('ไม่พบข้อมูลลูกค้า', true); return; }
@@ -321,10 +343,12 @@ function showEditModal(customerId) {
     ui.buildEditForm(customer, state.currentUser, SALES_EDITABLE_FIELDS, state.salesList, DROPDOWN_OPTIONS);
     document.getElementById('editCustomerModal').classList.add('show');
 }
+
 function hideEditModal() {
     state.editingCustomerId = null;
     document.getElementById('editCustomerModal').classList.remove('show');
 }
+
 async function handleSaveEditForm(event) {
     event.preventDefault();
     if (!state.editingCustomerId) return;
@@ -341,6 +365,12 @@ async function handleSaveEditForm(event) {
     ui.showLoading(true);
     try {
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
+        
+        // Normalize date fields in the returned object before updating state
+        updatedCustomer.date = normalizeDateStringToYYYYMMDD(updatedCustomer.date);
+        updatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(updatedCustomer.old_appointment);
+        updatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(updatedCustomer.appointment_date);
+
         const historyPromises = [];
         for (const [key, value] of Object.entries(updatedData)) {
             if (String(originalCustomer[key] || '') !== String(value)) {
@@ -362,6 +392,7 @@ async function handleSaveEditForm(event) {
         ui.showLoading(false);
     }
 }
+
 async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
 }
@@ -377,6 +408,10 @@ async function handleAddCustomer() {
         
         const now = new Date();
         newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        // Ensure new customer dates are also normalized
+        newCustomer.date = normalizeDateStringToYYYYMMDD(newCustomer.date);
+
         state.customers.unshift(newCustomer);
         
         updateVisibleData();
@@ -401,6 +436,7 @@ function handleTableClick(event) {
     if (action === 'update-status') { showUpdateStatusModal(customer); }
     if (action === 'view-history') { handleViewHistory(id, customer.name); }
 }
+
 async function handleViewHistory(customerId, customerName) {
     ui.showModal('historyModal', { customerName });
     ui.showLoading(true);
@@ -413,6 +449,7 @@ async function handleViewHistory(customerId, customerName) {
         ui.showLoading(false);
     }
 }
+
 async function handleSubmitStatusUpdate() {
     const customerId = document.getElementById('modalCustomerId').value;
     const newStatus = document.getElementById('modalStatusSelect').value;
@@ -422,9 +459,15 @@ async function handleSubmitStatusUpdate() {
     if (requiresReason && !notes) { return ui.showStatus('สำหรับ Status 1-4 กรุณากรอกเหตุผล/บันทึกเพิ่มเติม', true); }
     ui.showLoading(true);
     try {
-        const updateData = { status_1: newStatus, reason: notes, last_status: newStatus };
+        const updateData = { status_1: newStatus, reason: notes };
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
         const updatedCustomer = await api.updateCustomer(customerId, updateData);
+        
+        // Ensure date fields remain normalized after update
+        updatedCustomer.date = normalizeDateStringToYYYYMMDD(updatedCustomer.date);
+        updatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(updatedCustomer.old_appointment);
+        updatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(updatedCustomer.appointment_date);
+
         const index = state.customers.findIndex(c => c.id == updatedCustomer.id);
         if (index !== -1) { state.customers[index] = updatedCustomer; }
         updateVisibleData();
@@ -436,15 +479,17 @@ async function handleSubmitStatusUpdate() {
         ui.showLoading(false);
     }
 }
+
 function handleContextMenu(event) {
     const row = event.target.closest('tr');
     if (!row || !row.dataset.id) return;
-    const userRole = (state.currentUser && state.currentUser.role) ? state.currentUser.role.toLowerCase() : 'sales';
+    const userRole = (state.currentUser?.role || 'sales').toLowerCase();
     if (userRole === 'sales') { event.preventDefault(); return; }
     event.preventDefault();
     state.contextMenuRowId = row.dataset.id;
     ui.showContextMenu(event);
 }
+
 async function handleContextMenuItemClick(event) {
     const action = event.target.dataset.action;
     if (!action || !state.contextMenuRowId) return;
