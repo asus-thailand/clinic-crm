@@ -136,7 +136,8 @@ body {
     font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; 
     position: sticky; 
     top: 0; 
-    z-index: 100; /* z-index for the main header row */
+    /* [BUG FIXED] z-index base สำหรับ header ทั่วไป */
+    z-index: 100;
     height: 45px; vertical-align: middle; user-select: none; 
 }
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
@@ -153,24 +154,39 @@ body {
     background-color: #f8f9fa; /* Background to prevent transparency */
 }
 
+/* [BUG FIXED] แก้ไข z-index ที่ซ้อนทับกันสำหรับคอลัมน์ที่ปักหมุด */
 .excel-table th:nth-child(1), .excel-table td:nth-child(1) { 
-    left: 0; z-index: 53; width: 40px; min-width: 40px; background: #e7e6e6 !important; 
+    left: 0; 
+    z-index: 54; /* z-index สูงสุดสำหรับคอลัมน์ */
+    width: 40px; min-width: 40px; background: #e7e6e6 !important; 
 }
 .excel-table th:nth-child(2), .excel-table td:nth-child(2) { 
-    left: 40px; z-index: 52; width: 100px; min-width: 100px; 
+    left: 40px; 
+    z-index: 53; 
+    width: 100px; min-width: 100px; 
 }
 .excel-table th:nth-child(3), .excel-table td:nth-child(3) { 
-    left: 140px; z-index: 51; width: 100px; min-width: 100px; 
+    left: 140px; 
+    z-index: 52; 
+    width: 100px; min-width: 100px; 
 }
 .excel-table th:nth-child(4), .excel-table td:nth-child(4) { 
-    left: 240px; z-index: 50; width: 150px; min-width: 150px; 
+    left: 240px; 
+    z-index: 51; 
+    width: 150px; min-width: 150px; 
     border-right: 2px solid #ccc; /* Visual separator */
 }
 
-/* z-index for the corner cells to ensure they are on top */
+/* [BUG FIXED] z-index สำหรับมุมซ้ายบน (header + sticky column) ให้สูงที่สุดเสมอ */
 .excel-table thead th:nth-child(-n+4) {
-    z-index: 101; /* Higher z-index for the top-left corner cells */
+    z-index: 101;
 }
+/* ทำให้ header ที่ปักหมุดมี z-index สูงกว่าคอลัมน์ที่ปักหมุด */
+.excel-table thead th:nth-child(1) { z-index: 105; }
+.excel-table thead th:nth-child(2) { z-index: 104; }
+.excel-table thead th:nth-child(3) { z-index: 103; }
+.excel-table thead th:nth-child(4) { z-index: 102; }
+
 
 /* Ensure sticky header cells also get their correct background */
 .excel-table th.header-admin-section:nth-child(-n+4) {
@@ -307,8 +323,8 @@ body {
 .btn-cancel { padding: 10px 25px; font-size: 16px; font-weight: 600; background: #e2e8f0; color: #1e293b; border: none; border-radius: 8px; cursor: pointer; }
 .modal-section { border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
 .modal-section-title { font-size: 16px; font-weight: 600; color: #475569; margin: -5px 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
-.modal-section.admin-section { background-color: #d1d1d1; }
-.modal-section.sales-section { background-color: #d1d1d1; }
+.modal-section.admin-section { background-color: #f0f4f8; } /* Changed color for better distinction */
+.modal-section.sales-section { background-color: #fdf8f0; } /* Changed color for better distinction */
 .modal-section-content { display: grid; grid-template-columns: 1fr; gap: 15px; }
 @media (min-width: 640px) { .modal-section-content { grid-template-columns: 1fr 1fr; } }
 .hidden { display: none; }
