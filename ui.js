@@ -96,12 +96,11 @@ const FIELD_MAPPING = {
     'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
-    // [MOVED] ย้าย 'เวลาโทร' มาอยู่ในส่วนของ Admin
-    'เวลาโทร':            { field: 'call_time', section: 'admin' }, 
+    // [MODIFIED] เปลี่ยนชื่อจาก 'เวลาโทร' เป็น 'เวลาลงข้อมูล'
+    'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' }, 
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
-    // [MOVED] 'เวลาโทร' ถูกย้ายไปอยู่ข้างบนแล้ว
     'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
     'ETC':                { field: 'etc', section: 'sales' },
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
