@@ -16,6 +16,8 @@ const state = {
     activeFilters: { search: '', status: '', sales: '' },
     dateFilter: { startDate: null, endDate: null, preset: 'all' },
     pagination: { currentPage: 1, pageSize: 50 },
+    // [NEW] เพิ่ม state สำหรับจัดการการเรียงลำดับ
+    sort: { column: 'date', direction: 'desc' }, 
     editingCustomerId: null
 };
 
@@ -38,12 +40,10 @@ const SALES_EDITABLE_FIELDS = [
 function normalizeDateStringToYYYYMMDD(dateStr) {
     if (!dateStr || typeof dateStr !== 'string') return null;
     
-    // If already in YYYY-MM-DD, return it
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
         return dateStr;
     }
 
-    // Handle DD/MM/YYYY (including Buddhist Era)
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length === 3) {
@@ -51,7 +51,6 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             const month = parts[1].padStart(2, '0');
             let year = parseInt(parts[2], 10);
 
-            // Convert B.E. to A.D.
             if (year > 2500) { 
                 year -= 543;
             }
@@ -59,10 +58,9 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
         }
     }
     
-    // Attempt to parse other formats (e.g., from a date picker)
     try {
         const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return null; // Invalid date
+        if (isNaN(date.getTime())) return null;
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -99,8 +97,6 @@ async function initializeApp() {
             api.fetchSalesList()
         ]);
         
-        // [BUG FIXED] Normalize all date fields immediately after fetching
-        // This ensures data consistency throughout the app.
         (customers || []).forEach(c => {
             c.date = normalizeDateStringToYYYYMMDD(c.date);
             c.old_appointment = normalizeDateStringToYYYYMMDD(c.old_appointment);
@@ -130,9 +126,20 @@ async function initializeApp() {
 // ================================================================================
 
 function updateVisibleData() {
-    let dateFiltered = state.customers;
+    // [NEW] ทำการเรียงข้อมูลก่อนการกรองเสมอ
+    const sortedCustomers = [...state.customers].sort((a, b) => {
+        const { column, direction } = state.sort;
+        const valA = a[column] || '';
+        const valB = b[column] || '';
+
+        if (valA < valB) return direction === 'asc' ? -1 : 1;
+        if (valA > valB) return direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    let dateFiltered = sortedCustomers;
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
-        dateFiltered = state.customers.filter(c => {
+        dateFiltered = sortedCustomers.filter(c => {
             if (!c.date) return false;
             return c.date >= state.dateFilter.startDate && c.date <= state.dateFilter.endDate;
         });
@@ -144,8 +151,6 @@ function updateVisibleData() {
     state.filteredCustomers = dateFiltered.filter(customer => {
         const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
         const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
-        
-        // [BUG FIXED] Make filter robust against null/whitespace values
         const matchesStatus = !status || (customer.last_status || '').trim() === status;
         const matchesSales = !sales || customer.sales === sales;
         
@@ -161,6 +166,8 @@ function updateVisibleData() {
 
     ui.renderTable(paginatedCustomers, currentPage, pageSize);
     ui.renderPaginationControls(totalPages, currentPage, totalRecords, pageSize);
+    // [NEW] อัปเดตสัญลักษณ์การเรียงลำดับบน Header
+    ui.updateSortIndicator(state.sort.column, state.sort.direction);
     updateDashboardStats(); 
 }
 
@@ -235,7 +242,6 @@ function setupEventListeners() {
     document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
     
-    // [BUG FIXED] Refresh button now clears filters for better UX
     document.getElementById('refreshButton')?.addEventListener('click', () => {
         state.activeFilters = { search: '', status: '', sales: '' };
         document.getElementById('searchInput').value = '';
@@ -258,7 +264,6 @@ function setupEventListeners() {
     const startDateFilter = document.getElementById('startDateFilter');
     const endDateFilter = document.getElementById('endDateFilter');
     
-    // [BUG FIXED] Added debounce to date filters for performance
     const debouncedDateChange = debounce(handleCustomDateChange, 500);
     startDateFilter?.addEventListener('change', debouncedDateChange);
     endDateFilter?.addEventListener('change', debouncedDateChange);
@@ -290,11 +295,34 @@ function setupEventListeners() {
     contextMenu?.addEventListener('click', handleContextMenuItemClick);
     window.addEventListener('click', (event) => { if (contextMenu && !contextMenu.contains(event.target)) { ui.hideContextMenu(); } });
     document.querySelectorAll('[data-modal-close]').forEach(btn => { btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose)); });
+
+    // [NEW] เพิ่ม Event Listener สำหรับการคลิกที่ Header ของตาราง
+    const tableHeader = document.querySelector('#excelTable thead');
+    tableHeader?.addEventListener('click', (event) => {
+        const headerCell = event.target.closest('th');
+        if (headerCell && headerCell.dataset.sortable) {
+            handleSort(headerCell.dataset.sortable);
+        }
+    });
 }
 
 // ================================================================================
 // HANDLERS
 // ================================================================================
+
+// [NEW] ฟังก์ชันใหม่สำหรับจัดการการเรียงลำดับ
+function handleSort(column) {
+    if (state.sort.column === column) {
+        // ถ้าคลิกคอลัมน์เดิม ให้สลับทิศทาง
+        state.sort.direction = state.sort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        // ถ้าคลิกคอลัมน์ใหม่ ให้เริ่มเรียงจากมากไปน้อย (desc)
+        state.sort.column = column;
+        state.sort.direction = 'desc';
+    }
+    // สั่งให้วาดตารางใหม่
+    updateVisibleData();
+}
 
 function handleCustomDateChange() {
     let start = document.getElementById('startDateFilter').value;
@@ -326,7 +354,6 @@ function getAllowedNextStatuses(currentStatus) {
 function showUpdateStatusModal(customer) {
     const select = document.getElementById('modalStatusSelect');
     if (!select) return;
-    // [BUG FIXED] Always use .toLowerCase() for reliable role checking
     const userRole = (state.currentUser?.role || 'sales').toLowerCase();
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     let allowedStatuses;
@@ -366,7 +393,6 @@ async function handleSaveEditForm(event) {
     try {
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
         
-        // Normalize date fields in the returned object before updating state
         updatedCustomer.date = normalizeDateStringToYYYYMMDD(updatedCustomer.date);
         updatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(updatedCustomer.old_appointment);
         updatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(updatedCustomer.appointment_date);
@@ -409,7 +435,6 @@ async function handleAddCustomer() {
         const now = new Date();
         newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         
-        // Ensure new customer dates are also normalized
         newCustomer.date = normalizeDateStringToYYYYMMDD(newCustomer.date);
 
         state.customers.unshift(newCustomer);
@@ -463,7 +488,6 @@ async function handleSubmitStatusUpdate() {
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
         const updatedCustomer = await api.updateCustomer(customerId, updateData);
         
-        // Ensure date fields remain normalized after update
         updatedCustomer.date = normalizeDateStringToYYYYMMDD(updatedCustomer.date);
         updatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(updatedCustomer.old_appointment);
         updatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(updatedCustomer.appointment_date);
