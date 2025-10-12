@@ -30,7 +30,8 @@ const DROPDOWN_OPTIONS = {
 };
 
 const SALES_EDITABLE_FIELDS = [
-    'update_access', 'last_status', 'call_time', 'status_1', 'reason', 
+    // [MODIFIED] ลบ 'call_time' ออกจากฟิลด์ที่เซลล์แก้ไขได้
+    'update_access', 'last_status', 'status_1', 'reason', 
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
@@ -304,6 +305,7 @@ async function handleSaveEditForm(event) {
     const formData = new FormData(form);
     const updatedData = {};
     for (const [key, value] of formData.entries()) { updatedData[key] = value; }
+    const originalCustomer = state.customers.find(c => c.id == state.editingCustomerId);
     const isClosingAttempt = updatedData.last_status === '100%' || updatedData.status_1 === 'ปิดการขาย' || (updatedData.closed_amount && updatedData.closed_amount.trim() !== '');
     if (isClosingAttempt) {
         const isClosingComplete = updatedData.last_status === '100%' && updatedData.status_1 === 'ปิดการขาย' && (updatedData.closed_amount && updatedData.closed_amount.trim() !== '');
@@ -318,10 +320,20 @@ async function handleSaveEditForm(event) {
         updatedCustomer.date = normalizeDateStringToYYYYMMDD(updatedCustomer.date);
         updatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(updatedCustomer.old_appointment);
         updatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(updatedCustomer.appointment_date);
-        
-        // [MODIFIED] ลบการบันทึกประวัติการแก้ไขทุกฟิลด์ออกไป
-        // ประวัติจะถูกสร้างจากการสร้าง Lead และการอัปเดตสถานะเท่านั้น
-        
+        const userRole = (state.currentUser?.role || '').toLowerCase();
+        if (userRole === 'sales') {
+            const historyPromises = [];
+            for (const [key, value] of Object.entries(updatedData)) {
+                if (String(originalCustomer[key] || '') !== String(value)) {
+                    const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h].field === key) || key;
+                    const logNote = `แก้ไข '${header}' จาก '${originalCustomer[key] || ''}' เป็น '${value}'`;
+                    historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
+                }
+            }
+            if (historyPromises.length > 0) {
+                await Promise.all(historyPromises);
+            }
+        }
         const index = state.customers.findIndex(c => c.id == state.editingCustomerId);
         if (index !== -1) state.customers[index] = updatedCustomer;
         hideEditModal();
@@ -343,13 +355,14 @@ async function handleAddCustomer() {
     ui.showLoading(true);
     try {
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A');
-        
         if (newCustomer) { 
-            // [MODIFIED] เปลี่ยนข้อความการบันทึกประวัติให้ชัดเจนขึ้น
-            const creator = state.currentUser?.username || 'ระบบ';
-            await api.addStatusUpdate(newCustomer.id, 'สร้าง Lead', `Lead ถูกสร้างโดย: ${creator}`, state.currentUser.id); 
+            await api.addStatusUpdate(
+                newCustomer.id, 
+                'สร้างลูกค้าใหม่', 
+                'ระบบสร้าง Lead อัตโนมัติ',
+                state.currentUser.id
+            );
         }
-        
         const now = new Date();
         newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         newCustomer.date = normalizeDateStringToYYYYMMDD(newCustomer.date);
