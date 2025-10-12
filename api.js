@@ -119,7 +119,7 @@ api.deleteCustomer = async function(customerId) {
         const { error } = await window.supabaseClient.from('customers').delete().eq('id', customerId);
         if (error) throw error;
         return true;
-    } catch (error) { // <-- [BUG FIXED] เพิ่มปีกกา { } ให้ถูกต้อง
+    } catch (error) {
         console.error("API ERROR in deleteCustomer:", error);
         throw new Error('Could not delete customer.');
     }
@@ -156,5 +156,23 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
         throw new Error('Could not add status update.');
     }
 }
+
+// ================================================================================
+// REPORTING APIs
+// ================================================================================
+
+api.getSalesReport = async function() {
+    try {
+        const { data, error } = await window.supabaseClient.rpc('get_full_sales_report');
+        
+        if (error) throw error;
+        
+        return data;
+    } catch (error) {
+        console.error("API ERROR in getSalesReport:", error);
+        throw new Error('Could not fetch sales report data.');
+    }
+}
+
 
 window.api = api;
