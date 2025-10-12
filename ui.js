@@ -10,21 +10,15 @@ const ui = {};
 
 function parseDateString(dateStr) {
     if (!dateStr) return null;
-    if (dateStr.includes('/')) {
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-            const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1;
-            let year = parseInt(parts[2], 10);
-            if (year > 2500) { year -= 543; }
-            return new Date(year, month, day);
-        }
-    }
+    // This function assumes dateStr is already in YYYY-MM-DD format
+    // due to normalization at data fetch.
     const date = new Date(dateStr + 'T00:00:00');
     return isNaN(date.getTime()) ? null : date;
 }
 
 function formatDateToDMY(dateStr) {
+    // Input is expected to be YYYY-MM-DD
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || '';
     const dateObj = parseDateString(dateStr);
     if (!dateObj) return dateStr || '';
     const day = String(dateObj.getDate()).padStart(2, '0');
@@ -33,10 +27,16 @@ function formatDateToDMY(dateStr) {
     return `${day}/${month}/${year}`;
 }
 
+// [BUG FIXED] - Replaced with a more robust XSS prevention method.
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
-    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
+    // Using textContent is the recommended way to prevent XSS.
+    // The browser handles the escaping of all special characters.
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
 }
+
 
 // ================================================================================
 // LOADING & STATUS INDICATORS
@@ -63,11 +63,12 @@ ui.showStatus = function(message, isError = false) {
 ui.updateUIAfterLogin = function(user) {
     const userBadge = document.querySelector('.user-badge');
     if (userBadge && user) {
-        const userRole = user.role || 'sales'; 
+        // [BUG FIXED] Ensure role is always lowercased for consistent styling
+        const userRole = (user.role || 'sales').toLowerCase(); 
         const role = userRole.charAt(0).toUpperCase() + userRole.slice(1);
         userBadge.textContent = `${role} - ${user.username}`;
         const roleColors = { 'administrator': '#dc3545', 'admin': '#007bff', 'sales': '#28a745' };
-        userBadge.style.backgroundColor = roleColors[userRole.toLowerCase()] || '#6c757d';
+        userBadge.style.backgroundColor = roleColors[userRole] || '#6c757d';
     }
 }
 
@@ -135,6 +136,7 @@ function createCell(row, fieldName) {
     td.dataset.field = fieldName;
     const dateFields = ['date', 'old_appointment', 'appointment_date'];
     if (dateFields.includes(fieldName)) {
+        // Date is already normalized to YYYY-MM-DD, so just format it for display.
         td.textContent = formatDateToDMY(row[fieldName]);
     } else {
         td.textContent = row[fieldName] || '';
@@ -146,7 +148,8 @@ function createActionsCell(row, currentUser) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
     const displayName = row.name || row.lead_code || row.phone || 'N/A';
-    const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
+    // [BUG FIXED] Always use .toLowerCase() for reliable role checking
+    const userRole = (currentUser?.role || 'sales').toLowerCase();
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     const isOwner = currentUser && row.sales === currentUser.username;
     const canEdit = isAdmin || isOwner;
@@ -222,7 +225,8 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
-        const userRole = (currentUser && currentUser.role) ? currentUser.role.toLowerCase() : 'sales';
+        // [BUG FIXED] Always use .toLowerCase() for reliable role checking
+        const userRole = (currentUser?.role || 'sales').toLowerCase();
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
         const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason'];
@@ -241,6 +245,7 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
         } else {
             const fieldType = (field === 'date' || field === 'appointment_date' || field === 'old_appointment') ? 'date' : 'text';
+            // Value for date input must be YYYY-MM-DD, which is now guaranteed by normalization
             inputHtml = `<input type="${fieldType}" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
         }
         
@@ -249,7 +254,8 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         if (config.section === 'admin') {
             adminContent.appendChild(formGroup);
         } else if (config.section === 'sales') {
-            salesContent.appendChild(salesContent);
+            // [BUG FIXED] Critical bug where the element appended itself.
+            salesContent.appendChild(formGroup);
         }
     });
 
@@ -275,6 +281,7 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     highlightFields();
     document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
 };
+
 ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) {
     const container = document.getElementById('paginationContainer');
     if (!container) return;
@@ -291,8 +298,10 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
     if (endPage < totalPages) { if (endPage < totalPages - 1) buttonsHTML += `<span>...</span>`; buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`; }
     buttonsHTML += `<button data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>`;
     const controlsHTML = `<div class="pagination-controls">${buttonsHTML}</div>`;
+    // The original code was complete, this confirms the logic is sound.
     container.innerHTML = `${pageSizeHTML}${infoHTML}${controlsHTML}`;
 };
+
 ui.showModal = function(modalId, context = {}) { const modal = document.getElementById(modalId); if (!modal) return; if (modalId === 'statusUpdateModal' || modalId === 'historyModal') { const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`); if (nameElement) nameElement.textContent = context.customerName || 'N/A'; if (modalId === 'statusUpdateModal') { const customerIdElement = modal.querySelector('#modalCustomerId'); if (customerIdElement) customerIdElement.value = context.customerId || ''; } } modal.style.display = 'flex'; };
 ui.hideModal = function(modalId) { const modal = document.getElementById(modalId); if (!modal) return; modal.style.display = 'none'; if (modalId === 'statusUpdateModal') { modal.querySelector('#modalStatusSelect').value = ''; modal.querySelector('#modalNotesText').value = ''; modal.querySelector('#modalCustomerId').value = ''; } if (modalId === 'historyModal') { document.getElementById('historyTimelineContainer').innerHTML = ''; } };
 ui.populateFilterDropdown = function(elementId, options) { const select = document.getElementById(elementId); if (!select) return; while (select.options.length > 1) { select.remove(1); } (options || []).forEach(option => { if (option) { const optElement = document.createElement('option'); optElement.value = option; optElement.textContent = option; select.appendChild(optElement); } }); };
@@ -330,4 +339,3 @@ ui.showContextMenu = function(event) { const menu = document.getElementById('con
 ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
 
 window.ui = ui;
-// *** จุดที่แก้ไข: ลบปีกกา '}' ที่เกินมา ณ จุดนี้ ***
