@@ -65,14 +65,15 @@ ui.updateUIAfterLogin = function(user) {
     }
 }
 
-// [NEW] ฟังก์ชันสำหรับอัปเดตสัญลักษณ์การเรียงลำดับ
 ui.updateSortIndicator = function(column, direction) {
     document.querySelectorAll('th[data-sortable]').forEach(th => {
         const indicator = th.querySelector('.sort-indicator');
-        if (th.dataset.sortable === column) {
-            indicator.textContent = direction === 'asc' ? ' ▲' : ' ▼';
-        } else {
-            indicator.textContent = '';
+        if (indicator) {
+            if (th.dataset.sortable === column) {
+                indicator.textContent = direction === 'asc' ? ' ▲' : ' ▼';
+            } else {
+                indicator.textContent = '';
+            }
         }
     });
 };
@@ -84,7 +85,7 @@ ui.updateSortIndicator = function(column, direction) {
 
 const FIELD_MAPPING = {
     '#':                  { field: null, section: 'special' },
-    'วัน/เดือน/ปี':     { field: 'date', section: 'admin', sortable: true }, // [NEW] เพิ่ม property `sortable`
+    'วัน/เดือน/ปี':     { field: 'date', section: 'admin', sortable: true },
     'ลำดับที่':           { field: 'lead_code', section: 'admin' },
     'ชื่อลูกค้า':         { field: 'name', section: 'admin' },
     'เบอร์ติดต่อ':       { field: 'phone', section: 'admin' },
@@ -123,10 +124,9 @@ ui.renderTableHeaders = function() {
         if (config.isHeader === false) return;
 
         const th = document.createElement('th');
-        // [NEW] ทำให้ Header คลิกได้และเพิ่มสัญลักษณ์
         if (config.sortable) {
             th.dataset.sortable = config.field;
-            th.className = 'sortable-header';
+            th.classList.add('sortable-header');
             th.innerHTML = `${headerText}<span class="sort-indicator"></span>`;
         } else {
             th.textContent = headerText;
@@ -178,9 +178,22 @@ function createActionsCell(row, currentUser) {
 function createRowElement(row, index, page, pageSize) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
+
     if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
         tr.classList.add('row-deal-closed');
     }
+
+    if (row.date) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); 
+        const caseDate = new Date(row.date);
+        const timeDiff = today.getTime() - caseDate.getTime();
+        const daysOld = Math.floor(timeDiff / (1000 * 3600 * 24));
+        if (daysOld > 21 && !tr.classList.contains('row-deal-closed')) {
+            tr.classList.add('row-stale-case');
+        }
+    }
+
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
     rowNumberCell.textContent = (page - 1) * pageSize + index + 1;
@@ -314,6 +327,7 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
 ui.showModal = function(modalId, context = {}) { const modal = document.getElementById(modalId); if (!modal) return; if (modalId === 'statusUpdateModal' || modalId === 'historyModal') { const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`); if (nameElement) nameElement.textContent = context.customerName || 'N/A'; if (modalId === 'statusUpdateModal') { const customerIdElement = modal.querySelector('#modalCustomerId'); if (customerIdElement) customerIdElement.value = context.customerId || ''; } } modal.style.display = 'flex'; };
 ui.hideModal = function(modalId) { const modal = document.getElementById(modalId); if (!modal) return; modal.style.display = 'none'; if (modalId === 'statusUpdateModal') { modal.querySelector('#modalStatusSelect').value = ''; modal.querySelector('#modalNotesText').value = ''; modal.querySelector('#modalCustomerId').value = ''; } if (modalId === 'historyModal') { document.getElementById('historyTimelineContainer').innerHTML = ''; } };
 ui.populateFilterDropdown = function(elementId, options) { const select = document.getElementById(elementId); if (!select) return; while (select.options.length > 1) { select.remove(1); } (options || []).forEach(option => { if (option) { const optElement = document.createElement('option'); optElement.value = option; optElement.textContent = option; select.appendChild(optElement); } }); };
+
 ui.renderHistoryTimeline = function(historyData) {
     const container = document.getElementById('historyTimelineContainer');
     if (!container) return;
@@ -321,16 +335,27 @@ ui.renderHistoryTimeline = function(historyData) {
         container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>';
         return;
     }
+
     container.innerHTML = historyData.map(item => {
         let roleClass = 'history-default';
-        if (item.users && item.users.role) {
-            const role = item.users.role.toLowerCase();
-            if (role === 'admin' || role === 'administrator') {
+        
+        // --- [MODIFIED] แก้ไขการแสดงผลชื่อผู้ใช้ ---
+        let userDisplay = 'Unknown';
+        if (item.users) {
+            const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
+            const username = item.users.username || 'N/A';
+            userDisplay = `${role} - ${username}`;
+
+            // กำหนดสีตาม Role
+            const roleLower = (item.users.role || '').toLowerCase();
+            if (roleLower === 'admin' || roleLower === 'administrator') {
                 roleClass = 'history-admin';
-            } else if (role === 'sales') {
+            } else if (roleLower === 'sales') {
                 roleClass = 'history-sales';
             }
         }
+        // --- สิ้นสุดส่วนที่แก้ไข ---
+
         return `
             <div class="timeline-item ${roleClass}">
                 <div class="timeline-icon">✓</div>
@@ -338,12 +363,13 @@ ui.renderHistoryTimeline = function(historyData) {
                     <div class="timeline-status">${escapeHtml(item.status)}</div>
                     <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
                     <div class="timeline-footer">
-                        โดย: ${escapeHtml(item.users ? item.users.username : 'Unknown')} | ${new Date(item.created_at).toLocaleString('th-TH')}
+                        โดย: ${escapeHtml(userDisplay)} | ${new Date(item.created_at).toLocaleString('th-TH')}
                     </div>
                 </div>
             </div>`;
     }).join('');
 };
+
 ui.showContextMenu = function(event) { const menu = document.getElementById('contextMenu'); if (!menu) return; menu.style.display = 'block'; menu.style.left = `${event.pageX}px`; menu.style.top = `${event.pageY}px`; };
 ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
 
