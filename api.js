@@ -73,6 +73,8 @@ api.fetchSalesList = async function() {
 
 api.fetchAllCustomers = async function() {
     try {
+        // [MODIFIED] เปลี่ยนการเรียงลำดับเริ่มต้นเป็น created_at
+        // เพื่อให้สอดคล้องกับฟังก์ชัน Sort ใหม่ที่ Frontend
         const { data, error } = await window.supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         return data || [];
@@ -82,27 +84,6 @@ api.fetchAllCustomers = async function() {
     }
 }
 
-api.getCurrentMonthLeadCount = async function() {
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const firstDayOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0];
-
-    try {
-        const { count, error } = await window.supabaseClient
-            .from('customers')
-            .select('*', { count: 'exact', head: true })
-            .gte('date', firstDayOfMonth)
-            .lt('date', firstDayOfNextMonth);
-        
-        if (error) throw error;
-        return count || 0;
-    } catch (error) {
-        console.error("API ERROR in getCurrentMonthLeadCount:", error);
-        throw new Error('Could not get current month\'s lead count.');
-    }
-}
-
-// ฟังก์ชันนี้ถูกแก้ไข ไม่ต้องรับ leadCode อีกต่อไป
 api.addCustomer = async function(salesName) {
     try {
         const { data, error } = await window.supabaseClient
@@ -140,7 +121,7 @@ api.deleteCustomer = async function(customerId) {
         const { error } = await window.supabaseClient.from('customers').delete().eq('id', customerId);
         if (error) throw error;
         return true;
-    } catch (error) {
+    } catch (error)
         console.error("API ERROR in deleteCustomer:", error);
         throw new Error('Could not delete customer.');
     }
@@ -151,9 +132,11 @@ api.deleteCustomer = async function(customerId) {
 // ================================================================================
 api.fetchStatusHistory = async function(customerId) {
     try {
+        // [BUG FIXED] แก้ไข Error 'PGRST201' โดยระบุความสัมพันธ์ให้ชัดเจน
+        // เราบอกให้ Supabase join ตาราง users โดยใช้ foreign key `updated_by`
         const { data, error } = await window.supabaseClient
             .from('customer_status_history')
-            .select('*, users(username, role)') 
+            .select('*, users!updated_by(username, role)') // <--- จุดที่แก้ไข
             .eq('customer_id', customerId)
             .order('created_at', { ascending: false });
         
