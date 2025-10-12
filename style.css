@@ -139,7 +139,6 @@ body {
     height: 45px; vertical-align: middle; user-select: none; 
 }
 
-/* [NEW] เพิ่มสไตล์สำหรับ Header ที่สามารถเรียงลำดับได้ */
 .sortable-header {
     cursor: pointer;
     transition: background-color 0.2s ease;
@@ -204,8 +203,6 @@ body {
 
 .actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
 .excel-table td:not(.row-number):not(.actions-cell) { cursor: default; }
-.row-deal-closed td { background-color: #9ceb8d !important; font-weight: bold; }
-.row-deal-closed:hover td { background-color: #89d87a !important; }
 
 /* --- Pagination Styles --- */
 .pagination-container { background: #f8f9fa; padding: 8px 20px; border-top: 1px solid var(--border-color-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -335,3 +332,33 @@ body {
 .modal-section-content { display: grid; grid-template-columns: 1fr; gap: 15px; }
 @media (min-width: 640px) { .modal-section-content { grid-template-columns: 1fr 1fr; } }
 .hidden { display: none; }
+
+/* --- 14. Row Highlighting Styles --- */
+
+/* สีสำหรับเคสที่ปิดการขายแล้ว */
+.row-deal-closed td,
+.row-deal-closed:hover td {
+    background-color: #9ceb8d !important;
+    font-weight: bold;
+}
+
+.row-deal-closed:hover td {
+    background-color: #89d87a !important;
+}
+
+/* [NEW] สีสำหรับเคสค้าง 15 วัน (ระดับแจ้งเตือน) */
+.row-stale-case-15 td {
+    background-color: #FFCCCB !important; 
+}
+.row-stale-case-15:hover td {
+    background-color: #ffbaba !important; /* สีเข้มขึ้นเล็กน้อยเมื่อ hover */
+}
+
+/* [NEW] สีสำหรับเคสค้าง 21 วัน (ระดับวิกฤต) */
+.row-stale-case-21 td {
+    background-color: #f08080 !important;
+    color: #000000 !important; /* ทำให้ตัวหนังสือเป็นสีดำเพื่อให้อ่านง่ายขึ้น */
+}
+.row-stale-case-21:hover td {
+    background-color: #ea6767 !important; /* สีเข้มขึ้นเล็กน้อยเมื่อ hover */
+}
