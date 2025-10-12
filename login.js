@@ -109,10 +109,11 @@ async function handleLogin() {
 
     } catch (error) {
         console.error('Login error:', error);
-        if (error.message.includes('Invalid login credentials')) {
+        // [BUG FIXED] Use optional chaining (?.) to safely access error.message
+        if (error?.message?.includes('Invalid login credentials')) {
             showMessage('อีเมลหรือรหัสผ่านไม่ถูกต้อง', true);
         } else {
-            showMessage(error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่', true);
+            showMessage(error?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่', true);
         }
     } finally {
         setLoading(false);
@@ -154,10 +155,10 @@ async function handleSignUp(event) {
 
     } catch (error) {
         console.error('Sign up error:', error);
-        if (error.message.includes('User already registered')) {
+        if (error?.message?.includes('User already registered')) {
             showMessage('อีเมลนี้ถูกใช้งานแล้ว', true);
         } else {
-            showMessage(error.message || 'เกิดข้อผิดพลาดในการลงทะเบียน', true);
+            showMessage(error?.message || 'เกิดข้อผิดพลาดในการลงทะเบียน', true);
         }
     } finally {
         setLoading(false);
@@ -206,4 +207,3 @@ document.addEventListener('DOMContentLoaded', () => {
         emailInput.focus();
     }
 });
-// *** จุดที่แก้ไข: ลบปีกกา '}' ที่เกินมา ณ จุดนี้ ***
