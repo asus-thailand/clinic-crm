@@ -131,15 +131,29 @@ body {
 .table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
 
-/* Styles for sticky header */
 .excel-table thead th { 
     font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; 
     position: sticky; 
     top: 0; 
-    /* [BUG FIXED] z-index base สำหรับ header ทั่วไป */
     z-index: 100;
     height: 45px; vertical-align: middle; user-select: none; 
 }
+
+/* [NEW] เพิ่มสไตล์สำหรับ Header ที่สามารถเรียงลำดับได้ */
+.sortable-header {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.sortable-header:hover {
+    background-color: rgba(0,0,0,0.1) !important;
+}
+.sort-indicator {
+    display: inline-block;
+    width: 1em;
+    text-align: left;
+}
+
+
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
 .header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
 
@@ -148,16 +162,14 @@ body {
     background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px; 
 }
 
-/* Styles for the first 4 sticky columns */
 .excel-table th:nth-child(-n+4), .excel-table td:nth-child(-n+4) {
     position: sticky;
-    background-color: #f8f9fa; /* Background to prevent transparency */
+    background-color: #f8f9fa;
 }
 
-/* [BUG FIXED] แก้ไข z-index ที่ซ้อนทับกันสำหรับคอลัมน์ที่ปักหมุด */
 .excel-table th:nth-child(1), .excel-table td:nth-child(1) { 
     left: 0; 
-    z-index: 54; /* z-index สูงสุดสำหรับคอลัมน์ */
+    z-index: 54; 
     width: 40px; min-width: 40px; background: #e7e6e6 !important; 
 }
 .excel-table th:nth-child(2), .excel-table td:nth-child(2) { 
@@ -174,21 +186,18 @@ body {
     left: 240px; 
     z-index: 51; 
     width: 150px; min-width: 150px; 
-    border-right: 2px solid #ccc; /* Visual separator */
+    border-right: 2px solid #ccc;
 }
 
-/* [BUG FIXED] z-index สำหรับมุมซ้ายบน (header + sticky column) ให้สูงที่สุดเสมอ */
 .excel-table thead th:nth-child(-n+4) {
     z-index: 101;
 }
-/* ทำให้ header ที่ปักหมุดมี z-index สูงกว่าคอลัมน์ที่ปักหมุด */
 .excel-table thead th:nth-child(1) { z-index: 105; }
 .excel-table thead th:nth-child(2) { z-index: 104; }
 .excel-table thead th:nth-child(3) { z-index: 103; }
 .excel-table thead th:nth-child(4) { z-index: 102; }
 
 
-/* Ensure sticky header cells also get their correct background */
 .excel-table th.header-admin-section:nth-child(-n+4) {
     background-color: var(--header-bg-admin) !important;
 }
@@ -241,17 +250,17 @@ body {
 .timeline-item::before { 
     content: ''; 
     position: absolute; 
-    left: 21px; /* Center with icon */
+    left: 21px;
     top: -8px; 
     bottom: -8px; 
     width: 2px; 
     background-color: #e9ecef; 
 }
 .timeline-container > .timeline-item:first-child::before {
-    top: 12px; /* Adjust for first item */
+    top: 12px;
 }
 .timeline-container > .timeline-item:last-child::before {
-    bottom: 12px; /* Adjust for last item */
+    bottom: 12px;
 }
 .timeline-icon { 
     position: absolute; 
@@ -274,7 +283,6 @@ body {
     font-weight: 600; 
     font-size: 16px; 
     margin-bottom: 4px;
-    /* Resetting status to a neutral look */
     display: inline;
     padding: 0;
     border-radius: 0;
@@ -284,16 +292,15 @@ body {
 .timeline-notes { font-size: 14px; color: #333; margin-bottom: 6px; white-space: pre-wrap; }
 .timeline-footer { font-size: 12px; color: #888; }
 
-/* Role-based coloring for the ENTIRE history item */
 .timeline-item.history-default {
     background-color: var(--bg-color-white);
 }
 .timeline-item.history-admin {
-    background-color: #d1fae5; /* Pastel Green BG */
+    background-color: #d1fae5;
     border-color: #a7f3d0;
 }
 .timeline-item.history-sales {
-    background-color: #ffedd5; /* Pastel Orange BG */
+    background-color: #ffedd5;
     border-color: #fed7aa;
 }
 
@@ -323,8 +330,8 @@ body {
 .btn-cancel { padding: 10px 25px; font-size: 16px; font-weight: 600; background: #e2e8f0; color: #1e293b; border: none; border-radius: 8px; cursor: pointer; }
 .modal-section { border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
 .modal-section-title { font-size: 16px; font-weight: 600; color: #475569; margin: -5px 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
-.modal-section.admin-section { background-color: #f0f4f8; } /* Changed color for better distinction */
-.modal-section.sales-section { background-color: #fdf8f0; } /* Changed color for better distinction */
+.modal-section.admin-section { background-color: #f0f4f8; }
+.modal-section.sales-section { background-color: #fdf8f0; }
 .modal-section-content { display: grid; grid-template-columns: 1fr; gap: 15px; }
 @media (min-width: 640px) { .modal-section-content { grid-template-columns: 1fr 1fr; } }
 .hidden { display: none; }
