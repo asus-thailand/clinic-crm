@@ -96,10 +96,12 @@ const FIELD_MAPPING = {
     'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
+    // [MOVED] ย้าย 'เวลาโทร' มาอยู่ในส่วนของ Admin
+    'เวลาโทร':            { field: 'call_time', section: 'admin' }, 
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
-    'เวลาโทร':            { field: 'call_time', section: 'sales' },
+    // [MOVED] 'เวลาโทร' ถูกย้ายไปอยู่ข้างบนแล้ว
     'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
     'ETC':                { field: 'etc', section: 'sales' },
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
@@ -339,14 +341,12 @@ ui.renderHistoryTimeline = function(historyData) {
     container.innerHTML = historyData.map(item => {
         let roleClass = 'history-default';
         
-        // --- [MODIFIED] แก้ไขการแสดงผลชื่อผู้ใช้ ---
         let userDisplay = 'Unknown';
         if (item.users) {
             const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
             const username = item.users.username || 'N/A';
             userDisplay = `${role} - ${username}`;
 
-            // กำหนดสีตาม Role
             const roleLower = (item.users.role || '').toLowerCase();
             if (roleLower === 'admin' || roleLower === 'administrator') {
                 roleClass = 'history-admin';
@@ -354,7 +354,6 @@ ui.renderHistoryTimeline = function(historyData) {
                 roleClass = 'history-sales';
             }
         }
-        // --- สิ้นสุดส่วนที่แก้ไข ---
 
         return `
             <div class="timeline-item ${roleClass}">
