@@ -161,9 +161,13 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
 // REPORTING APIs
 // ================================================================================
 
-api.getSalesReport = async function() {
+api.getSalesReport = async function(userId) {
+    if (!userId) throw new Error('User ID is required to get a sales report.');
+    
     try {
-        const { data, error } = await window.supabaseClient.rpc('get_full_sales_report');
+        const { data, error } = await window.supabaseClient.rpc('get_full_sales_report', {
+            requesting_user_id: userId
+        });
         
         if (error) throw error;
         
