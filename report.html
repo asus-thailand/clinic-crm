@@ -26,7 +26,18 @@
     
     <style>
         .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .chart-container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        
+        /* [FINAL FIX] แก้ไขปัญหากราฟโหลดไม่สิ้นสุด */
+        .chart-container { 
+            background: #fff; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            margin-bottom: 30px;
+            position: relative; /* เพิ่ม position relative สำหรับการปรับขนาด */
+            height: 450px;      /* กำหนดความสูงตายตัวให้กรอบของกราฟ */
+        }
+        
         .report-section-title { font-size: 1.8em; color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef; }
         .report-toolbar { background: #fff; padding: 15px 20px; margin: 20px 0; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; }
         .date-filter-group label { font-weight: 600; margin-right: 10px; color: #555; }
