@@ -82,23 +82,24 @@ async function initializeReport() {
         // ดึงข้อมูลผู้ใช้ปัจจุบันก่อน
         const { data: { session }, error: sessionError } = await window.supabaseClient.auth.getSession();
         if (sessionError) throw sessionError;
-        if (!session) {
-            alert("กรุณาลงชื่อเข้าใช้เพื่อดูรายงาน");
+
+        // --- [MODIFIED] เพิ่มการตรวจสอบที่รัดกุมขึ้น ---
+        // ตรวจสอบให้แน่ใจว่า session, user, และ user.id มีอยู่จริงและไม่เป็นค่าว่าง
+        if (!session || !session.user || !session.user.id) {
+            alert("ไม่สามารถระบุตัวตนผู้ใช้ได้ กรุณาลงชื่อเข้าใช้อีกครั้ง");
             window.location.href = 'login.html';
-            return;
+            return; // หยุดการทำงานทันที
         }
 
         const userId = session.user.id;
         
-        // ส่ง userId ไปพร้อมกับคำขอรายงาน
+        // ส่ง userId ที่ถูกต้องไปพร้อมกับคำขอรายงาน
         const reportData = await window.api.getSalesReport(userId);
         
         if (reportData) {
-            // ตรวจสอบว่ามีข้อมูล kpis หรือไม่ก่อนแสดงผล
             if (reportData.kpis && reportData.kpis.length > 0) {
                 renderKPIs(reportData.kpis[0]);
             } else {
-                 // ถ้าไม่มีข้อมูล ให้แสดงเป็น 0
                 renderKPIs({ total_revenue: 0, total_deals: 0, avg_deal_size: 0, avg_sales_cycle: 0 });
             }
             renderRevenueByChannelChart(reportData.revenue_by_channel || []);
