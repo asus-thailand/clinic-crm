@@ -138,43 +138,51 @@ api.fetchStatusHistory = async function(customerId) {
 
 // --- Sales & Reports ---
 
+/**
+ * [CORRECTED VERSION 2]
+ * แก้ไขคำสั่ง filter ที่ใช้ดึงรายชื่อเซลล์ให้ถูกต้องตามไวยากรณ์ของ Supabase v2
+ */
 api.fetchSalesList = async function() {
-    const { data, error } = await window.supabaseClient
-        .from('users')
-        .select('username')
-        .filter('username', 'is', 'not.null');
-    
-    if (error) throw new Error('ไม่สามารถดึงรายชื่อเซลล์ได้: ' + error.message);
-    return data.map(u => u.username).sort();
+    try {
+        // คำสั่งที่ถูกต้องคือ .not('ชื่อคอลัมน์', 'is', null)
+        const { data, error } = await window.supabaseClient
+            .from('users')
+            .select('username')
+            .not('username', 'is', null); // <--- แก้ไขที่บรรทัดนี้
+        
+        if (error) {
+            // ส่งต่อ Error ที่ Supabase แจ้งมา เพื่อให้เห็นสาเหตุที่แท้จริง
+            throw error;
+        }
+
+        return data.map(u => u.username).sort();
+
+    } catch (error) {
+        // สร้าง Error ใหม่พร้อมข้อความที่เข้าใจง่าย
+        throw new Error('ไม่สามารถดึงรายชื่อเซลล์ได้: ' + error.message);
+    }
 };
 
 /**
- * [CORRECTED VERSION]
  * ดึงข้อมูลรายงานการขาย โดยส่ง User ID ที่ได้รับมา ไปให้ฟังก์ชันในฐานข้อมูลอย่างถูกต้อง
  */
 api.getSalesReport = async function(userId) {
-    // 1. ตรวจสอบก่อนว่าได้รับ userId มาจริงหรือไม่
     if (!userId) {
         throw new Error('User ID is required to get a sales report.');
     }
     
     try {
-        // 2. เรียกใช้ฟังก์ชัน rpc พร้อมส่ง userId ที่ได้รับมา ในรูปแบบที่ถูกต้อง
-        // Supabase ต้องการ Object ที่มี key ตรงกับชื่อพารามิเตอร์ในฟังก์ชัน SQL
         const { data, error } = await window.supabaseClient.rpc('get_full_sales_report', {
-            requesting_user_id: userId // <--- ส่ง userId ไปที่นี่
+            requesting_user_id: userId
         });
         
-        // 3. ถ้ามี error จาก Supabase ให้โยนออกไป
         if (error) {
             throw error;
         }
         
-        // 4. ถ้าสำเร็จ ให้ส่งข้อมูลกลับไป
         return data;
 
     } catch (error) {
-        // 5. หากเกิดข้อผิดพลาดใดๆ ในกระบวนการ ให้แสดงใน Console และโยน Error ออกไป
         console.error("API ERROR in getSalesReport:", error);
         throw new Error('Could not fetch sales report data.');
     }
