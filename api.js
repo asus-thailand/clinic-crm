@@ -1,8 +1,8 @@
 // ================================================================================
 // API Layer - Handles all communication with the Supabase backend.
+// (COMPLETE & DEBUGGED VERSION)
 // ================================================================================
 
-// สร้าง Object 'api' ว่างๆ ขึ้นมาก่อน
 const api = {};
 
 // --- Authentication & User Profile ---
@@ -22,7 +22,7 @@ api.getUserProfile = async function(userId) {
         .select('role, username, full_name')
         .eq('id', userId)
         .single();
-    if (error && error.code !== 'PGRST116') { // Ignore "no rows found" error
+    if (error && error.code !== 'PGRST116') {
         console.error('Error fetching user profile:', error);
     }
     return data;
@@ -121,13 +121,13 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
             notes: notes,
             created_by: userId
         });
-    if (error) console.error('Failed to add status history:', error); // Log error but don't block main flow
+    if (error) console.error('Failed to add status history:', error);
 };
 
 api.fetchStatusHistory = async function(customerId) {
     const { data, error } = await window.supabaseClient
         .from('customer_status_history')
-        .select('*, users(username)')
+        .select('*, users(username, role)') // ดึง role มาด้วยเพื่อการแสดงผลที่ดีขึ้น
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
     
@@ -138,44 +138,52 @@ api.fetchStatusHistory = async function(customerId) {
 
 // --- Sales & Reports ---
 
-/**
- * [CORRECTED VERSION 2]
- * แก้ไขคำสั่ง filter ที่ใช้ดึงรายชื่อเซลล์ให้ถูกต้องตามไวยากรณ์ของ Supabase v2
- */
 api.fetchSalesList = async function() {
     try {
-        // คำสั่งที่ถูกต้องคือ .not('ชื่อคอลัมน์', 'is', null)
         const { data, error } = await window.supabaseClient
             .from('users')
             .select('username')
-            .not('username', 'is', null); // <--- แก้ไขที่บรรทัดนี้
+            .not('username', 'is', null);
         
-        if (error) {
-            // ส่งต่อ Error ที่ Supabase แจ้งมา เพื่อให้เห็นสาเหตุที่แท้จริง
-            throw error;
-        }
-
+        if (error) throw error;
         return data.map(u => u.username).sort();
 
     } catch (error) {
-        // สร้าง Error ใหม่พร้อมข้อความที่เข้าใจง่าย
         throw new Error('ไม่สามารถดึงรายชื่อเซลล์ได้: ' + error.message);
     }
 };
 
 /**
- * ดึงข้อมูลรายงานการขาย โดยส่ง User ID ที่ได้รับมา ไปให้ฟังก์ชันในฐานข้อมูลอย่างถูกต้อง
+ * [CRITICAL FIX & ENHANCED DEBUGGING]
+ * แก้ไขและเพิ่มคำอธิบายสำหรับส่วนที่เกิด Error บ่อย
+ * ดึงข้อมูลรายงานการขายโดยการเรียกฟังก์ชัน (RPC) ในฐานข้อมูล Supabase
  */
 api.getSalesReport = async function(userId) {
     if (!userId) {
         throw new Error('User ID is required to get a sales report.');
     }
+
+    // ============================ 🎯 จุดตรวจสอบ 🎯 ============================
+    // Error ที่เกิดขึ้นในภาพหน้าจอ มาจาก 2 จุดนี้เป็นหลัก:
+    //
+    // 1. RPC_FUNCTION_NAME:
+    //    ชื่อฟังก์ชันในฐานข้อมูลของคุณ ต้องตรงกับ 'get_full_sales_report' ทุกตัวอักษร
+    //    ให้เข้าไปเช็คที่ Supabase Dashboard > Database > Functions
+    //
+    // 2. PARAMETER_NAME:
+    //    ชื่อพารามิเตอร์ (ตัวรับค่า) ที่ฟังก์ชันในฐานข้อมูลต้องการ ต้องตรงกับ 'requesting_user_id'
+    //
+    // หากชื่อใดชื่อหนึ่งไม่ตรงกัน ให้แก้ไขในโค้ดด้านล่างนี้ให้ถูกต้อง
+    // ======================================================================
+    const RPC_FUNCTION_NAME = 'get_full_sales_report';
+    const PARAMETER_NAME = 'requesting_user_id';
     
     try {
-        const { data, error } = await window.supabaseClient.rpc('get_full_sales_report', {
-            requesting_user_id: userId
+        const { data, error } = await window.supabaseClient.rpc(RPC_FUNCTION_NAME, {
+            [PARAMETER_NAME]: userId
         });
         
+        // หากเกิด Error, ให้โยน Error นั้นออกไปเพื่อให้ catch ด้านล่างทำงาน
         if (error) {
             throw error;
         }
@@ -184,10 +192,22 @@ api.getSalesReport = async function(userId) {
 
     } catch (error) {
         console.error("API ERROR in getSalesReport:", error);
-        throw new Error('Could not fetch sales report data.');
+
+        // [ENHANCED] เพิ่มการตรวจสอบ Error Code เพื่อให้คำแนะนำที่เฉพาะเจาะจงมากขึ้น
+        if (error.code === '42883') { // "function does not exist" error code
+            throw new Error(
+                `ไม่พบฟังก์ชันในฐานข้อมูล! \n\n` +
+                `กรุณาตรวจสอบว่า:\n` +
+                `1. ชื่อฟังก์ชัน RPC ใน Supabase คือ '${RPC_FUNCTION_NAME}' หรือไม่?\n` +
+                `2. พารามิเตอร์ของฟังก์ชันชื่อ '${PARAMETER_NAME}' หรือไม่?\n\n` +
+                `(Original Error: ${error.message})`
+            );
+        }
+        
+        // Error อื่นๆ ทั่วไป
+        throw new Error('Could not fetch sales report data: ' + error.message);
     }
 };
-
 
 // ทำให้ Object 'api' พร้อมใช้งานในไฟล์อื่น
 window.api = api;
