@@ -1,116 +1,179 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - REPORTING LOGIC
+// Sales Performance Report - Main Script (FIXED & ENHANCED)
 // ================================================================================
 
-// ฟังก์ชันสำหรับแปลงตัวเลขเป็นสกุลเงิน
-function formatCurrency(value) {
-    if (typeof value !== 'number') return 'N/A';
-    return '฿' + value.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+// -- GLOBAL STATE & HELPERS --
+
+// ฟังก์ชันสำหรับใส่ Commas ในตัวเลข (เช่น 1000 -> 1,000)
+function formatNumber(num) {
+    if (num === null || num === undefined) return '0';
+    return num.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,');
 }
 
-// ฟังก์ชันสำหรับแสดงผล KPI หลัก
-function renderKPIs(data) {
-    document.getElementById('totalRevenue').textContent = formatCurrency(data.total_revenue || 0);
-    document.getElementById('totalDeals').textContent = (data.total_deals || 0).toLocaleString();
-    document.getElementById('avgDealSize').textContent = formatCurrency(data.avg_deal_size || 0);
-    document.getElementById('avgSalesCycle').textContent = `${(data.avg_sales_cycle || 0).toFixed(1)} วัน`;
-}
-
-// ฟังก์ชันสำหรับวาดกราฟ "ยอดขายตามช่องทาง"
-function renderRevenueByChannelChart(data) {
-    const ctx = document.getElementById('revenueByChannelChart').getContext('2d');
-    const labels = data.map(item => item.channel || 'ไม่ระบุ');
-    const values = data.map(item => item.total_revenue);
-
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'ยอดขาย',
-                data: values,
-                backgroundColor: [
-                    'rgba(102, 126, 234, 0.7)',
-                    'rgba(118, 75, 162, 0.7)',
-                    'rgba(72, 187, 120, 0.7)',
-                    'rgba(245, 101, 101, 0.7)',
-                    'rgba(255, 193, 7, 0.7)',
-                    'rgba(23, 162, 184, 0.7)',
-                    'rgba(108, 117, 125, 0.7)'
-                ],
-                borderColor: '#fff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: true,
-                    text: 'ยอดขายรวมตามช่องทางที่ลูกค้าเข้ามา'
-                }
-            }
-        }
-    });
-}
-
-// ฟังก์ชันสำหรับสร้างตารางสรุปประสิทธิภาพเซลล์
-function renderSalesLeaderboard(data) {
-    const tbody = document.getElementById('salesLeaderboardBody');
-    if (!tbody) return;
-
-    // เรียงลำดับตามยอดขาย
-    data.sort((a, b) => b.total_revenue - a.total_revenue);
-
-    tbody.innerHTML = data.map(sales => `
-        <tr>
-            <td>${sales.sales_name || 'ไม่ระบุ'}</td>
-            <td>${formatCurrency(sales.total_revenue)}</td>
-            <td>${sales.closed_deals.toLocaleString()}</td>
-            <td>${sales.conversion_rate.toFixed(2)}%</td>
-        </tr>
-    `).join('');
-}
-
-
-// ฟังก์ชันหลักที่ทำงานเมื่อเปิดหน้า
-async function initializeReport() {
-    try {
-        // ดึงข้อมูลผู้ใช้ปัจจุบันก่อน
-        const { data: { session }, error: sessionError } = await window.supabaseClient.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        // --- [MODIFIED] เพิ่มการตรวจสอบที่รัดกุมขึ้น ---
-        // ตรวจสอบให้แน่ใจว่า session, user, และ user.id มีอยู่จริงและไม่เป็นค่าว่าง
-        if (!session || !session.user || !session.user.id) {
-            alert("ไม่สามารถระบุตัวตนผู้ใช้ได้ กรุณาลงชื่อเข้าใช้อีกครั้ง");
-            window.location.href = 'login.html';
-            return; // หยุดการทำงานทันที
-        }
-
-        const userId = session.user.id;
-        
-        // ส่ง userId ที่ถูกต้องไปพร้อมกับคำขอรายงาน
-        const reportData = await window.api.getSalesReport(userId);
-        
-        if (reportData) {
-            if (reportData.kpis && reportData.kpis.length > 0) {
-                renderKPIs(reportData.kpis[0]);
-            } else {
-                renderKPIs({ total_revenue: 0, total_deals: 0, avg_deal_size: 0, avg_sales_cycle: 0 });
-            }
-            renderRevenueByChannelChart(reportData.revenue_by_channel || []);
-            renderSalesLeaderboard(reportData.sales_performance || []);
-        }
-
-    } catch (error) {
-        console.error("Failed to load report data:", error);
-        alert("ไม่สามารถโหลดข้อมูลรายงานได้: " + error.message);
+// ฟังก์ชันสำหรับแสดง/ซ่อนหน้าต่าง Loading
+function showLoading(isLoading) {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.display = isLoading ? 'flex' : 'none';
     }
 }
 
-// เริ่มทำงานเมื่อโหลดหน้าเสร็จ
+
+// -- INITIALIZATION --
+
+/**
+ * ฟังก์ชันหลักในการเริ่มต้นโหลดและแสดงผลรายงาน
+ * [MODIFIED] แก้ไขให้ดึง User ID ปัจจุบันแล้วส่งไปพร้อมกับคำขอ
+ */
+async function initializeReport() {
+    console.log("Initializing sales report...");
+    showLoading(true);
+    const reportContainer = document.getElementById('reportContainer');
+
+    try {
+        // 1. ดึงข้อมูล user ที่ล็อกอินอยู่ปัจจุบันจาก Supabase
+        const { data: { user } } = await window.supabaseClient.auth.getUser();
+
+        // 2. ตรวจสอบว่ามี user หรือไม่ ถ้าไม่มีให้หยุดทำงานและแสดงข้อความ
+        if (!user) {
+            throw new Error("ไม่พบข้อมูลผู้ใช้, กรุณาล็อกอินใหม่");
+        }
+
+        console.log("Fetching report data for user:", user.id);
+        
+        // 3. เรียกใช้ api.getSalesReport พร้อมส่ง user.id เข้าไปด้วย
+        const reportData = await api.getSalesReport(user.id);
+        
+        console.log("Report data received:", reportData);
+
+        // 4. นำข้อมูลที่ได้ไปสร้างเป็นกราฟและตาราง
+        renderReport(reportData);
+
+    } catch (error) {
+        console.error("Failed to load report data:", error);
+        // แสดงข้อความ Error ให้ผู้ใช้เห็นในหน้าเว็บ
+        if(reportContainer) {
+            reportContainer.innerHTML = `<div class="error-message">
+                <h3>ไม่สามารถโหลดข้อมูลรายงานได้</h3>
+                <p>${error.message}</p>
+            </div>`;
+        }
+    } finally {
+        showLoading(false);
+    }
+}
+
+
+// -- RENDERING FUNCTIONS --
+
+/**
+ * ฟังก์ชันหลักในการนำข้อมูลมาสร้าง UI ทั้งหมด
+ * @param {object} reportData - ข้อมูลที่ได้มาจาก API
+ */
+function renderReport(reportData) {
+    if (!reportData) {
+        console.error("No data available to render report.");
+        return;
+    }
+
+    // Render ส่วนต่างๆ ของรายงาน
+    renderKPIs(reportData.kpis);
+    renderRevenueByChannel(reportData.revenue_by_channel);
+    renderSalesLeaderboard(reportData.sales_performance);
+}
+
+/**
+ * สร้างการ์ดแสดงผล KPI หลัก
+ * @param {Array} kpis - ข้อมูล KPI
+ */
+function renderKPIs(kpis) {
+    const data = kpis ? kpis[0] : {}; // ใช้ข้อมูล object แรกใน array
+
+    const totalRevenue = data.total_revenue ? parseFloat(data.total_revenue) : 0;
+    const totalDeals = data.total_deals ? parseInt(data.total_deals) : 0;
+    const avgDealSize = data.avg_deal_size ? parseFloat(data.avg_deal_size) : 0;
+    const avgSalesCycle = data.avg_sales_cycle ? parseFloat(data.avg_sales_cycle).toFixed(1) : 'N/A';
+
+    document.getElementById('totalRevenue').textContent = formatNumber(totalRevenue.toFixed(0));
+    document.getElementById('totalDeals').textContent = formatNumber(totalDeals);
+    document.getElementById('avgDealSize').textContent = formatNumber(avgDealSize.toFixed(0));
+    document.getElementById('avgSalesCycle').textContent = avgSalesCycle;
+}
+
+/**
+ * สร้างกราฟ (หรือตาราง) แสดงยอดขายตามช่องทาง
+ * @param {Array} channelData - ข้อมูลยอดขายตามช่องทาง
+ */
+function renderRevenueByChannel(channelData) {
+    const container = document.getElementById('revenueByChannelChart');
+    if (!container) return;
+
+    if (!channelData || channelData.length === 0) {
+        container.innerHTML = "<p>ไม่มีข้อมูลยอดขายตามช่องทาง</p>";
+        return;
+    }
+
+    // สร้างเป็นตารางแทนกราฟเพื่อความเรียบง่าย
+    let tableHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ช่องทาง (Channel)</th>
+                    <th>ยอดขายรวม (Total Revenue)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    channelData.forEach(item => {
+        tableHTML += `
+            <tr>
+                <td>${item.channel || 'ไม่ระบุ'}</td>
+                <td>${formatNumber(parseFloat(item.total_revenue).toFixed(0))}</td>
+            </tr>
+        `;
+    });
+
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+    container.innerHTML = tableHTML;
+}
+
+/**
+ * สร้างตารางสรุปประสิทธิภาพของเซลล์ (Leaderboard)
+ * @param {Array} salesData - ข้อมูลประสิทธิภาพของเซลล์
+ */
+function renderSalesLeaderboard(salesData) {
+    const tbody = document.getElementById('leaderboardBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = ''; // ล้างข้อมูลเก่า
+
+    if (!salesData || salesData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">ไม่มีข้อมูลประสิทธิภาพของเซลล์</td></tr>';
+        return;
+    }
+    
+    // เรียงข้อมูลตามยอดขายจากมากไปน้อย
+    salesData.sort((a, b) => parseFloat(b.total_revenue) - parseFloat(a.total_revenue));
+
+    salesData.forEach(sales => {
+        const conversionRate = sales.conversion_rate ? parseFloat(sales.conversion_rate).toFixed(2) : '0.00';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${sales.sales_name || 'ไม่ระบุ'}</td>
+            <td>${formatNumber(parseFloat(sales.total_revenue).toFixed(0))}</td>
+            <td>${formatNumber(sales.closed_deals)}</td>
+            <td>${conversionRate}%</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+
+// -- EVENT LISTENERS --
+
+// เมื่อหน้าเว็บโหลดเสร็จ ให้เริ่มทำงานทันที
 document.addEventListener('DOMContentLoaded', initializeReport);
