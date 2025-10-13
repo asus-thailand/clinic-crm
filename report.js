@@ -23,7 +23,7 @@ function renderRevenueByChannelChart(data) {
     const values = data.map(item => item.total_revenue);
 
     new Chart(ctx, {
-        type: 'bar', // หรือ 'pie', 'doughnut'
+        type: 'bar',
         data: {
             labels: labels,
             datasets: [{
@@ -35,6 +35,8 @@ function renderRevenueByChannelChart(data) {
                     'rgba(72, 187, 120, 0.7)',
                     'rgba(245, 101, 101, 0.7)',
                     'rgba(255, 193, 7, 0.7)',
+                    'rgba(23, 162, 184, 0.7)',
+                    'rgba(108, 117, 125, 0.7)'
                 ],
                 borderColor: '#fff',
                 borderWidth: 2
@@ -77,13 +79,30 @@ function renderSalesLeaderboard(data) {
 // ฟังก์ชันหลักที่ทำงานเมื่อเปิดหน้า
 async function initializeReport() {
     try {
-        // ดึงข้อมูลสรุปทั้งหมดจาก API
-        const reportData = await window.api.getSalesReport();
+        // ดึงข้อมูลผู้ใช้ปัจจุบันก่อน
+        const { data: { session }, error: sessionError } = await window.supabaseClient.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session) {
+            alert("กรุณาลงชื่อเข้าใช้เพื่อดูรายงาน");
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const userId = session.user.id;
+        
+        // ส่ง userId ไปพร้อมกับคำขอรายงาน
+        const reportData = await window.api.getSalesReport(userId);
         
         if (reportData) {
-            renderKPIs(reportData.kpis[0]);
-            renderRevenueByChannelChart(reportData.revenue_by_channel);
-            renderSalesLeaderboard(reportData.sales_performance);
+            // ตรวจสอบว่ามีข้อมูล kpis หรือไม่ก่อนแสดงผล
+            if (reportData.kpis && reportData.kpis.length > 0) {
+                renderKPIs(reportData.kpis[0]);
+            } else {
+                 // ถ้าไม่มีข้อมูล ให้แสดงเป็น 0
+                renderKPIs({ total_revenue: 0, total_deals: 0, avg_deal_size: 0, avg_sales_cycle: 0 });
+            }
+            renderRevenueByChannelChart(reportData.revenue_by_channel || []);
+            renderSalesLeaderboard(reportData.sales_performance || []);
         }
 
     } catch (error) {
