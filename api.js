@@ -162,18 +162,28 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
 // ================================================================================
 
 api.getSalesReport = async function(userId) {
-    if (!userId) throw new Error('User ID is required to get a sales report.');
-    
+    // 1. ตรวจสอบก่อนว่าได้รับ userId มาจริงหรือไม่
+    if (!userId) {
+        throw new Error('User ID is required to get a sales report.');
+    }
+
     try {
+        // 2. เรียกใช้ฟังก์ชัน rpc พร้อมส่ง userId ที่ได้รับมา ในรูปแบบที่ถูกต้อง
         const { data, error } = await window.supabaseClient.rpc('get_full_sales_report', {
-            requesting_user_id: userId
+            requesting_user_id: userId // <--- ส่ง userId ไปที่นี่
         });
-        
-        if (error) throw error;
-        
+
+        // 3. ถ้ามี error ให้โยนออกไป
+        if (error) {
+            throw error;
+        }
+
+        // 4. ถ้าสำเร็จ ให้ส่งข้อมูลกลับไป
         return data;
+
     } catch (error) {
         console.error("API ERROR in getSalesReport:", error);
+        // โยน error ออกไปอีกครั้งเพื่อให้ report.js รู้ว่าเกิดปัญหา
         throw new Error('Could not fetch sales report data.');
     }
 }
