@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Performance Report</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* สไตล์เพิ่มเติมสำหรับหน้ารายงานโดยเฉพาะ */
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .chart-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+        .report-section-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">FBC</div>
+                <div class="logo-text">
+                    <h1>Sales Performance Report</h1>
+                    <p>ภาพรวมประสิทธิภาพทีมขาย</p>
+                </div>
+            </div>
+            <div class="user-info">
+                <a href="index.html" class="btn">กลับหน้าหลัก</a>
+            </div>
+        </div>
+    </header>
+
+    <main style="padding: 20px;">
+        <section>
+            <h2 class="report-section-title">ภาพรวมประสิทธิภาพ (Overall Performance)</h2>
+            <div class="report-grid">
+                <div class="stat-card">
+                    <div class="stat-title">ยอดขายรวม</div>
+                    <div class="stat-value" id="totalRevenue">Loading...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">จำนวนดีลที่ปิดได้</div>
+                    <div class="stat-value" id="totalDeals">Loading...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">ขนาดดีลเฉลี่ย</div>
+                    <div class="stat-value" id="avgDealSize">Loading...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">ระยะเวลาปิดดีล (เฉลี่ย)</div>
+                    <div class="stat-value" id="avgSalesCycle">Loading...</div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="report-section-title">การวิเคราะห์ (Analysis)</h2>
+            <div class="chart-container">
+                <h3>ยอดขายตามช่องทาง (Revenue by Channel)</h3>
+                <canvas id="revenueByChannelChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>สรุปประสิทธิภาพเซลล์ (Sales Leaderboard)</h3>
+                <div class="table-wrapper">
+                    <table class="excel-table" style="min-width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>ชื่อเซลล์</th>
+                                <th>ยอดขายรวม</th>
+                                <th>จำนวนดีล</th>
+                                <th>Conversion Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesLeaderboardBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
+    <script src="./api.js"></script>
+    <script src="./report.js"></script> </body>
+</html>
