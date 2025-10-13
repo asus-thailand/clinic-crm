@@ -1,6 +1,5 @@
 // ================================================================================
-// API Layer - Handles all communication with the Supabase backend.
-// (COMPLETE & DEBUGGED VERSION)
+// API Layer - (VERSION 100% with Date Logic)
 // ================================================================================
 
 const api = {};
@@ -127,7 +126,7 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
 api.fetchStatusHistory = async function(customerId) {
     const { data, error } = await window.supabaseClient
         .from('customer_status_history')
-        .select('*, users(username, role)') // ดึง role มาด้วยเพื่อการแสดงผลที่ดีขึ้น
+        .select('*, users(username, role)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
     
@@ -154,57 +153,41 @@ api.fetchSalesList = async function() {
 };
 
 /**
- * [CRITICAL FIX & ENHANCED DEBUGGING]
- * แก้ไขและเพิ่มคำอธิบายสำหรับส่วนที่เกิด Error บ่อย
- * ดึงข้อมูลรายงานการขายโดยการเรียกฟังก์ชัน (RPC) ในฐานข้อมูล Supabase
+ * [MODIFIED] ดึงข้อมูลรายงานการขาย โดยเพิ่มความสามารถในการส่ง start_date และ end_date
  */
-api.getSalesReport = async function(userId) {
+api.getSalesReport = async function(userId, startDate = null, endDate = null) {
     if (!userId) {
         throw new Error('User ID is required to get a sales report.');
     }
 
-    // ============================ 🎯 จุดตรวจสอบ 🎯 ============================
-    // Error ที่เกิดขึ้นในภาพหน้าจอ มาจาก 2 จุดนี้เป็นหลัก:
-    //
-    // 1. RPC_FUNCTION_NAME:
-    //    ชื่อฟังก์ชันในฐานข้อมูลของคุณ ต้องตรงกับ 'get_full_sales_report' ทุกตัวอักษร
-    //    ให้เข้าไปเช็คที่ Supabase Dashboard > Database > Functions
-    //
-    // 2. PARAMETER_NAME:
-    //    ชื่อพารามิเตอร์ (ตัวรับค่า) ที่ฟังก์ชันในฐานข้อมูลต้องการ ต้องตรงกับ 'requesting_user_id'
-    //
-    // หากชื่อใดชื่อหนึ่งไม่ตรงกัน ให้แก้ไขในโค้ดด้านล่างนี้ให้ถูกต้อง
-    // ======================================================================
     const RPC_FUNCTION_NAME = 'get_full_sales_report';
-    const PARAMETER_NAME = 'requesting_user_id';
+
+    // สร้าง object พารามิเตอร์ที่จะส่งไป
+    const params = {
+        requesting_user_id: userId
+    };
+    
+    // เพิ่มวันที่เข้าไป ถ้ามีค่าเท่านั้น
+    if (startDate) {
+        params.start_date = startDate;
+    }
+    if (endDate) {
+        params.end_date = endDate;
+    }
     
     try {
-        const { data, error } = await window.supabaseClient.rpc(RPC_FUNCTION_NAME, {
-            [PARAMETER_NAME]: userId
-        });
+        // ส่งพารามิเตอร์ทั้งหมดไปพร้อมกัน
+        const { data, error } = await window.supabaseClient.rpc(RPC_FUNCTION_NAME, params);
         
-        // หากเกิด Error, ให้โยน Error นั้นออกไปเพื่อให้ catch ด้านล่างทำงาน
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
         
         return data;
 
     } catch (error) {
         console.error("API ERROR in getSalesReport:", error);
-
-        // [ENHANCED] เพิ่มการตรวจสอบ Error Code เพื่อให้คำแนะนำที่เฉพาะเจาะจงมากขึ้น
-        if (error.code === '42883') { // "function does not exist" error code
-            throw new Error(
-                `ไม่พบฟังก์ชันในฐานข้อมูล! \n\n` +
-                `กรุณาตรวจสอบว่า:\n` +
-                `1. ชื่อฟังก์ชัน RPC ใน Supabase คือ '${RPC_FUNCTION_NAME}' หรือไม่?\n` +
-                `2. พารามิเตอร์ของฟังก์ชันชื่อ '${PARAMETER_NAME}' หรือไม่?\n\n` +
-                `(Original Error: ${error.message})`
-            );
+        if (error.code === '42883') {
+            throw new Error(`ไม่พบฟังก์ชันในฐานข้อมูล! กรุณาตรวจสอบว่าชื่อฟังก์ชัน RPC คือ '${RPC_FUNCTION_NAME}' หรือไม่?`);
         }
-        
-        // Error อื่นๆ ทั่วไป
         throw new Error('Could not fetch sales report data: ' + error.message);
     }
 };
