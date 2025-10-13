@@ -1,5 +1,5 @@
 // ================================================================================
-// API Layer - (VERSION 100% with Date Logic)
+// API Layer - (FINAL VERSION 100%)
 // ================================================================================
 
 const api = {};
@@ -137,12 +137,13 @@ api.fetchStatusHistory = async function(customerId) {
 
 // --- Sales & Reports ---
 
+// [FINAL] ดึงเฉพาะรายชื่อผู้ใช้ที่มี role เป็น 'sales'
 api.fetchSalesList = async function() {
     try {
         const { data, error } = await window.supabaseClient
             .from('users')
             .select('username')
-            .not('username', 'is', null);
+            .eq('role', 'sales'); // Filter for 'sales' role only
         
         if (error) throw error;
         return data.map(u => u.username).sort();
@@ -152,9 +153,7 @@ api.fetchSalesList = async function() {
     }
 };
 
-/**
- * [MODIFIED] ดึงข้อมูลรายงานการขาย โดยเพิ่มความสามารถในการส่ง start_date และ end_date
- */
+// [FINAL] ดึงข้อมูลรายงานการขาย พร้อมส่ง start_date และ end_date
 api.getSalesReport = async function(userId, startDate = null, endDate = null) {
     if (!userId) {
         throw new Error('User ID is required to get a sales report.');
@@ -162,32 +161,19 @@ api.getSalesReport = async function(userId, startDate = null, endDate = null) {
 
     const RPC_FUNCTION_NAME = 'get_full_sales_report';
 
-    // สร้าง object พารามิเตอร์ที่จะส่งไป
     const params = {
         requesting_user_id: userId
     };
     
-    // เพิ่มวันที่เข้าไป ถ้ามีค่าเท่านั้น
-    if (startDate) {
-        params.start_date = startDate;
-    }
-    if (endDate) {
-        params.end_date = endDate;
-    }
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
     
     try {
-        // ส่งพารามิเตอร์ทั้งหมดไปพร้อมกัน
         const { data, error } = await window.supabaseClient.rpc(RPC_FUNCTION_NAME, params);
-        
         if (error) throw error;
-        
         return data;
-
     } catch (error) {
         console.error("API ERROR in getSalesReport:", error);
-        if (error.code === '42883') {
-            throw new Error(`ไม่พบฟังก์ชันในฐานข้อมูล! กรุณาตรวจสอบว่าชื่อฟังก์ชัน RPC คือ '${RPC_FUNCTION_NAME}' หรือไม่?`);
-        }
         throw new Error('Could not fetch sales report data: ' + error.message);
     }
 };
