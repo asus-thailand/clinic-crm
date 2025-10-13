@@ -11,21 +11,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./config.js"></script>
     <script>
-        // สคริปต์นี้จะทำงานทันทีเพื่อตรวจสอบการล็อกอิน
         (async () => {
-            // รอให้ supabaseClient พร้อมใช้งาน
             await new Promise(resolve => setTimeout(resolve, 50));
-
             if (window.supabaseClient) {
                 const { data: { session } } = await window.supabaseClient.auth.getSession();
                 if (!session) {
-                    // ถ้ายังไม่ได้ล็อกอิน ให้เด้งไปหน้า login ทันที
                     window.location.replace('./login.html');
                 }
             } else {
                 console.error("Supabase client not initialized for auth check.");
-                // อาจจะแสดงข้อความ Error หรือ redirect ไปเลยก็ได้
-                // window.location.replace('./login.html');
             }
         })();
     </script>
@@ -45,16 +39,8 @@
 <body>
     <header class="header">
         <div class="header-content">
-            <div class="logo">
-                <div class="logo-icon">FBC</div>
-                <div class="logo-text">
-                    <h1>Sales Performance Report</h1>
-                    <p>ภาพรวมประสิทธิภาพทีมขาย</p>
-                </div>
-            </div>
-            <div class="user-info">
-                <a href="./index.html" class="btn">กลับหน้าหลัก</a>
-            </div>
+            <div class="logo"><div class="logo-icon">FBC</div><div class="logo-text"><h1>Sales Performance Report</h1><p>ภาพรวมประสิทธิภาพทีมขาย</p></div></div>
+            <div class="user-info"><a href="./index.html" class="btn">กลับหน้าหลัก</a></div>
         </div>
     </header>
 
@@ -68,9 +54,7 @@
             </div>
             <div class="date-filter-group">
                 <label>เลือกเอง:</label>
-                <input type="date" id="startDate" class="date-input">
-                <span>ถึง</span>
-                <input type="date" id="endDate" class="date-input">
+                <input type="date" id="startDate" class="date-input"><span>ถึง</span><input type="date" id="endDate" class="date-input">
                 <button id="applyFilterBtn" class="btn-apply-filter">แสดงผล</button>
             </div>
         </section>
@@ -87,18 +71,10 @@
             </section>
             <section>
                 <h2 class="report-section-title">การวิเคราะห์ (Analysis)</h2>
-                <div class="chart-container">
-                    <h3>ยอดขายตามช่องทาง (Revenue by Channel)</h3>
-                    <canvas id="revenueByChannelChart"></canvas>
-                </div>
+                <div class="chart-container"><h3>ยอดขายตามช่องทาง (Revenue by Channel)</h3><canvas id="revenueByChannelChart"></canvas></div>
                 <div class="chart-container">
                     <h3>สรุปประสิทธิภาพเซลล์ (Sales Leaderboard)</h3>
-                    <div class="table-wrapper">
-                        <table class="excel-table" style="min-width: 100%;">
-                            <thead><tr><th>ชื่อเซลล์</th><th>ยอดขายรวม</th><th>จำนวนดีล</th><th>Conversion Rate</th></tr></thead>
-                            <tbody id="salesLeaderboardBody"></tbody>
-                        </table>
-                    </div>
+                    <div class="table-wrapper"><table class="excel-table" style="min-width: 100%;"><thead><tr><th>ชื่อเซลล์</th><th>ยอดขายรวม</th><th>จำนวนดีล</th><th>Conversion Rate</th></tr></thead><tbody id="salesLeaderboardBody"></tbody></table></div>
                 </div>
             </section>
         </div>
