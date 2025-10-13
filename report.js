@@ -1,20 +1,57 @@
 // ================================================================================
-// Sales Performance Report - Main Script (FIXED & ENHANCED)
+// Sales Performance Report - Main Script (VERSION 100% FIXED)
 // ================================================================================
 
-// -- GLOBAL STATE & HELPERS --
+// -- GLOBAL HELPERS --
 
-// ฟังก์ชันสำหรับใส่ Commas ในตัวเลข (เช่น 1000 -> 1,000)
+/**
+ * ฟังก์ชันสำหรับใส่ Commas ในตัวเลข (เช่น 1000 -> 1,000)
+ * @param {number | string} num - ตัวเลขที่ต้องการจัดรูปแบบ
+ * @returns {string} ตัวเลขที่จัดรูปแบบแล้ว
+ */
 function formatNumber(num) {
     if (num === null || num === undefined) return '0';
-    return num.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,');
+    // [FIX] ทำให้รองรับทั้ง number และ string ที่เป็นตัวเลข
+    const numValue = typeof num === 'string' ? parseFloat(num) : num;
+    if (isNaN(numValue)) return '0';
+    return numValue.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,');
 }
 
-// ฟังก์ชันสำหรับแสดง/ซ่อนหน้าต่าง Loading
+/**
+ * ฟังก์ชันสำหรับแสดง/ซ่อนหน้าต่าง Loading
+ * @param {boolean} isLoading - true เพื่อแสดง, false เพื่อซ่อน
+ */
 function showLoading(isLoading) {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) {
-        loadingOverlay.style.display = isLoading ? 'flex' : 'none';
+    let loadingOverlay = document.getElementById('loadingOverlay');
+    // [FIX] สร้าง Loading Overlay ขึ้นมาเองหากไม่มีใน HTML เพื่อป้องกัน Error
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'loadingOverlay';
+        loadingOverlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; color: #333; font-size: 1.2em;
+        `;
+        loadingOverlay.innerHTML = '<div><p>กำลังโหลดข้อมูล...</p></div>';
+        document.body.appendChild(loadingOverlay);
+    }
+    loadingOverlay.style.display = isLoading ? 'flex' : 'none';
+}
+
+/**
+ * แสดงข้อความ Error ที่สวยงามและเข้าใจง่ายบนหน้าจอ
+ * @param {Error} error - Object ของ Error
+ */
+function displayError(error) {
+    const mainContainer = document.querySelector('main');
+    if (mainContainer) {
+        mainContainer.innerHTML = `
+            <div style="text-align: center; padding: 40px; background: #fff; margin: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <h2 style="color: #dc3545; margin-bottom: 15px;">เกิดข้อผิดพลาด</h2>
+                <p style="color: #333; margin-bottom: 10px;">ไม่สามารถโหลดข้อมูลรายงานได้</p>
+                <code style="background: #f1f1f1; padding: 10px; border-radius: 6px; display: block; white-space: pre-wrap; text-align: left;">${error.message}</code>
+            </div>`;
     }
 }
 
@@ -23,41 +60,35 @@ function showLoading(isLoading) {
 
 /**
  * ฟังก์ชันหลักในการเริ่มต้นโหลดและแสดงผลรายงาน
- * [MODIFIED] แก้ไขให้ดึง User ID ปัจจุบันแล้วส่งไปพร้อมกับคำขอ
  */
 async function initializeReport() {
     console.log("Initializing sales report...");
     showLoading(true);
-    const reportContainer = document.getElementById('reportContainer');
 
     try {
         // 1. ดึงข้อมูล user ที่ล็อกอินอยู่ปัจจุบันจาก Supabase
         const { data: { user } } = await window.supabaseClient.auth.getUser();
 
-        // 2. ตรวจสอบว่ามี user หรือไม่ ถ้าไม่มีให้หยุดทำงานและแสดงข้อความ
         if (!user) {
-            throw new Error("ไม่พบข้อมูลผู้ใช้, กรุณาล็อกอินใหม่");
+            throw new Error("ไม่พบข้อมูลผู้ใช้, กรุณาล็อกอินใหม่อีกครั้ง");
         }
-
         console.log("Fetching report data for user:", user.id);
         
-        // 3. เรียกใช้ api.getSalesReport พร้อมส่ง user.id เข้าไปด้วย
+        // 2. เรียกใช้ api.getSalesReport พร้อมส่ง user.id
         const reportData = await api.getSalesReport(user.id);
-        
         console.log("Report data received:", reportData);
 
-        // 4. นำข้อมูลที่ได้ไปสร้างเป็นกราฟและตาราง
+        // 3. ตรวจสอบข้อมูลที่ได้รับ
+        if (!reportData) {
+            throw new Error("API ส่งข้อมูลกลับมาเป็นค่าว่าง (null). อาจเป็นเพราะยังไม่มีข้อมูลการขายในระบบ");
+        }
+
+        // 4. นำข้อมูลที่ได้ไปสร้าง UI
         renderReport(reportData);
 
     } catch (error) {
         console.error("Failed to load report data:", error);
-        // แสดงข้อความ Error ให้ผู้ใช้เห็นในหน้าเว็บ
-        if(reportContainer) {
-            reportContainer.innerHTML = `<div class="error-message">
-                <h3>ไม่สามารถโหลดข้อมูลรายงานได้</h3>
-                <p>${error.message}</p>
-            </div>`;
-        }
+        displayError(error);
     } finally {
         showLoading(false);
     }
@@ -71,15 +102,10 @@ async function initializeReport() {
  * @param {object} reportData - ข้อมูลที่ได้มาจาก API
  */
 function renderReport(reportData) {
-    if (!reportData) {
-        console.error("No data available to render report.");
-        return;
-    }
-
-    // Render ส่วนต่างๆ ของรายงาน
-    renderKPIs(reportData.kpis);
-    renderRevenueByChannel(reportData.revenue_by_channel);
-    renderSalesLeaderboard(reportData.sales_performance);
+    // Render ส่วนต่างๆ ของรายงาน (ใช้ || [] เพื่อป้องกัน error หาก property ไม่มีอยู่)
+    renderKPIs(reportData.kpis || []);
+    renderRevenueByChannel(reportData.revenue_by_channel || []);
+    renderSalesLeaderboard(reportData.sales_performance || []);
 }
 
 /**
@@ -87,7 +113,13 @@ function renderReport(reportData) {
  * @param {Array} kpis - ข้อมูล KPI
  */
 function renderKPIs(kpis) {
-    const data = kpis ? kpis[0] : {}; // ใช้ข้อมูล object แรกใน array
+    // [FIX 100%] ทำให้รองรับกรณีที่ไม่มีข้อมูลส่งมาอย่างสมบูรณ์
+    const data = (kpis && kpis.length > 0 && kpis[0]) ? kpis[0] : {
+        total_revenue: 0,
+        total_deals: 0,
+        avg_deal_size: 0,
+        avg_sales_cycle: null // ตั้งเป็น null เพื่อให้แสดง 'N/A'
+    };
 
     const totalRevenue = data.total_revenue ? parseFloat(data.total_revenue) : 0;
     const totalDeals = data.total_deals ? parseInt(data.total_deals) : 0;
@@ -101,44 +133,48 @@ function renderKPIs(kpis) {
 }
 
 /**
- * สร้างกราฟ (หรือตาราง) แสดงยอดขายตามช่องทาง
+ * สร้างตารางแสดงยอดขายตามช่องทาง
  * @param {Array} channelData - ข้อมูลยอดขายตามช่องทาง
  */
 function renderRevenueByChannel(channelData) {
-    const container = document.getElementById('revenueByChannelChart');
-    if (!container) return;
+    const canvas = document.getElementById('revenueByChannelChart');
+    if (!canvas) return;
+    
+    // [FIX] ใน HTML เป็น Canvas แต่โค้ดเก่าสร้าง Table, เราจะเปลี่ยนเป็นสร้าง Table ใน div ที่มาแทนที่ Canvas
+    const container = canvas.parentElement; // เอา container ที่หุ้ม canvas อยู่
+    container.innerHTML = ''; // ล้าง Canvas ทิ้ง
 
     if (!channelData || channelData.length === 0) {
-        container.innerHTML = "<p>ไม่มีข้อมูลยอดขายตามช่องทาง</p>";
+        container.innerHTML = "<p style='text-align: center; color: #6c757d;'>ไม่มีข้อมูลยอดขายตามช่องทาง</p>";
         return;
     }
 
-    // สร้างเป็นตารางแทนกราฟเพื่อความเรียบง่าย
-    let tableHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>ช่องทาง (Channel)</th>
-                    <th>ยอดขายรวม (Total Revenue)</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+    // สร้างตารางด้วย DOM Manipulation เพื่อความปลอดภัยและประสิทธิภาพ
+    const table = document.createElement('table');
+    table.className = 'excel-table'; // ใช้ class เดิมเพื่อให้ได้ style เดียวกัน
+    table.style.minWidth = '100%';
 
-    channelData.forEach(item => {
-        tableHTML += `
+    table.innerHTML = `
+        <thead>
             <tr>
-                <td>${item.channel || 'ไม่ระบุ'}</td>
-                <td>${formatNumber(parseFloat(item.total_revenue).toFixed(0))}</td>
+                <th>ช่องทาง (Channel)</th>
+                <th>ยอดขายรวม (Total Revenue)</th>
             </tr>
+        </thead>
+    `;
+    
+    const tbody = document.createElement('tbody');
+    channelData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.channel || 'ไม่ระบุ'}</td>
+            <td>${formatNumber(parseFloat(item.total_revenue).toFixed(0))}</td>
         `;
+        tbody.appendChild(tr);
     });
 
-    tableHTML += `
-            </tbody>
-        </table>
-    `;
-    container.innerHTML = tableHTML;
+    table.appendChild(tbody);
+    container.appendChild(table);
 }
 
 /**
@@ -146,13 +182,17 @@ function renderRevenueByChannel(channelData) {
  * @param {Array} salesData - ข้อมูลประสิทธิภาพของเซลล์
  */
 function renderSalesLeaderboard(salesData) {
-    const tbody = document.getElementById('leaderboardBody');
-    if (!tbody) return;
+    // [FIX 100%] แก้ไข ID ให้ตรงกับในไฟล์ report.html
+    const tbody = document.getElementById('salesLeaderboardBody');
+    if (!tbody) {
+        console.error("Element with ID 'salesLeaderboardBody' not found!");
+        return;
+    }
 
     tbody.innerHTML = ''; // ล้างข้อมูลเก่า
 
     if (!salesData || salesData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4">ไม่มีข้อมูลประสิทธิภาพของเซลล์</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #6c757d;">ไม่มีข้อมูลประสิทธิภาพของเซลล์</td></tr>';
         return;
     }
     
