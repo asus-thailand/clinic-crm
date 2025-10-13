@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Performance Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .report-section-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .report-toolbar {
+            background: #fff;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .date-filter-group label {
+            font-weight: 600;
+            margin-right: 10px;
+            color: #555;
+        }
+        .date-filter-group .btn-date-filter, .date-filter-group .date-input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .date-filter-group .btn-date-filter {
+            background: #f0f0f0;
+            cursor: pointer;
+        }
+        .date-filter-group .btn-date-filter.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        .btn-apply-filter {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 9px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">FBC</div>
+                <div class="logo-text">
+                    <h1>Sales Performance Report</h1>
+                    <p>ภาพรวมประสิทธิภาพทีมขาย</p>
+                </div>
+            </div>
+            <div class="user-info">
+                <a href="index.html" class="btn">กลับหน้าหลัก</a>
+            </div>
+        </div>
+    </header>
+
+    <main style="padding: 0 20px 20px 20px;">
+        <section class="report-toolbar">
+            <div class="date-filter-group">
+                <label>ช่วงเวลา:</label>
+                <button class="btn-date-filter" data-preset="7d">7 วัน</button>
+                <button class="btn-date-filter" data-preset="30d">30 วัน</button>
+                <button class="btn-date-filter active" data-preset="all">ทั้งหมด</button>
+            </div>
+            <div class="date-filter-group">
+                <label>เลือกเอง:</label>
+                <input type="date" id="startDate" class="date-input">
+                <span>ถึง</span>
+                <input type="date" id="endDate" class="date-input">
+                <button id="applyFilterBtn" class="btn-apply-filter">แสดงผล</button>
+            </div>
+        </section>
+
+        <div id="report-content">
+            <section>
+                <h2 class="report-section-title">ภาพรวมประสิทธิภาพ (Overall Performance)</h2>
+                <div class="report-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">ยอดขายรวม</div>
+                        <div class="stat-value" id="totalRevenue">Loading...</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">จำนวนดีลที่ปิดได้</div>
+                        <div class="stat-value" id="totalDeals">Loading...</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">ขนาดดีลเฉลี่ย</div>
+                        <div class="stat-value" id="avgDealSize">Loading...</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">ระยะเวลาปิดดีล (เฉลี่ย)</div>
+                        <div class="stat-value" id="avgSalesCycle">Loading...</div>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="report-section-title">การวิเคราะห์ (Analysis)</h2>
+                <div class="chart-container">
+                    <h3>ยอดขายตามช่องทาง (Revenue by Channel)</h3>
+                    <canvas id="revenueByChannelChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>สรุปประสิทธิภาพเซลล์ (Sales Leaderboard)</h3>
+                    <div class="table-wrapper">
+                        <table class="excel-table" style="min-width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>ชื่อเซลล์</th>
+                                    <th>ยอดขายรวม</th>
+                                    <th>จำนวนดีล</th>
+                                    <th>Conversion Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesLeaderboardBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
+    <script src="./api.js"></script>
+    <script src="./report.js"></script>
+</body>
+</html>
