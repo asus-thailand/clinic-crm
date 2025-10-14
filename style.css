@@ -1,5 +1,5 @@
 /* ================================================================================
-   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Smart Sticky Column for Mobile)
+   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Actions Cell Fix)
    ================================================================================ */
 
 /* --- 1. CSS Variables (Theme Configuration) --- */
@@ -113,7 +113,14 @@ body {
 .excel-table thead th:nth-child(3) { z-index: 103; }
 .excel-table thead th:nth-child(4) { z-index: 102; }
 .excel-table th.header-admin-section:nth-child(-n+4) { background-color: var(--header-bg-admin) !important; }
-.actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
+
+/* [FINAL FIX] ขยายความกว้างของช่องจัดการ */
+.actions-cell { 
+    text-align: center; 
+    padding: 2px !important; 
+    min-width: 200px; /* เพิ่มความกว้างจาก 160px เป็น 200px */
+    white-space: nowrap; 
+}
 
 /* --- Pagination, Modals, etc. (No major changes) --- */
 .pagination-container { background: #f8f9fa; padding: 10px 20px; border-top: 1px solid var(--border-color-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
@@ -131,11 +138,12 @@ body {
 .row-stale-case-15 td { background-color: #FFCCCB !important; }
 .row-stale-case-21 td { background-color: #f08080 !important; color: #000000 !important; }
 
-/* ================================================================================
-   [FINAL] Mobile Responsive Styles
-   ================================================================================ */
-
-/* --- กฎสำหรับหน้าจอแนวตั้ง (Portrait) --- */
+/* --- Mobile Responsive Styles --- */
+@media (max-width: 950px) {
+    .excel-table thead th, .excel-table td { position: static !important; left: auto !important; z-index: auto !important; }
+    .excel-table th:nth-child(4), .excel-table td:nth-child(4) { position: sticky !important; left: 0 !important; z-index: 51 !important; background-color: #f8f9fa !important; }
+    .excel-table thead th { position: static !important; top: auto !important; }
+}
 @media (max-width: 768px) {
     .header-content { flex-direction: column; gap: 15px; }
     .toolbar { flex-direction: column; align-items: stretch; }
@@ -145,33 +153,4 @@ body {
     .excel-table td { font-size: 13px; padding: 6px 10px; }
     .pagination-container { flex-direction: column; }
     .modal-content { max-height: 85vh; display: flex; flex-direction: column; }
-}
-
-/* --- กฎสำหรับหน้าจอมือถือ "ทั้งหมด" (ทั้งแนวตั้งและแนวนอน) --- */
-@media (max-width: 950px) {
-    /* 1. ปลดล็อกการตรึงทุกอย่างก่อน (ยกเว้นหัวตารางหลัก) */
-    .excel-table td {
-        position: static !important;
-        left: auto !important;
-        z-index: auto !important;
-    }
-    
-    .excel-table th:nth-child(-n+3) { /* ปลดล็อกหัวคอลัมน์ 1, 2, 3 */
-        position: static !important;
-    }
-
-    /* 2. [NEW] ตรึงเฉพาะคอลัมน์ "ชื่อลูกค้า" (คอลัมน์ที่ 4) กลับคืนมา */
-    .excel-table th:nth-child(4),
-    .excel-table td:nth-child(4) {
-        position: sticky !important;
-        left: 0 !important; /* สั่งให้ตรึงไว้ที่ขอบซ้ายสุด */
-        z-index: 51 !important;
-        background-color: #f8f9fa !important; /* ใส่สีพื้นหลังทึบ */
-    }
-
-    /* 3. [NEW] ยกเลิกการตรึงหัวตารางหลัก (Thead) เพื่อให้เลื่อนขึ้นลงได้ */
-    .excel-table thead th {
-        position: static !important;
-        top: auto !important;
-    }
 }
