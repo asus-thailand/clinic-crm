@@ -1,5 +1,5 @@
 /* ================================================================================
-   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Landscape Fix)
+   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Smart Sticky Column for Mobile)
    ================================================================================ */
 
 /* --- 1. CSS Variables (Theme Configuration) --- */
@@ -73,7 +73,6 @@ body {
 
 /* --- 4. Buttons & Inputs --- */
 .btn { padding: 8px 16px; border: none; border-radius: var(--border-radius-small); cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s ease; background: rgba(255,255,255,0.2); color: var(--text-color-white); }
-.btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-1px); }
 .btn-primary { background: var(--info-color); color: var(--text-color-white); padding: 10px 20px; }
 .btn-update, .btn-history, .btn-edit { padding: 6px 10px; font-size: 12px; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; margin: 0 2px; }
 .btn-edit { background-color: #ffc107; }
@@ -116,11 +115,10 @@ body {
 .excel-table th.header-admin-section:nth-child(-n+4) { background-color: var(--header-bg-admin) !important; }
 .actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
 
-/* --- Pagination, Modals, etc. (No changes) --- */
+/* --- Pagination, Modals, etc. (No major changes) --- */
 .pagination-container { background: #f8f9fa; padding: 10px 20px; border-top: 1px solid var(--border-color-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
 .pagination-controls button { padding: 6px 12px; font-size: 14px; margin: 0 2px; border: 1px solid var(--border-color-medium); border-radius: var(--border-radius-small); background: #fff; cursor: pointer; }
 .pagination-controls button.active { background: var(--info-color); color: #fff; border-color: var(--info-color); }
-.pagination-info, .page-size-selector { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-color-secondary); }
 .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-color-overlay); display: none; align-items: center; justify-content: center; z-index: 9999; }
 .loading-overlay.show { display: flex; }
 .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
@@ -134,13 +132,12 @@ body {
 .row-stale-case-21 td { background-color: #f08080 !important; color: #000000 !important; }
 
 /* ================================================================================
-   [MODIFIED] Mobile Responsive Styles
+   [FINAL] Mobile Responsive Styles
    ================================================================================ */
 
 /* --- กฎสำหรับหน้าจอแนวตั้ง (Portrait) --- */
 @media (max-width: 768px) {
     .header-content { flex-direction: column; gap: 15px; }
-    .user-info { flex-wrap: wrap; justify-content: center; }
     .toolbar { flex-direction: column; align-items: stretch; }
     .toolbar-left, .toolbar-right { flex-direction: column; width: 100%; }
     .excel-container { margin: 10px; }
@@ -150,14 +147,31 @@ body {
     .modal-content { max-height: 85vh; display: flex; flex-direction: column; }
 }
 
-/* --- [NEW] กฎสำหรับหน้าจอมือถือ "ทั้งหมด" (ทั้งแนวตั้งและแนวนอน) --- */
-/* เราใช้ max-device-width เพื่อกำหนดเป้าหมายไปที่อุปกรณ์ที่เป็นมือถือจริงๆ */
+/* --- กฎสำหรับหน้าจอมือถือ "ทั้งหมด" (ทั้งแนวตั้งและแนวนอน) --- */
 @media (max-width: 950px) {
-    /* ปลดล็อกการตรึงคอลัมน์สำหรับอุปกรณ์พกพาทั้งหมด */
-    .excel-table thead th,
+    /* 1. ปลดล็อกการตรึงทุกอย่างก่อน (ยกเว้นหัวตารางหลัก) */
     .excel-table td {
         position: static !important;
         left: auto !important;
         z-index: auto !important;
+    }
+    
+    .excel-table th:nth-child(-n+3) { /* ปลดล็อกหัวคอลัมน์ 1, 2, 3 */
+        position: static !important;
+    }
+
+    /* 2. [NEW] ตรึงเฉพาะคอลัมน์ "ชื่อลูกค้า" (คอลัมน์ที่ 4) กลับคืนมา */
+    .excel-table th:nth-child(4),
+    .excel-table td:nth-child(4) {
+        position: sticky !important;
+        left: 0 !important; /* สั่งให้ตรึงไว้ที่ขอบซ้ายสุด */
+        z-index: 51 !important;
+        background-color: #f8f9fa !important; /* ใส่สีพื้นหลังทึบ */
+    }
+
+    /* 3. [NEW] ยกเลิกการตรึงหัวตารางหลัก (Thead) เพื่อให้เลื่อนขึ้นลงได้ */
+    .excel-table thead th {
+        position: static !important;
+        top: auto !important;
     }
 }
