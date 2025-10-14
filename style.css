@@ -1,5 +1,5 @@
 /* ================================================================================
-   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Actions Cell Flexbox Fix)
+   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Edit Modal Layout Fix)
    ================================================================================ */
 
 /* --- 1. CSS Variables (Theme Configuration) --- */
@@ -113,17 +113,7 @@ body {
 .excel-table thead th:nth-child(3) { z-index: 103; }
 .excel-table thead th:nth-child(4) { z-index: 102; }
 .excel-table th.header-admin-section:nth-child(-n+4) { background-color: var(--header-bg-admin) !important; }
-
-/* [FINAL FIX] ใช้ Flexbox เพื่อจัดเรียงปุ่มให้สวยงาม */
-.actions-cell { 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px; /* เพิ่มระยะห่างเล็กน้อยระหว่างปุ่ม */
-    padding: 2px !important; 
-    min-width: 200px;
-    white-space: nowrap; 
-}
+.actions-cell { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 2px !important; min-width: 200px; white-space: nowrap; }
 
 /* --- Pagination, Modals, etc. (No major changes) --- */
 .pagination-container { background: #f8f9fa; padding: 10px 20px; border-top: 1px solid var(--border-color-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
@@ -137,6 +127,18 @@ body {
 .edit-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; z-index: 3000; }
 .edit-modal-overlay.show { display: flex; opacity: 1; }
 .edit-modal-container { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 95%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
+.modal-section-content { display: grid; grid-template-columns: 1fr; gap: 15px; }
+
+/* [FINAL FIX] แก้ไข Layout เพี้ยนในหน้าต่างแก้ไข */
+@media (min-width: 640px) {
+    .modal-section-content { 
+        grid-template-columns: 1fr 1fr; 
+    }
+    /* ทำให้ช่องสุดท้ายที่อยู่เดี่ยวๆ (เป็นเลขคี่) ขยายเต็มแถว */
+    .modal-section-content > .form-group:last-child:nth-child(odd) {
+        grid-column: span 2;
+    }
+}
 .row-deal-closed td { background-color: #9ceb8d !important; font-weight: bold; }
 .row-stale-case-15 td { background-color: #FFCCCB !important; }
 .row-stale-case-21 td { background-color: #f08080 !important; color: #000000 !important; }
