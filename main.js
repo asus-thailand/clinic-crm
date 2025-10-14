@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (PERFORMANCE ENHANCED & BUG FIXED)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL VERSION with CSV Import)
 // ================================================================================
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -23,14 +23,12 @@ const DROPDOWN_OPTIONS = {
     channel: ["-เพื่อนแนะนำ/", "-Walk-In/", "-PHONE-IN/", "-Line@/", "-Fbc By หมอธีร์ (ปลูกผม)", "-Fbc By หมอธีร์ (หัตถการอื่น)", "-FBC HAIR CLINIC", "-Fbc ตาสองชั้น ยกคิ้ว เสริมจิ้มูก", "-Fbc ปรับรูปหน้า Botox Filler HIFU", "-เว็บไซต์", "-AGENCY", "-IG", "-Tiktok "],
     procedure: ["ตา Dr.T", "ตาทีมแพทย์", "ปลูกผม", "ปลูกหนวด/เครา", "ปลูกคิ้ว", "FaceLift", "จมูก/ปาก/คาง", "Thermage", "Ultraformer", "Filler", "BOTOX", "Laser กำจัดขน", "SKIN อื่น ๆ", "ตา Dr.T/ปลูกผม", "ตา/SKIN", "ผม/SKIN", "ตา/อื่นๆ", "ผม/อื่นๆ", "ตาทีมแพทย์/ปลูกผม"],
     confirm_y: ["Y", "N"],
-    transfer_100: ["Y", "N"],
     status_1: ["status 1", "status 2", "status 3", "status 4", "ไม่สนใจ", "ปิดการขาย", "ตามต่อ"],
     cs_confirm: ["CSX", "CSY"],
     last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
 };
 
 const SALES_EDITABLE_FIELDS = [
-    // [MODIFIED] ลบ 'call_time' ออกจากฟิลด์ที่เซลล์แก้ไขได้
     'update_access', 'last_status', 'status_1', 'reason', 
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
@@ -44,17 +42,14 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             const day = parts[0].padStart(2, '0');
             const month = parts[1].padStart(2, '0');
             let year = parseInt(parts[2], 10);
-            if (year > 2500) year -= 543;
+            if (year > 2500) year -= 543; // Convert from Buddhist year if needed
             return `${year}-${month}-${day}`;
         }
     }
     try {
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) return null;
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return date.toISOString().split('T')[0];
     } catch (e) {
         return null;
     }
@@ -156,6 +151,7 @@ function setDateFilterPreset(preset) {
             endDate = new Date(today);
             break;
         case 'all':
+        default:
             startDate = null;
             endDate = null;
             break;
@@ -179,6 +175,89 @@ function debounce(func, delay = 300) {
     };
 }
 
+// ======================================================================
+// [NEW] CSV Import Functionality
+// ======================================================================
+
+function handleImportClick() {
+    ui.showModal('importModal');
+    const csvFileInput = document.getElementById('csvFile');
+    if (csvFileInput) csvFileInput.value = '';
+    const importStatus = document.getElementById('importStatus');
+    if (importStatus) importStatus.textContent = '';
+}
+
+async function handleProcessCSV() {
+    const csvFileInput = document.getElementById('csvFile');
+    const importStatus = document.getElementById('importStatus');
+    
+    if (!csvFileInput.files || csvFileInput.files.length === 0) {
+        importStatus.textContent = 'กรุณาเลือกไฟล์ CSV';
+        importStatus.style.color = 'red';
+        return;
+    }
+
+    const file = csvFileInput.files[0];
+    importStatus.textContent = 'กำลังประมวลผลไฟล์...';
+    ui.showLoading(true);
+
+    try {
+        const fileContent = await file.text();
+        const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '');
+        
+        if (lines.length < 2) {
+            throw new Error('ไฟล์ CSV ต้องมีอย่างน้อย 1 บรรทัดสำหรับ Header และ 1 บรรทัดสำหรับข้อมูล');
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim());
+        const requiredHeaders = ['name', 'phone', 'channel', 'sales'];
+        
+        for (const required of requiredHeaders) {
+            if (!headers.includes(required)) {
+                throw new Error(`ไฟล์ CSV ขาด Header ที่จำเป็น: ${required}`);
+            }
+        }
+        
+        const customersToInsert = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            const customer = {};
+            headers.forEach((header, index) => {
+                if (['date', 'old_appointment', 'appointment_date'].includes(header)) {
+                    customer[header] = normalizeDateStringToYYYYMMDD(values[index]) || new Date().toISOString().split('T')[0];
+                } else {
+                    customer[header] = values[index] || '';
+                }
+            });
+            customer.date = customer.date || new Date().toISOString().split('T')[0];
+            customersToInsert.push(customer);
+        }
+
+        if (customersToInsert.length === 0) {
+            throw new Error('ไม่พบข้อมูลลูกค้าที่สามารถนำเข้าได้ในไฟล์');
+        }
+
+        importStatus.textContent = `กำลังนำเข้าข้อมูล ${customersToInsert.length} รายการ...`;
+        
+        await api.bulkInsertCustomers(customersToInsert);
+
+        ui.showStatus('นำเข้าข้อมูลสำเร็จ!', false);
+        ui.hideModal('importModal');
+        initializeApp();
+
+    } catch (error) {
+        console.error('CSV Import Error:', error);
+        ui.showStatus(`นำเข้าไม่สำเร็จ: ${error.message}`, true);
+        importStatus.textContent = `เกิดข้อผิดพลาด: ${error.message}`;
+        importStatus.style.color = 'red';
+    } finally {
+        ui.showLoading(false);
+    }
+}
+
+// ======================================================================
+// Event Listener Setup
+// ======================================================================
 function setupEventListeners() {
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
     document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
@@ -186,13 +265,20 @@ function setupEventListeners() {
     document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
     document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
     document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
+
+    // [MODIFIED] Connect the Import buttons
+    document.getElementById('importButton')?.addEventListener('click', handleImportClick);
+    document.getElementById('importBtn')?.addEventListener('click', handleProcessCSV);
+    
     document.getElementById('refreshButton')?.addEventListener('click', () => {
         state.activeFilters = { search: '', status: '', sales: '' };
         document.getElementById('searchInput').value = '';
         document.getElementById('statusFilter').value = '';
         document.getElementById('salesFilter').value = '';
+        setDateFilterPreset('all');
         initializeApp();
     });
+    
     document.getElementById('searchInput')?.addEventListener('input', debounce(e => {
         state.activeFilters.search = e.target.value;
         state.pagination.currentPage = 1;
@@ -239,6 +325,8 @@ function setupEventListeners() {
         }
     });
 }
+
+// ... (The rest of the main.js file remains the same) ...
 
 function handleSort(column) {
     if (state.sort.column === column) {
