@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - UI LAYER (FINAL VERSION with Simplified Headers)
+// BEAUTY CLINIC CRM - UI LAYER (COMPLETE FIXED VERSION 100%)
 // ================================================================================
 
 const ui = {};
@@ -80,44 +80,40 @@ ui.updateSortIndicator = function(column, direction) {
 
 
 // ================================================================================
-// [FINAL] SINGLE SOURCE OF TRUTH: FIELD MAPPING with All Simplifications
+// SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED)
 // ================================================================================
 
 const FIELD_MAPPING = {
     '#':                  { field: null, section: 'special' },
-    // --- Admin Section ---
-    'วัน/เดือน/ปี':     { field: 'date', section: 'admin', sortable: true, salesAccess: 'view' },
-    'ลำดับที่':           { field: 'lead_code', section: 'admin', salesAccess: 'view' },
-    'ชื่อลูกค้า':         { field: 'name', section: 'admin', salesAccess: 'view' },
-    'เบอร์ติดต่อ':       { field: 'phone', section: 'admin', salesAccess: 'view' },
-    'ช่องทางสื่อ':       { field: 'channel', section: 'admin', salesAccess: 'view' },
-    'ประเภทหัตถการ':  { field: 'procedure', section: 'admin', salesAccess: 'view' },
-    'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin', salesAccess: 'view' },
-    'เซลล์':               { field: 'sales', section: 'admin', salesAccess: 'edit' },
-    'มัดจำ':               { field: 'deposit', section: 'admin', salesAccess: 'none' },
-    'ขอเบอร์':             { field: 'confirm_y', section: 'admin', salesAccess: 'none' },
-    'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin', salesAccess: 'none' },
-    
-    // --- Sales Section ---
-    'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales', salesAccess: 'edit' },
-    'Status Sale':      { field: 'status_1', section: 'sales', salesAccess: 'edit' },
-    'Last Status':      { field: 'last_status', section: 'sales', salesAccess: 'edit' },
-    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false, salesAccess: 'edit' },
-    'ETC':                { field: 'etc', section: 'sales', salesAccess: 'edit' },
-    'HN ลูกค้า':          { field: 'hn_customer', section: 'sales', salesAccess: 'edit' },
-    'วันที่นัด CS':       { field: 'old_appointment', section: 'sales', salesAccess: 'edit' },
-    'DR.':                { field: 'dr', section: 'sales', salesAccess: 'edit' },
-    'ยอดที่ปิดได้':      { field: 'closed_amount', section: 'sales', salesAccess: 'edit' },
-    'วันที่นัดทำหัตถการ':{ field: 'appointment_date', section: 'sales', salesAccess: 'edit' },
-    
-    // --- Special Section ---
+    'วัน/เดือน/ปี':     { field: 'date', section: 'admin', sortable: true },
+    'ลำดับที่':           { field: 'lead_code', section: 'admin' },
+    'ชื่อลูกค้า':         { field: 'name', section: 'admin' },
+    'เบอร์ติดต่อ':       { field: 'phone', section: 'admin' },
+    'ช่องทางสื่อ':       { field: 'channel', section: 'admin' },
+    'ประเภทหัตถการ':  { field: 'procedure', section: 'admin' },
+    'มัดจำ':               { field: 'deposit', section: 'admin' },
+    'ขอเบอร์ Y/N':        { field: 'confirm_y', section: 'admin' },
+    'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
+    'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
+    'เซลล์':               { field: 'sales', section: 'admin' },
+    'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' }, 
+    'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
+    'Status Sale':      { field: 'status_1', section: 'sales' },
+    'Last Status':      { field: 'last_status', section: 'sales' },
+    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
+    'ETC':                { field: 'etc', section: 'sales' },
+    'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
+    'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
+    'DR.':                { field: 'dr', section: 'sales' },
+    'ยอดที่ปิดได้':      { field: 'closed_amount', section: 'sales' },
+    'วันที่นัดทำหัตถการ':{ field: 'appointment_date', section: 'sales' },
     'จัดการ':              { field: null, section: 'sales' }
 };
 
 ui.FIELD_MAPPING = FIELD_MAPPING;
 
 // ================================================================================
-// DYNAMIC TABLE HEADER RENDERING
+// DYNAMIC TABLE HEADER RENDERING (REFACTORED)
 // ================================================================================
 
 ui.renderTableHeaders = function() {
@@ -147,7 +143,7 @@ ui.renderTableHeaders = function() {
 };
 
 // ================================================================================
-// TABLE RENDERING
+// TABLE RENDERING (REFACTORED)
 // ================================================================================
 
 function createCell(row, fieldName) {
@@ -187,6 +183,7 @@ function createRowElement(row, index, page, pageSize) {
         tr.classList.add('row-deal-closed');
     }
 
+    // --- [MODIFIED] ปรับปรุงตรรกะการไฮไลท์เคสค้างแบบ 2 ระดับ ---
     if (row.date && !tr.classList.contains('row-deal-closed')) {
         const today = new Date();
         today.setHours(0, 0, 0, 0); 
@@ -194,12 +191,14 @@ function createRowElement(row, index, page, pageSize) {
         const timeDiff = today.getTime() - caseDate.getTime();
         const daysOld = Math.floor(timeDiff / (1000 * 3600 * 24));
 
+        // ตรวจสอบเงื่อนไขที่นานที่สุดก่อน (สำคัญ)
         if (daysOld > 21) {
-            tr.classList.add('row-stale-case-21');
+            tr.classList.add('row-stale-case-21'); // ระดับวิกฤต
         } else if (daysOld > 15) {
-            tr.classList.add('row-stale-case-15');
+            tr.classList.add('row-stale-case-15'); // ระดับแจ้งเตือน
         }
     }
+    // --- สิ้นสุดส่วนที่แก้ไข ---
 
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
@@ -229,7 +228,7 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
 }
 
 // ================================================================================
-// MODAL & FORM MANAGEMENT with Flexible Permissions
+// MODAL & FORM MANAGEMENT (REFACTORED)
 // ================================================================================
 
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
@@ -250,29 +249,21 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
     
-    const userRole = (currentUser?.role || 'sales').toLowerCase();
-    const isAdmin = userRole === 'admin' || userRole === 'administrator';
+    const dealClosingFields = ['last_status', 'status_1', 'closed_amount'];
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
         if (!field) return; 
 
-        const salesAccess = config.salesAccess || 'none';
-
-        if (!isAdmin && config.section === 'admin' && salesAccess === 'none') {
-            return;
-        }
-
-        let isEditable = false;
-        if (isAdmin) {
-            isEditable = field !== 'lead_code';
-        } else {
-            isEditable = salesAccess === 'edit';
-        }
-
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
-        
+        const userRole = (currentUser?.role || 'sales').toLowerCase();
+        const isAdmin = userRole === 'admin' || userRole === 'administrator';
+        const isSalesUser = userRole === 'sales';
+        const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason'];
+        const isEditableBySales = isSalesUser && allSalesEditableFields.includes(field);
+        const isEditable = (isAdmin || isEditableBySales) && field !== 'lead_code';
+
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
         formGroup.dataset.fieldGroup = field;
@@ -305,7 +296,7 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     const closedAmountInput = form.querySelector('[name="closed_amount"]');
     const highlightFields = () => {
         const isClosingAttempt = (lastStatusInput.value === '100%') || (status1Input.value === 'ปิดการขาย') || (closedAmountInput.value && closedAmountInput.value.trim() !== '');
-        ['last_status', 'status_1', 'closed_amount'].forEach(fieldName => {
+        dealClosingFields.forEach(fieldName => {
             const group = form.querySelector(`[data-field-group="${fieldName}"]`);
             if (group) { group.classList.toggle('highlight-deal-closing', isClosingAttempt); }
         });
@@ -317,11 +308,8 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         }
     });
     highlightFields();
-    
     document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
 };
-
-// ... (โค้ดที่เหลือของ ui.js ก็ปล่อยไว้เหมือนเดิมได้เลยครับ) ...
 
 ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) {
     const container = document.getElementById('paginationContainer');
@@ -353,13 +341,16 @@ ui.renderHistoryTimeline = function(historyData) {
         container.innerHTML = '<p>ยังไม่มีประวัติการติดตาม</p>';
         return;
     }
+
     container.innerHTML = historyData.map(item => {
         let roleClass = 'history-default';
+        
         let userDisplay = 'Unknown';
         if (item.users) {
             const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
             const username = item.users.username || 'N/A';
             userDisplay = `${role} - ${username}`;
+
             const roleLower = (item.users.role || '').toLowerCase();
             if (roleLower === 'admin' || roleLower === 'administrator') {
                 roleClass = 'history-admin';
@@ -367,7 +358,18 @@ ui.renderHistoryTimeline = function(historyData) {
                 roleClass = 'history-sales';
             }
         }
-        return `<div class="timeline-item ${roleClass}"><div class="timeline-icon">✓</div><div class="timeline-content"><div class="timeline-status">${escapeHtml(item.status)}</div><div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div><div class="timeline-footer">โดย: ${escapeHtml(userDisplay)} | ${new Date(item.created_at).toLocaleString('th-TH')}</div></div></div>`;
+
+        return `
+            <div class="timeline-item ${roleClass}">
+                <div class="timeline-icon">✓</div>
+                <div class="timeline-content">
+                    <div class="timeline-status">${escapeHtml(item.status)}</div>
+                    <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
+                    <div class="timeline-footer">
+                        โดย: ${escapeHtml(userDisplay)} | ${new Date(item.created_at).toLocaleString('th-TH')}
+                    </div>
+                </div>
+            </div>`;
     }).join('');
 };
 
