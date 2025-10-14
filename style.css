@@ -1,5 +1,5 @@
 /* ================================================================================
-   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Mobile Quick Wins)
+   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Mobile Scrolling Fix)
    ================================================================================ */
 
 /* --- 1. CSS Variables (Theme Configuration) --- */
@@ -225,70 +225,42 @@ body {
 .row-stale-case-21:hover td { background-color: #ea6767 !important; }
 
 /* ================================================================================
-   [NEW] Mobile Responsive Quick Wins (หน้าจอเล็กกว่า 768px)
+   Mobile Responsive Styles (หน้าจอเล็กกว่า 768px)
    ================================================================================ */
 
 @media (max-width: 768px) {
     /* --- Header --- */
-    .header-content {
-        flex-direction: column;
-        gap: 15px;
-    }
-    .user-info {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
+    .header-content { flex-direction: column; gap: 15px; }
+    .user-info { flex-wrap: wrap; justify-content: center; }
     .logo-text h1 { font-size: 18px; }
     .logo-text p { font-size: 11px; }
 
     /* --- Toolbar --- */
-    .toolbar {
-        flex-direction: column;
-        align-items: stretch; /* ทำให้ items ยืดเต็มความกว้าง */
-    }
-    .toolbar-left, .toolbar-right {
-        flex-direction: column;
-        width: 100%;
-    }
-    .search-container {
-        max-width: none; /* ยกเลิกความกว้างสูงสุด */
-    }
-    .date-filter-container {
-        justify-content: center;
-    }
-    .action-buttons {
-        width: 100%;
-        display: grid;
-        grid-template-columns: 1fr 1fr; /* ปุ่ม 2 ปุ่มเรียงข้างกัน */
-    }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar-left, .toolbar-right { flex-direction: column; width: 100%; }
+    .search-container { max-width: none; }
+    .date-filter-container { justify-content: center; }
+    .action-buttons { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
 
     /* --- Excel Table --- */
-    .excel-container {
-        margin: 10px;
-    }
-    .table-wrapper {
-        max-height: calc(100vh - 350px);
-    }
+    .excel-container { margin: 10px; }
+    .table-wrapper { max-height: calc(100vh - 350px); }
+    .excel-table td { font-size: 13px; padding: 6px 10px; }
+
+    /* [FINAL FIX] ปลดล็อกการเลื่อนแนวนอนบนมือถือ โดยการกำหนดเป้าหมายให้เฉพาะเจาะจงมากขึ้น */
+    .excel-table thead th,
     .excel-table td {
-        font-size: 13px; /* เพิ่มขนาดตัวอักษรให้อ่านง่ายขึ้น */
-        padding: 6px 10px;
+        position: static !important; /* ใช้ !important เพื่อการันตีว่าคำสั่งนี้จะถูกใช้งาน */
+        left: auto !important;
+        z-index: auto !important;
     }
+    /* --- จบส่วนแก้ไข --- */
 
     /* --- Pagination --- */
-    .pagination-container {
-        flex-direction: column;
-    }
+    .pagination-container { flex-direction: column; }
     
     /* --- Modals --- */
-    .modal-content {
-        max-height: 85vh;
-        display: flex;
-        flex-direction: column;
-    }
-    .modal-content > h2, .modal-content > p {
-        flex-shrink: 0;
-    }
-    .timeline-container, .edit-modal-body {
-        overflow-y: auto; /* ทำให้เนื้อหาใน modal scroll ได้ */
-    }
+    .modal-content { max-height: 85vh; display: flex; flex-direction: column; }
+    .modal-content > h2, .modal-content > p { flex-shrink: 0; }
+    .timeline-container, .edit-modal-body { overflow-y: auto; }
 }
