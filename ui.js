@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - UI LAYER (FINAL VERSION with Flexible Permissions)
+// BEAUTY CLINIC CRM - UI LAYER (FINAL VERSION with Simplified Headers)
 // ================================================================================
 
 const ui = {};
@@ -80,7 +80,7 @@ ui.updateSortIndicator = function(column, direction) {
 
 
 // ================================================================================
-// [MODIFIED] SINGLE SOURCE OF TRUTH: FIELD MAPPING with Permissions
+// [FINAL] SINGLE SOURCE OF TRUTH: FIELD MAPPING with All Simplifications
 // ================================================================================
 
 const FIELD_MAPPING = {
@@ -93,17 +93,16 @@ const FIELD_MAPPING = {
     'ช่องทางสื่อ':       { field: 'channel', section: 'admin', salesAccess: 'view' },
     'ประเภทหัตถการ':  { field: 'procedure', section: 'admin', salesAccess: 'view' },
     'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin', salesAccess: 'view' },
-    'เซลล์':               { field: 'sales', section: 'admin', salesAccess: 'edit' }, // Admin can re-assign sales
-    'มัดจำ':               { field: 'deposit', section: 'admin', salesAccess: 'none' }, // Sales cannot see/edit
-    'ขอเบอร์ Y/N':        { field: 'confirm_y', section: 'admin', salesAccess: 'none' },
-    'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin', salesAccess: 'none' },
+    'เซลล์':               { field: 'sales', section: 'admin', salesAccess: 'edit' },
+    'มัดจำ':               { field: 'deposit', section: 'admin', salesAccess: 'none' },
+    'ขอเบอร์':             { field: 'confirm_y', section: 'admin', salesAccess: 'none' },
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin', salesAccess: 'none' },
     
     // --- Sales Section ---
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales', salesAccess: 'edit' },
     'Status Sale':      { field: 'status_1', section: 'sales', salesAccess: 'edit' },
     'Last Status':      { field: 'last_status', section: 'sales', salesAccess: 'edit' },
-    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false, salesAccess: 'edit' }, // Not a header in table
+    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false, salesAccess: 'edit' },
     'ETC':                { field: 'etc', section: 'sales', salesAccess: 'edit' },
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales', salesAccess: 'edit' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales', salesAccess: 'edit' },
@@ -230,7 +229,7 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
 }
 
 // ================================================================================
-// [MODIFIED] MODAL & FORM MANAGEMENT with Flexible Permissions
+// MODAL & FORM MANAGEMENT with Flexible Permissions
 // ================================================================================
 
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
@@ -260,16 +259,14 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 
         const salesAccess = config.salesAccess || 'none';
 
-        // [NEW LOGIC] ถ้าเป็นเซลส์ และไม่มีสิทธิ์เข้าถึง (view หรือ edit) ให้ข้ามฟิลด์นี้ไปเลย
         if (!isAdmin && config.section === 'admin' && salesAccess === 'none') {
             return;
         }
 
-        // [NEW LOGIC] กำหนดว่าฟิลด์นี้แก้ไขได้หรือไม่
         let isEditable = false;
         if (isAdmin) {
-            isEditable = field !== 'lead_code'; // แอดมินแก้ไขได้ทุกอย่างยกเว้นรหัสลูกค้า
-        } else { // ถ้าเป็นเซลส์
+            isEditable = field !== 'lead_code';
+        } else {
             isEditable = salesAccess === 'edit';
         }
 
@@ -293,7 +290,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         
         formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
         
-        // จัดกลุ่มฟิลด์ตาม section ที่กำหนดใน FIELD_MAPPING
         if (config.section === 'admin') {
             adminContent.appendChild(formGroup);
         } else if (config.section === 'sales') {
@@ -304,7 +300,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     form.appendChild(adminSection);
     form.appendChild(salesSection);
 
-    // ... (ส่วนของ Highlight การปิดดีลเหมือนเดิม) ...
     const lastStatusInput = form.querySelector('[name="last_status"]');
     const status1Input = form.querySelector('[name="status_1"]');
     const closedAmountInput = form.querySelector('[name="closed_amount"]');
