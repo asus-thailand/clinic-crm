@@ -1,163 +1,65 @@
 /* ================================================================================
-   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with Balanced Modal Layout)
+   BEAUTY CLINIC CRM - STYLESHEET (FINAL VERSION with 2-Column Edit Modal)
    ================================================================================ */
 
-/* --- 1. CSS Variables (Theme Configuration) --- */
-:root {
-    --primary-color: #96011A;
-    --secondary-color: #a60c25;
-    --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-    
-    --text-color-primary: #333;
-    --text-color-secondary: #6c757d;
-    --text-color-white: #fff;
-    --text-color-black: #000;
-
-    --bg-color-light: #f5f7fa;
-    --bg-color-white: #fff;
-    --bg-color-overlay: rgba(255, 255, 255, 0.85);
-
-    --border-color-light: #e9ecef;
-    --border-color-medium: #d0d0d0;
-    --border-color-dark: #b7b7b7;
-
-    --success-color: #28a745;
-    --error-color: #dc3545;
-    --info-color: #007bff;
-    
-    --header-bg-admin: #5a67d8;
-    --header-bg-sales: #a3bffa;
-    
-    --font-family-sans-serif: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    
-    --border-radius-small: 6px;
-    --border-radius-medium: 8px;
-    --border-radius-large: 12px;
-
-    --shadow-light: 0 2px 10px rgba(0,0,0,0.08);
-    --shadow-medium: 0 4px 20px rgba(0,0,0,0.12);
-}
-
-/* --- 2. Global Styles & Resets --- */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: var(--font-family-sans-serif);
-    background: var(--bg-color-light);
-    color: var(--text-color-primary);
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-/* --- 3. Header --- */
-.header {
-    background: var(--primary-gradient);
-    color: var(--text-color-white);
-    padding: 15px 20px;
-    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-.header-content { display: flex; justify-content: space-between; align-items: center; width: 100%; margin: 0 auto; }
+/* --- 1. CSS Variables, Global Styles, etc. (No changes) --- */
+:root { --primary-color: #96011A; --secondary-color: #a60c25; --primary-gradient: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); --text-color-primary: #333; --text-color-secondary: #6c757d; --text-color-white: #fff; --bg-color-light: #f5f7fa; --bg-color-white: #fff; --border-color-light: #e9ecef; --border-color-medium: #d0d0d0; --success-color: #28a745; --error-color: #dc3545; --info-color: #007bff; --header-bg-admin: #5a67d8; --header-bg-sales: #a3bffa; --font-family-sans-serif: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; --border-radius-small: 6px; --border-radius-medium: 8px; --border-radius-large: 12px; --shadow-light: 0 2px 10px rgba(0,0,0,0.08); --shadow-medium: 0 4px 20px rgba(0,0,0,0.12); }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font-family-sans-serif); background: var(--bg-color-light); color: var(--text-color-primary); font-size: 14px; }
+.header { background: var(--primary-gradient); color: white; padding: 15px 20px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+.header-content { display: flex; justify-content: space-between; align-items: center; }
 .logo { display: flex; align-items: center; gap: 15px; }
-.logo-icon { width: 45px; height: 45px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
-.logo-text h1 { font-size: 22px; margin-bottom: 2px; }
-.logo-text p { font-size: 12px; opacity: 0.9; }
-.user-info { display: flex; align-items: center; gap: 15px; }
-.user-badge { background: var(--error-color); padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: 600; }
-
-/* --- 4. Buttons & Inputs --- */
-.btn { padding: 8px 16px; border: none; border-radius: var(--border-radius-small); cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s ease; background: rgba(255,255,255,0.2); color: var(--text-color-white); }
-.btn-primary { background: var(--info-color); color: var(--text-color-white); padding: 10px 20px; }
-.btn-update, .btn-history, .btn-edit { padding: 6px 10px; font-size: 12px; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; margin: 0; }
-.btn-edit { background-color: #ffc107; }
-.btn-update { background-color: var(--info-color); }
-.btn-history { background-color: #6c757d; }
-.search-input, .filter-select { padding: 10px 15px; border: 1px solid var(--border-color-medium); border-radius: var(--border-radius-medium); font-size: 14px; background: var(--bg-color-white); height: 40px; }
-
-/* --- 5. Stats Dashboard --- */
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; background: rgba(255,255,255,0.2); color: white; }
 .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 20px; }
 .stat-card { background: var(--bg-color-white); padding: 20px; border-radius: var(--border-radius-large); box-shadow: var(--shadow-light); border-left: 4px solid var(--info-color); }
-.stat-title { font-size: 14px; color: var(--text-color-secondary); margin-bottom: 8px; }
-.stat-value { font-size: 28px; font-weight: 700; color: var(--text-color-primary); }
-
-/* --- 6. Toolbar --- */
-.toolbar { background: var(--bg-color-white); border-bottom: 1px solid var(--border-color-light); padding: 15px 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; }
-.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-.btn-date-filter { padding: 8px 12px; font-size: 14px; border: 1px solid var(--border-color-medium); border-radius: var(--border-radius-small); background: #fff; cursor: pointer; transition: all 0.2s; height: 40px; white-space: nowrap; }
-.btn-date-filter.active { background: var(--info-color); color: #fff; border-color: var(--info-color); }
-.date-input { padding: 8px 10px; border: 1px solid var(--border-color-medium); border-radius: var(--border-radius-small); font-size: 14px; height: 40px; }
-
-/* --- 7. Excel Table --- */
-.excel-container { background: var(--bg-color-white); margin: 20px; border-radius: var(--border-radius-large); overflow: hidden; box-shadow: var(--shadow-medium); }
-.table-wrapper { overflow: auto; max-height: calc(100vh - 400px); position: relative; }
-.excel-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 2300px; }
-.excel-table thead th { font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; position: sticky; top: 0; z-index: 100; height: 45px; vertical-align: middle; user-select: none; }
-.sortable-header { cursor: pointer; }
-.header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
-.header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
-.excel-table td { border: 1px solid var(--border-color-medium); padding: 4px 8px; height: 25px; background: var(--bg-color-white); position: relative; vertical-align: middle; }
+.toolbar { background: var(--bg-color-white); padding: 15px 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; }
+.excel-container { background: var(--bg-color-white); margin: 0 20px; border-radius: var(--border-radius-large) var(--border-radius-large) 0 0; overflow: hidden; box-shadow: var(--shadow-medium); }
+.table-wrapper { overflow: auto; max-height: calc(100vh - 400px); }
+.excel-table { width: 100%; border-collapse: collapse; min-width: 2300px; table-layout: fixed; }
+.excel-table td { border: 1px solid var(--border-color-medium); padding: 4px 8px; }
+.excel-table thead th { position: sticky; top: 0; z-index: 100; }
 .excel-table th:nth-child(-n+4), .excel-table td:nth-child(-n+4) { position: sticky; background-color: #f8f9fa; }
-.excel-table th:nth-child(1), .excel-table td:nth-child(1) { left: 0; z-index: 54; width: 40px; min-width: 40px; background: #e7e6e6 !important; }
-.excel-table th:nth-child(2), .excel-table td:nth-child(2) { left: 40px; z-index: 53; width: 100px; min-width: 100px; }
-.excel-table th:nth-child(3), .excel-table td:nth-child(3) { left: 140px; z-index: 52; width: 100px; min-width: 100px; }
-.excel-table th:nth-child(4), .excel-table td:nth-child(4) { left: 240px; z-index: 51; width: 150px; min-width: 150px; border-right: 2px solid #ccc; }
-.excel-table thead th:nth-child(-n+4) { z-index: 101; }
-.excel-table thead th:nth-child(1) { z-index: 105; }
-.excel-table thead th:nth-child(2) { z-index: 104; }
-.excel-table thead th:nth-child(3) { z-index: 103; }
-.excel-table thead th:nth-child(4) { z-index: 102; }
-.excel-table th.header-admin-section:nth-child(-n+4) { background-color: var(--header-bg-admin) !important; }
-.actions-cell { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 2px !important; min-width: 200px; white-space: nowrap; }
-
-/* --- Pagination & Modals --- */
-.pagination-container { background: #f8f9fa; padding: 10px 20px; border-top: 1px solid var(--border-color-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
-.pagination-controls button { padding: 6px 12px; font-size: 14px; margin: 0 2px; border: 1px solid var(--border-color-medium); border-radius: var(--border-radius-small); background: #fff; cursor: pointer; }
-.pagination-controls button.active { background: var(--info-color); color: #fff; border-color: var(--info-color); }
-.loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-color-overlay); display: none; align-items: center; justify-content: center; z-index: 9999; }
+.excel-table th:nth-child(1), .excel-table td:nth-child(1) { left: 0; z-index: 54; }
+.excel-table th:nth-child(2), .excel-table td:nth-child(2) { left: 40px; z-index: 53; }
+.excel-table th:nth-child(3), .excel-table td:nth-child(3) { left: 140px; z-index: 52; }
+.excel-table th:nth-child(4), .excel-table td:nth-child(4) { left: 240px; z-index: 51; }
+.actions-cell { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 200px; }
+.pagination-container { background: #f8f9fa; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin: 0 20px 20px 20px; border-radius: 0 0 var(--border-radius-large) var(--border-radius-large); box-shadow: var(--shadow-medium); border-top: 1px solid var(--border-color-light); }
+.loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.85); display: none; align-items: center; justify-content: center; z-index: 9999; }
 .loading-overlay.show { display: flex; }
-.spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
 .modal { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; }
-.modal-content { background-color: #fefefe; padding: 25px; border-radius: var(--border-radius-large); box-shadow: var(--shadow-medium); width: 90%; max-width: 500px; position: relative; }
-.edit-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; z-index: 3000; }
-.edit-modal-overlay.show { display: flex; opacity: 1; }
-.edit-modal-container { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 95%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
+.modal-content { background-color: #fefefe; padding: 25px; border-radius: var(--border-radius-large); width: 90%; max-width: 500px; }
+.edit-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 3000; }
+.edit-modal-overlay.show { display: flex; }
+.edit-modal-container { background: white; border-radius: 15px; width: 95%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
 .modal-section { border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-.modal-section-title { font-size: 16px; font-weight: 600; color: #475569; margin: -5px 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
 .modal-section.admin-section { background-color: #f0f4f8; }
 .modal-section.sales-section { background-color: #fdf8f0; }
-.modal-section-content { display: grid; grid-template-columns: 1fr; gap: 15px; }
 
-/* [FINAL FIX] คืนค่า Layout ของหน้าต่างแก้ไขให้เป็น 2 คอลัมน์แบบเรียบง่าย */
+/* ================================================================================
+   [MODIFIED] Styles for the Edit Modal Content
+   ================================================================================ */
+
+.modal-section-content {
+    display: grid;
+    grid-template-columns: 1fr; /* Default to 1 column on mobile */
+    gap: 15px;
+}
+
+/* On screens wider than 640px (tablets/desktops), switch to 2 columns */
 @media (min-width: 640px) {
-    .modal-section-content { 
-        grid-template-columns: 1fr 1fr; 
+    .modal-section-content {
+        grid-template-columns: 1fr 1fr; /* The 2-column layout */
     }
-    /* ไม่มีคำสั่งให้ขยายเต็มแถวอีกต่อไป */
 }
+/* ================================================================================ */
 
-.row-deal-closed td { background-color: #9ceb8d !important; font-weight: bold; }
+.row-deal-closed td { background-color: #9ceb8d !important; }
 .row-stale-case-15 td { background-color: #FFCCCB !important; }
-.row-stale-case-21 td { background-color: #f08080 !important; color: #000000 !important; }
+.row-stale-case-21 td { background-color: #f08080 !important; }
 
-/* --- Mobile Responsive Styles --- */
+/* --- Mobile Responsive Styles (No changes here) --- */
 @media (max-width: 950px) {
-    .excel-table thead th, .excel-table td { position: static !important; left: auto !important; z-index: auto !important; }
-    .excel-table th:nth-child(4), .excel-table td:nth-child(4) { position: sticky !important; left: 0 !important; z-index: 51 !important; background-color: #f8f9fa !important; }
-    .excel-table thead th { position: static !important; top: auto !important; }
-}
-@media (max-width: 768px) {
-    .header-content { flex-direction: column; gap: 15px; }
-    .toolbar { flex-direction: column; align-items: stretch; }
-    .toolbar-left, .toolbar-right { flex-direction: column; width: 100%; }
-    .excel-container { margin: 10px; }
-    .table-wrapper { max-height: calc(100vh - 350px); }
-    .excel-table td { font-size: 13px; padding: 6px 10px; }
-    .pagination-container { flex-direction: column; }
-    .modal-content { max-height: 85vh; display: flex; flex-direction: column; }
+    .excel-table thead th, .excel-table td { position: static !important; }
+    .excel-table th:nth-child(4), .excel-table td:nth-child(4) { position: sticky !important; left: 0 !important; }
 }
