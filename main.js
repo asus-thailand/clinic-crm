@@ -66,7 +66,6 @@ async function initializeApp() {
         let userProfile = await api.getUserProfile(session.user.id);
         if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
         
-        // Final check for active status during initialization
         if (userProfile && userProfile.is_active === false) {
              alert('บัญชีของคุณถูกปิดการใช้งานแล้ว กรุณาติดต่อผู้ดูแล');
              await api.signOut();
@@ -179,8 +178,6 @@ function debounce(func, delay = 300) {
         timeoutId = setTimeout(() => { func.apply(this, args); }, delay);
     };
 }
-
-// --- CSV Import/Export ---
 
 function handleImportClick() {
     ui.showModal('importModal');
@@ -297,11 +294,6 @@ async function handleExportToCSV() {
     }
 }
 
-// --- Event Handlers & Setup ---
-// ... (All event handlers like handleSort, handleSaveEditForm, etc. remain here)
-// This section is long, but the logic inside is mostly correct and just needs to be present.
-// I will ensure the functions are here.
-
 function setupEventListeners() {
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
     document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
@@ -375,7 +367,7 @@ function handleSort(column) {
         state.sort.direction = state.sort.direction === 'asc' ? 'desc' : 'asc';
     } else {
         state.sort.column = column;
-        state.sort.direction = 'desc'; // Default to desc for new columns
+        state.sort.direction = 'desc';
     }
     updateVisibleData();
 }
@@ -464,7 +456,7 @@ function handleContextMenu(event) {
     const row = event.target.closest('tr[data-id]');
     if (!row) return;
     const userRole = (state.currentUser?.role || 'sales').toLowerCase();
-    if (userRole === 'sales') return; // Sales cannot use context menu
+    if (userRole === 'sales') return;
     
     event.preventDefault();
     state.contextMenuRowId = row.dataset.id;
