@@ -6,6 +6,7 @@ Clinic-CRM เป็นระบบบริหารจัดการควา
 ระบบนี้ถูกสร้างขึ้นด้วยเทคโนโลยี Frontend พื้นฐาน (HTML, CSS, JavaScript) และใช้ Supabase เป็น Backend-as-a-Service (BaaS) สำหรับจัดการฐานข้อมูล, การยืนยันตัวตน (Authentication), และ Real-time updates
 
 ## ✨ ฟีเจอร์หลัก (Features)
+
 - **การจัดการข้อมูลลูกค้า**: เพิ่ม, แก้ไข, ลบ, ค้นหา, และกรองข้อมูลลูกค้า
 - **ระบบสิทธิ์ผู้ใช้งาน (Role-Based Access Control)**:
     - `administrator`: สิทธิ์สูงสุด (ลบข้อมูล, นำเข้าข้อมูลได้)
