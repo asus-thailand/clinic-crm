@@ -26,10 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleLogin() {
-        if (!window.supabaseClient || !window.api) {
-            showMessage('ระบบยังไม่พร้อม กรุณารอสักครู่', true);
-            return;
-        }
+        // 'defer' guarantees that supabaseClient and api are available here
         setLoading(true);
         showMessage('', false);
 
@@ -69,13 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function checkExistingSession() {
-        if (window.api) {
-            const session = await api.getSession();
-            if (session) {
-                window.location.href = 'index.html';
-            }
-        } else {
-            setTimeout(checkExistingSession, 100); // Wait for api.js to load
+        // 'defer' guarantees that api is available here
+        const session = await api.getSession();
+        if (session) {
+            window.location.href = 'index.html';
         }
     }
 
@@ -91,5 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // This function runs after all deferred scripts have loaded
     checkExistingSession();
 });
