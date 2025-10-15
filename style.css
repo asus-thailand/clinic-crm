@@ -18,6 +18,100 @@ body {
     line-height: 1.6;
 }
 
+/* Login Page Styles */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #e9ecef;
+}
+.login-box {
+    background: white;
+    padding: 2rem 2.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+}
+.login-box h2 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: var(--dark-color);
+}
+.input-group {
+    margin-bottom: 1.25rem;
+}
+.input-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: #495057;
+}
+.input-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+.btn-block {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+.btn.loading .spinner-btn {
+    display: block;
+}
+.btn.loading span {
+    display: none;
+}
+.spinner-btn {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+.message {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    text-align: center;
+}
+.message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+.message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+
 /* Header Styles */
 .app-header {
     background-color: white;
@@ -27,19 +121,16 @@ body {
     justify-content: space-between;
     align-items: center;
 }
-
 .app-header h1 {
     margin: 0;
     font-size: 1.5rem;
     color: var(--primary-color);
 }
-
 .header-controls {
     display: flex;
     align-items: center;
     gap: 1rem;
 }
-
 .user-display {
     font-weight: bold;
     color: var(--dark-color);
@@ -60,7 +151,6 @@ body {
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
-
 .stat-card {
     background-color: white;
     padding: 1.5rem;
@@ -68,13 +158,11 @@ body {
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--border-color);
 }
-
 .stat-card h4 {
     margin: 0 0 0.5rem 0;
     color: var(--secondary-color);
     font-size: 1rem;
 }
-
 .stat-card p {
     margin: 0;
     font-size: 2rem;
@@ -96,20 +184,17 @@ body {
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--border-color);
 }
-
 .left-controls, .right-controls {
     display: flex;
     align-items: center;
     gap: 0.75rem;
 }
-
 input[type="text"], select, input[type="date"] {
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 0.9rem;
 }
-
 input[type="text"] {
     min-width: 300px;
 }
@@ -124,7 +209,6 @@ input[type="text"] {
     font-weight: bold;
     transition: background-color 0.2s;
 }
-
 .btn-primary {
     background-color: var(--primary-color);
     color: white;
@@ -132,7 +216,6 @@ input[type="text"] {
 .btn-primary:hover {
     background-color: #0056b3;
 }
-
 .btn-secondary {
     background-color: var(--secondary-color);
     color: white;
@@ -140,7 +223,6 @@ input[type="text"] {
 .btn-secondary:hover {
     background-color: #5a6268;
 }
-
 .btn-date-filter {
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--border-color);
@@ -153,7 +235,6 @@ input[type="text"] {
     border-color: var(--primary-color);
 }
 
-
 /* Table Styles */
 .table-container {
     overflow-x: auto;
@@ -162,34 +243,28 @@ input[type="text"] {
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--border-color);
 }
-
 .data-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
 }
-
 .data-table th, .data-table td {
     padding: 0.75rem 1rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
     white-space: nowrap;
 }
-
 .data-table th {
     background-color: var(--light-color);
     font-weight: bold;
     cursor: pointer;
 }
-
 .data-table th[data-sortable]:hover {
     background-color: #e9ecef;
 }
-
 .data-table tbody tr:hover {
     background-color: #f1f3f5;
 }
-
 .data-table .sort-indicator {
     display: inline-block;
     margin-left: 5px;
@@ -208,7 +283,6 @@ input[type="text"] {
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--border-color);
 }
-
 .pagination-controls button {
     margin: 0 2px;
 }
