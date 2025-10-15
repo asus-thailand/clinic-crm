@@ -2,176 +2,131 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beauty Clinic CRM - Excel Edition</title>
-    
+    <title>Beauty Clinic CRM</title>
     <link rel="stylesheet" href="style.css">
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="ui.js"></script>
+    <script src="main.js" defer></script>
 </head>
 <body>
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <div class="logo-icon">FBC</div>
-                <div class="logo-text">
-                    <h1>Facebody Clinic</h1>
-                    <p>Excel Edition - Advanced Management System</p>
-                </div>
-            </div>
-            <div class="user-info">
-                <div class="user-badge">Loading...</div>
-                <a href="report.html" class="btn" style="background-color: #48bb78;">ดูรายงาน</a>
-                <button class="btn" id="exportButton">📊 Export</button>
-                <button class="btn" id="importButton">📥 Import</button>
-                <button class="btn" id="logoutButton">ออกจากระบบ</button>
-            </div>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <header class="app-header">
+        <h1>Beauty Clinic CRM</h1>
+        <div class="header-controls">
+            <span id="userDisplay" class="user-display"></span>
+            <button id="logoutButton" class="btn btn-secondary">ออกจากระบบ</button>
         </div>
     </header>
 
-    <div class="stats-container">
-        <div class="stat-card">
-            <div class="stat-title">ลูกค้าทั้งหมด</div>
-            <div class="stat-value" id="totalCustomers">0</div>
-            <div class="stat-change stat-up">📈 Active Records</div>
+    <main class="container">
+        <div class="dashboard">
+            <div class="stat-card">
+                <h4>ลูกค้าทั้งหมด</h4>
+                <p id="totalCustomers">0</p>
+            </div>
+            <div class="stat-card">
+                <h4>เคสวันนี้</h4>
+                <p id="todayCustomers">0</p>
+            </div>
+            <div class="stat-card">
+                <h4>เคสตามต่อ</h4>
+                <p id="pendingCustomers">0</p>
+            </div>
+            <div class="stat-card">
+                <h4>ปิดการขาย</h4>
+                <p id="closedDeals">0</p>
+            </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-title">ลูกค้าใหม่วันนี้</div>
-            <div class="stat-value" id="todayCustomers">0</div>
-            <div class="stat-change" style="color: #007bff;">📅 Today</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">รอติดตาม</div>
-            <div class="stat-value" id="pendingCustomers">0</div>
-            <div class="stat-change stat-down">⏰ Pending</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">ปิดการขาย</div>
-            <div class="stat-value" id="closedDeals">0</div>
-            <div class="stat-change stat-up">✅ Closed</div>
-        </div>
-    </div>
 
-    <div class="toolbar">
-        <div class="toolbar-left">
-            <div class="search-container">
-                <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า...">
-                <span class="search-icon">🔍</span>
+        <div class="controls-toolbar">
+            <div class="left-controls">
+                <input type="text" id="searchInput" placeholder="ค้นหา (ชื่อ, เบอร์โทร, Lead)...">
+                <select id="statusFilter"><option value="">สถานะทั้งหมด</option></select>
+                <select id="salesFilter"><option value="">เซลล์ทั้งหมด</option></select>
+                <button id="refreshButton" class="btn btn-secondary">รีเฟรช</button>
             </div>
-            <select class="filter-select" id="statusFilter">
-                <option value="">ทุกสถานะ</option>
-            </select>
-            <select class="filter-select" id="salesFilter">
-                <option value="">ทุกเซลล์</option>
-            </select>
-        </div>
-        <div class="toolbar-right">
-            <div class="date-filter-container">
-                <button class="btn-date-filter" data-preset="today">วันนี้</button>
-                <button class="btn-date-filter" data-preset="7d">7 วัน</button>
-                <button class="btn-date-filter" data-preset="30d">30 วัน</button>
-                <input type="date" id="startDateFilter" class="date-input">
-                <span class="date-separator">ถึง</span>
-                <input type="date" id="endDateFilter" class="date-input">
-                <button class="btn-date-filter" id="clearDateFilter">ทั้งหมด</button>
-            </div>
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="addUserButton">+ เพิ่มลูกค้า</button>
-                <button class="btn" style="background: #6c757d;" id="refreshButton">🔄 รีเฟรช</button>
+            <div class="right-controls">
+                <a href="report.html" id="reportButton" class="btn btn-secondary" target="_blank">ดูรีพอร์ต</a>
+                <button id="importButton" class="btn btn-secondary">นำเข้า CSV</button>
+                <button id="exportButton" class="btn btn-secondary">ส่งออก CSV</button>
+                <button id="addUserButton" class="btn btn-primary">+ เพิ่มลูกค้า</button>
             </div>
         </div>
-    </div>
 
-    <div class="excel-container">
-        <div class="table-wrapper">
-            <table class="excel-table" id="excelTable">
-                <thead>
-                </thead>
-                <tbody id="tableBody">
-                </tbody>
+        <div class="date-filter-toolbar">
+            <input type="date" id="startDateFilter" class="date-input">
+            <span class="date-separator">ถึง</span>
+            <input type="date" id="endDateFilter" class="date-input">
+            <button class="btn-date-filter" data-preset="today">วันนี้</button>
+            <button class="btn-date-filter" data-preset="7d">7 วัน</button>
+            <button class="btn-date-filter" data-preset="30d">30 วัน</button>
+            <button class="btn-date-filter active" data-preset="all" id="clearDateFilter">ทั้งหมด</button>
+        </div>
+
+        <div class="table-container">
+            <table id="excelTable" class="data-table">
+                <thead></thead>
+                <tbody id="tableBody"></tbody>
             </table>
         </div>
-        <div class="pagination-container" id="paginationContainer">
+        
+        <div id="paginationContainer" class="pagination-controls"></div>
+    </main>
+
+    <div id="editCustomerModal" class="modal">
+        <div class="modal-content large">
+            <button class="modal-close" data-modal-close="editCustomerModal">&times;</button>
+            <h2>แก้ไขข้อมูลลูกค้า</h2>
+            <form id="editCustomerForm"></form>
         </div>
     </div>
 
-    <div class="context-menu" id="contextMenu">
-        <div class="context-menu-item" data-action="edit">✏️ แก้ไข</div>
-        <div class="context-menu-item" data-action="copy">📋 คัดลอก</div>
-        <div class="context-menu-item" data-action="paste">📄 วาง</div>
-        <div class="context-menu-separator"></div>
-        <div class="context-menu-item" data-action="delete" id="deleteRowMenuItem">🗑️ ลบแถว</div>
-        <div class="context-menu-item" data-action="clear">🧹 ล้างเซลล์</div>
+    <div id="statusUpdateModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" data-modal-close="statusUpdateModal">&times;</button>
+            <h2>อัปเดตสถานะ: <span id="modalCustomerName"></span></h2>
+            <input type="hidden" id="modalCustomerId">
+            <div class="form-group">
+                <label for="modalStatusSelect">สถานะใหม่:</label>
+                <select id="modalStatusSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label for="modalNotesText">หมายเหตุ:</label>
+                <textarea id="modalNotesText" class="form-control" rows="3"></textarea>
+            </div>
+            <button id="submitStatusUpdateBtn" class="btn btn-primary">บันทึก</button>
+        </div>
+    </div>
+
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" data-modal-close="historyModal">&times;</button>
+            <h2>ประวัติการติดต่อ: <span id="historyCustomerName"></span></h2>
+            <div id="historyTimeline" class="timeline"></div>
+        </div>
+    </div>
+
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" data-modal-close="importModal">&times;</button>
+            <h2>นำเข้าข้อมูลจาก CSV</h2>
+            <p>เลือกไฟล์ CSV ที่มีคอลัมน์ name, phone, channel, sales</p>
+            <input type="file" id="csvFile" accept=".csv">
+            <button id="importBtn" class="btn btn-primary">นำเข้า</button>
+            <p id="importStatus"></p>
+        </div>
     </div>
     
-    <div class="status-indicator" id="statusIndicator"></div>
-
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner">
-            <div class="spinner"></div>
-            <p>กำลังโหลดข้อมูล...</p>
-        </div>
+    <div id="contextMenu" class="context-menu">
+        <div class="context-menu-item" data-action="delete">ลบข้อมูล</div>
     </div>
 
-    <div class="modal" id="importModal">
-        <div class="modal-content">
-            <span class="close-button" data-modal-close="importModal">&times;</span>
-            <h2>นำเข้าข้อมูลจาก CSV</h2>
-            <p>กรุณาเลือกไฟล์ .csv ที่มี Headers ตรงกับตาราง</p>
-            <input type="file" id="csvFile" accept=".csv">
-            <button class="btn btn-primary" id="importBtn">นำเข้าข้อมูล</button>
-            <p id="importStatus" class="import-status"></p>
-        </div>
-    </div>
-
-    <div class="modal" id="statusUpdateModal">
-        <div class="modal-content">
-            <span class="close-button" data-modal-close="statusUpdateModal">&times;</span>
-            <h2>อัปเดตสถานะลูกค้า</h2>
-            <p>ลูกค้า: <strong id="modalCustomerName"></strong></p>
-            <div class="modal-input-group">
-                <label for="modalStatusSelect">สถานะใหม่:</label>
-                <select id="modalStatusSelect">
-                    <option value="">-- เลือกสถานะ --</option>
-                </select>
-            </div>
-            <div class="modal-input-group">
-                <label for="modalNotesText">เหตุผล/บันทึกเพิ่มเติม:</label>
-                <textarea id="modalNotesText" rows="4" placeholder="กรอกรายละเอียดการติดต่อที่นี่..."></textarea>
-            </div>
-            <button class="btn btn-primary" id="submitStatusUpdateBtn">บันทึกสถานะ</button>
-            <input type="hidden" id="modalCustomerId">
-        </div>
-    </div>
-
-    <div class="modal" id="historyModal">
-        <div class="modal-content">
-            <span class="close-button" data-modal-close="historyModal">&times;</span>
-            <h2>ประวัติการติดตาม: <span id="historyCustomerName"></span></h2>
-            <div id="historyTimelineContainer" class="timeline-container">
-            </div>
-        </div>
-    </div>
-
-    <div class="edit-modal-overlay" id="editCustomerModal">
-        <div class="edit-modal-container">
-            <div class="edit-modal-header">
-                <h2 id="editModalTitle">แก้ไขข้อมูลลูกค้า</h2>
-                <button class="edit-modal-close" id="closeEditModalBtn">&times;</button>
-            </div>
-            <form id="editCustomerForm" class="edit-modal-body">
-                </form>
-            <div class="edit-modal-footer">
-                <button type="button" class="btn-cancel" id="cancelEditBtn">ยกเลิก</button>
-                <button type="submit" class="btn-save" form="editCustomerForm">บันทึก</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./config.js"></script>
-    <script src="./api.js"></script>
-    <script src="./ui.js"></script>
-    <script src="./main.js"></script>
+    <div id="statusToast" class="status-toast"></div>
 </body>
 </html>
