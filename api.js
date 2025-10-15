@@ -213,14 +213,11 @@ api.getSalesReport = async function(userId, startDate = null, endDate = null) {
 };
 
 api.getDashboardStats = async function(dateRange) {
-    // This can be converted to a single RPC call in the future for even better performance
     let todayQuery = window.supabaseClient.from('customers').select('id', { count: 'exact' }).eq('date', new Date().toISOString().split('T')[0]);
     let pendingQuery = window.supabaseClient.from('customers').select('id', { count: 'exact' }).eq('status_1', 'ตามต่อ');
     let closedQuery = window.supabaseClient.from('customers').select('id', { count: 'exact' }).eq('status_1', 'ปิดการขาย').eq('last_status', '100%').not('closed_amount', 'is', null);
 
     if (dateRange.startDate) {
-        // Note: todayQuery should only be for today, not a range.
-        // Let's assume the dashboard stats should reflect the selected date range.
         todayQuery = window.supabaseClient.from('customers').select('id', { count: 'exact' }).gte('date', dateRange.startDate).lte('date', dateRange.endDate);
         pendingQuery = pendingQuery.gte('date', dateRange.startDate);
         closedQuery = closedQuery.gte('date', dateRange.startDate);
