@@ -161,6 +161,7 @@ body {
     background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px; 
 }
 
+/* [DESKTOP] Styles for the first 4 sticky columns */
 .excel-table th:nth-child(-n+4), .excel-table td:nth-child(-n+4) {
     position: sticky;
     background-color: #f8f9fa;
@@ -334,31 +335,49 @@ body {
 .hidden { display: none; }
 
 /* --- 14. Row Highlighting Styles --- */
-
-/* สีสำหรับเคสที่ปิดการขายแล้ว */
 .row-deal-closed td,
 .row-deal-closed:hover td {
     background-color: #9ceb8d !important;
     font-weight: bold;
 }
-
 .row-deal-closed:hover td {
     background-color: #89d87a !important;
 }
-
-/* [NEW] สีสำหรับเคสค้าง 15 วัน (ระดับแจ้งเตือน) */
 .row-stale-case-15 td {
     background-color: #FFCCCB !important; 
 }
 .row-stale-case-15:hover td {
-    background-color: #ffbaba !important; /* สีเข้มขึ้นเล็กน้อยเมื่อ hover */
+    background-color: #ffbaba !important;
 }
-
-/* [NEW] สีสำหรับเคสค้าง 21 วัน (ระดับวิกฤต) */
 .row-stale-case-21 td {
     background-color: #f08080 !important;
-    color: #000000 !important; /* ทำให้ตัวหนังสือเป็นสีดำเพื่อให้อ่านง่ายขึ้น */
+    color: #000000 !important;
 }
 .row-stale-case-21:hover td {
-    background-color: #ea6767 !important; /* สีเข้มขึ้นเล็กน้อยเมื่อ hover */
+    background-color: #ea6767 !important;
+}
+
+/* --- [NEW] Mobile-Specific Sticky Column --- */
+@media (max-width: 768px) {
+    /* 1. ยกเลิกการตรึงคอลัมน์เดิมทั้งหมด */
+    .excel-table th:nth-child(-n+4), .excel-table td:nth-child(-n+4) {
+        position: static; /* เปลี่ยนจาก sticky เป็น static */
+        left: auto;       /* ล้างค่า left */
+        z-index: auto;    /* ล้างค่า z-index */
+        border-right: 1px solid var(--border-color-medium); /* คืนเส้นขอบปกติ */
+    }
+
+    /* 2. ตรึงเฉพาะคอลัมน์ที่ 4 ("ชื่อลูกค้า") */
+    .excel-table th:nth-child(4), .excel-table td:nth-child(4) {
+        position: sticky;
+        left: 0;
+        z-index: 50;
+        background-color: #f8f9fa; /* ใส่สีพื้นหลังทึบ */
+        border-right: 2px solid #ccc; /* เพิ่มเส้นขอบหนาเพื่อแบ่งเขต */
+    }
+
+    /* 3. ทำให้หัวตารางของคอลัมน์ที่ 4 ลอยอยู่เหนือสุด */
+    .excel-table thead th:nth-child(4) {
+        z-index: 101;
+    }
 }
