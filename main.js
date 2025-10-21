@@ -20,22 +20,23 @@ const state = {
 };
 
 // [MODIFIED] อัปเดตตัวเลือก Dropdown ตามที่ร้องขอ
+// [FIXED] ลบเครื่องหมาย / (slash) ที่ต่อท้ายตัวเลือก channel ทั้งหมด
 const DROPDOWN_OPTIONS = {
     channel: [
-        "เพื่อนแนะนำ/", // ตัด "-" ออก
-        "Walk-In/",     // ตัด "-" ออก
-        "PHONE-IN/",    // ตัด "-" ออก
-        "Line@/",       // ตัด "-" ออก
-        "Fbc By หมอธีร์ (ปลูกผม)", // ตัด "-" ออก
-        "Fbc By หมอธีร์ (หัตถการอื่น)", // ตัด "-" ออก
-        "FBC HAIR CLINIC", // ตัด "-" ออก
-        "Fbc ตาสองชั้น ยกคิ้ว เสริมจมูก", // แก้ไข "จิ้มูก" เป็น "จมูก" และตัด "-" ออก
-        "Fbc ปรับรูปหน้า Botox Filler HIFU", // ตัด "-" ออก
-        "เว็บไซต์",     // ตัด "-" ออก
-        "AGENCY",       // ตัด "-" ออก
-        "IG",           // ตัด "-" ออก
-        "Tiktok ",      // ตัด "-" ออก
-        "FMBC"          // เพิ่ม FMBC
+        "เพื่อนแนะนำ", // [FIXED] ลบ / ออก
+        "Walk-In",     // [FIXED] ลบ / ออก
+        "PHONE-IN",    // [FIXED] ลบ / ออก
+        "Line@",       // [FIXED] ลบ / ออก
+        "Fbc By หมอธีร์ (ปลูกผม)", // [FIXED] ลบ / ออก
+        "Fbc By หมอธีร์ (หัตถการอื่น)", // [FIXED] ลบ / ออก
+        "FBC HAIR CLINIC", // [FIXED] ลบ / ออก
+        "Fbc ตาสองชั้น ยกคิ้ว เสริมจมูก", // [FIXED] ลบ / ออก
+        "Fbc ปรับรูปหน้า Botox Filler HIFU", // [FIXED] ลบ / ออก
+        "เว็บไซต์",     // [FIXED] ลบ / ออก
+        "AGENCY",       // [FIXED] ลบ / ออก
+        "IG",           // [FIXED] ลบ / ออก
+        "Tiktok ",      // (อันนี้มี space ต่อท้าย แต่ไม่มี /)
+        "FMBC"
     ],
     procedure: [
         "ตา Dr.T",
@@ -57,7 +58,6 @@ const DROPDOWN_OPTIONS = {
         "ตา/อื่นๆ",
         "ผม/อื่นๆ",
         "ตาทีมแพทย์/ปลูกผม"
-        // ไม่มีการตัด "-" ใน procedure เพราะไม่มีอยู่แล้ว
     ],
     confirm_y: ["Y", "N"],
     transfer_100: ["Y", "N"],
@@ -71,34 +71,58 @@ const SALES_EDITABLE_FIELDS = [
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date'
 ];
 
+/**
+ * [REFACTORED & FIXED] ฟังก์ชันแปลง Date String ที่ปลอดภัยต่อ Timezone
+ * จะแปลงเฉพาะ format ที่รู้จัก (YYYY-MM-DD หรือ DD/MM/YYYY)
+ * และไม่ใช้ new Date() ในการ parse เพื่อป้องกัน Timezone Bug
+ * @param {string} dateStr The date string.
+ * @returns {string|null} YYYY-MM-DD format or null if invalid.
+ */
 function normalizeDateStringToYYYYMMDD(dateStr) {
     if (!dateStr || typeof dateStr !== 'string') return null;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-    if (dateStr.includes('/')) {
+
+    dateStr = dateStr.trim();
+
+    // 1. ถ้าเป็น YYYY-MM-DD อยู่แล้ว (เช่น '2024-10-21')
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        // ตรวจสอบความถูกต้องของวันที่ (เช่น ไม่มีวันที่ 30/02)
+        const date = new Date(dateStr + 'T00:00:00'); // ใช้ T00:00:00 เพื่อให้แน่ใจว่า parse ถูกต้อง
+        if (!isNaN(date.getTime()) && date.toISOString().startsWith(dateStr)) {
+             return dateStr;
+        }
+    }
+
+    // 2. ถ้าเป็น DD/MM/YYYY (เช่น '21/10/2567' หรือ '21/10/2024')
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
         const parts = dateStr.split('/');
         if (parts.length === 3) {
             const day = parts[0].padStart(2, '0');
             const month = parts[1].padStart(2, '0');
             let year = parseInt(parts[2], 10);
-            if (year > 2500) year -= 543; // Convert from Buddhist year if needed
-            // Basic validation for year range
+
+            // แปลงจาก พ.ศ. ถ้าจำเป็น
+            if (year > 2500) year -= 543;
+
+            // ตรวจสอบปีที่สมเหตุสมผล
             if (year < 1900 || year > 2100) return null;
-            return `${year}-${month}-${day}`;
+            
+            const formattedDate = `${year}-${month}-${day}`;
+            // ตรวจสอบความถูกต้องอีกครั้ง
+            const date = new Date(formattedDate + 'T00:00:00');
+            if (!isNaN(date.getTime()) && date.toISOString().startsWith(formattedDate)) {
+                 return formattedDate;
+            }
         }
     }
-    try {
-        // Attempt to parse various formats, normalize to YYYY-MM-DD UTC
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return null; // Invalid date
-        const year = date.getUTCFullYear();
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(date.getUTCDate()).padStart(2, '0');
-        if (year < 1900 || year > 2100) return null; // Validate year range after parsing
-        return `${year}-${month}-${day}`;
-    } catch (e) {
-        return null;
-    }
+    
+    // 3. ถ้าเป็น format อื่นๆ ที่ new Date() อาจจะ parse ผิดพลาด
+    // เราเลือกที่จะไม่รองรับ ดีกว่าการบันทึกข้อมูลผิด (Fail-fast)
+    // การใช้ new Date(dateStr) ถูกลบออกไปเพื่อป้องกัน Timezone Bug
+    
+    console.warn(`Invalid or unhandled date format: ${dateStr}. Returning null.`);
+    return null; // ถ้าไม่ตรง format ที่รองรับ ให้คืนค่า null
 }
+
 
 async function initializeApp() {
     console.log('Starting app initialization...');
