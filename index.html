@@ -37,7 +37,7 @@
     <div class="toolbar">
         <div class="toolbar-left">
             <div class="search-container">
-                <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า...">
+                <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัส...">
                 <span class="search-icon">🔍</span>
             </div>
             <select class="filter-select" id="statusFilter">
@@ -89,7 +89,8 @@
                 <input type="date" id="startDateFilter" class="date-input">
                 <span class="date-separator">ถึง</span>
                 <input type="date" id="endDateFilter" class="date-input">
-                <button class="btn-date-filter active" id="clearDateFilter" data-preset="all">ทั้งหมด</button> </div>
+                <button class="btn-date-filter active" id="clearDateFilter" data-preset="all">ทั้งหมด</button>
+            </div>
             <div class="action-buttons">
                 <button class="btn btn-primary" id="addUserButton">+ เพิ่มลูกค้า</button>
                 <button class="btn" style="background: #6c757d;" id="refreshButton">🔄 รีเฟรช</button>
@@ -144,7 +145,8 @@
     </div>
 
     <div class="modal" id="historyModal">
-        <div class="modal-content" style="max-width: 600px;"> <span class="close-button" data-modal-close="historyModal">&times;</span>
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-button" data-modal-close="historyModal">&times;</span>
             <h2>ประวัติการติดตาม: <span id="historyCustomerName"></span></h2>
             <div id="historyTimelineContainer" class="timeline-container"></div>
         </div>
