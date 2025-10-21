@@ -4,6 +4,11 @@
 
 const ui = {};
 
+// [FIXED] ย้าย Magic Numbers ของการไฮไลท์แถวมาเป็นค่าคงที่ (Constants)
+// ทำให้ง่ายต่อการบำรุงรักษาและแก้ไขในอนาคต
+const STALE_CASE_WARNING_DAYS = 15; // จำนวนวันที่จะไฮไลท์สีเหลือง (เตือน)
+const STALE_CASE_CRITICAL_DAYS = 21; // จำนวนวันที่จะไฮไลท์สีแดง (วิกฤต)
+
 // ================================================================================
 // UTILITY FUNCTIONS
 // ================================================================================
@@ -184,6 +189,7 @@ function createRowElement(row, index, page, pageSize) {
     }
 
     // --- [MODIFIED] ปรับปรุงตรรกะการไฮไลท์เคสค้างแบบ 2 ระดับ ---
+    // [FIXED] ใช้ตัวแปรค่าคงที่ STALE_CASE... แทน Magic Numbers
     if (row.date && !tr.classList.contains('row-deal-closed')) {
         const today = new Date();
         today.setHours(0, 0, 0, 0); 
@@ -192,10 +198,10 @@ function createRowElement(row, index, page, pageSize) {
         const daysOld = Math.floor(timeDiff / (1000 * 3600 * 24));
 
         // ตรวจสอบเงื่อนไขที่นานที่สุดก่อน (สำคัญ)
-        if (daysOld > 21) {
-            tr.classList.add('row-stale-case-21'); // ระดับวิกฤต
-        } else if (daysOld > 15) {
-            tr.classList.add('row-stale-case-15'); // ระดับแจ้งเตือน
+        if (daysOld > STALE_CASE_CRITICAL_DAYS) {
+            tr.classList.add('row-stale-case-21'); // ระดับวิกฤต (class name ยังใช้ 21 แต่ logic ใช้ตัวแปร)
+        } else if (daysOld > STALE_CASE_WARNING_DAYS) {
+            tr.classList.add('row-stale-case-15'); // ระดับแจ้งเตือน (class name ยังใช้ 15 แต่ logic ใช้ตัวแปร)
         }
     }
     // --- สิ้นสุดส่วนที่แก้ไข ---
