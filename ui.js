@@ -50,7 +50,8 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) { const container = document.getElementById('paginationContainer'); if (!container) return; if (totalRecords === 0) { container.innerHTML = '<div class="pagination-info">ไม่พบข้อมูล</div>'; return; } const pageSizeHTML = `<div class="page-size-selector"><label for="pageSize">แสดง:</label><select id="pageSize"><option value="25" ${pageSize == 25 ? 'selected' : ''}>25</option><option value="50" ${pageSize == 50 ? 'selected' : ''}>50</option><option value="100" ${pageSize == 100 ? 'selected' : ''}>100</option><option value="200" ${pageSize == 200 ? 'selected' : ''}>200</option></select><span>แถว</span></div>`; const startRecord = (currentPage - 1) * pageSize + 1; const endRecord = Math.min(currentPage * pageSize, totalRecords); const infoHTML = `<div class="pagination-info">แสดง ${startRecord} - ${endRecord} จาก ${totalRecords}</div>`; let buttonsHTML = `<button data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>`; const maxButtons = 5; let startPage, endPage; if (totalPages <= maxButtons) { startPage = 1; endPage = totalPages; } else { const maxPagesBeforeCurrent = Math.floor(maxButtons / 2); const maxPagesAfterCurrent = Math.ceil(maxButtons / 2) - 1; if (currentPage <= maxPagesBeforeCurrent) { startPage = 1; endPage = maxButtons; } else if (currentPage + maxPagesAfterCurrent >= totalPages) { startPage = totalPages - maxButtons + 1; endPage = totalPages; } else { startPage = currentPage - maxPagesBeforeCurrent; endPage = currentPage + maxPagesAfterCurrent; } } if (startPage > 1) { buttonsHTML += `<button data-page="1">1</button>`; if (startPage > 2) buttonsHTML += `<span style="padding: 0 5px;">...</span>`; } for (let i = startPage; i <= endPage; i++) { buttonsHTML += `<button data-page="${i}" class="${i === currentPage ? 'active' : ''}">${i}</button>`; } if (endPage < totalPages) { if (endPage < totalPages - 1) buttonsHTML += `<span style="padding: 0 5px;">...</span>`; buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`; } buttonsHTML += `<button data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>`; const controlsHTML = `<div class="pagination-controls">${buttonsHTML}</div>`; container.innerHTML = `${pageSizeHTML}${infoHTML}${controlsHTML}`; };
 ui.showModal = function(modalId, context = {}) { const modal = document.getElementById(modalId); if (!modal) return; if (modalId === 'statusUpdateModal' || modalId === 'historyModal') { const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`); if (nameElement) nameElement.textContent = context.customerName || 'N/A'; if (modalId === 'statusUpdateModal') { const customerIdElement = modal.querySelector('#modalCustomerId'); if (customerIdElement) customerIdElement.value = context.customerId || ''; } } modal.style.display = 'flex'; };
 ui.hideModal = function(modalId) { const modal = document.getElementById(modalId); if (!modal) return; modal.style.display = 'none'; if (modalId === 'statusUpdateModal') { modal.querySelector('#modalStatusSelect').value = ''; modal.querySelector('#modalNotesText').value = ''; modal.querySelector('#modalCustomerId').value = ''; } if (modalId === 'historyModal') { const container = document.getElementById('historyTimelineContainer'); if (container) container.innerHTML = ''; } };
-ui.populateFilterDropdown = function(elementId, options) { const select = document.getElementById(elementId); if (!select) return; while (select.options.length > 1) { select.remove(1); } (options || []).forEach(option => { if (option) { const optElement = document.createElement('option'); optElement.value = option; optElement.textContent = option; select.appendChild(optElement); } }); };
+// [MODIFIED] Simplified populateFilterDropdown for single select
+ui.populateFilterDropdown = function(elementId, options) { const select = document.getElementById(elementId); if (!select) return; while (select.options.length > 1) { select.remove(1); } (options || []).forEach(option => { if (option != null && option !== '') { const optElement = document.createElement('option'); optElement.value = option; optElement.textContent = option; select.appendChild(optElement); } }); };
 ui.renderHistoryTimeline = function(historyData) { const container = document.getElementById('historyTimelineContainer'); if (!container) return; if (!historyData || historyData.length === 0) { container.innerHTML = '<p>ยังไม่มีประวัติ</p>'; return; } container.innerHTML = historyData.map(item => { let roleClass = 'history-default'; let userDisplay = 'Unknown'; if (item.users) { const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1); const username = item.users.username || 'N/A'; userDisplay = `${role} - ${username}`; const roleLower = (item.users.role || '').toLowerCase(); if (roleLower === 'admin' || roleLower === 'administrator') { roleClass = 'history-admin'; } else if (roleLower === 'sales') { roleClass = 'history-sales'; } } return `<div class="timeline-item ${roleClass}"><div class="timeline-icon">✓</div><div class="timeline-content"><div class="timeline-status">${escapeHtml(item.status)}</div><div class="timeline-notes">${escapeHtml(item.notes || '-')}</div><div class="timeline-footer">โดย: ${escapeHtml(userDisplay)} | ${new Date(item.created_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</div></div></div>`; }).join(''); };
 ui.showContextMenu = function(event) { const menu = document.getElementById('contextMenu'); if (!menu) return; menu.style.display = 'block'; menu.style.left = `${event.pageX}px`; menu.style.top = `${event.pageY}px`; };
 ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
@@ -72,7 +73,9 @@ ui.populateMultiSelectDropdown = function(optionsContainerId, options, selectedV
     const fragment = document.createDocumentFragment();
 
     (options || []).forEach(option => {
-        if (!option) return; // Skip empty options
+        // Ensure option is a non-empty string before creating element
+        const optionString = String(option || '').trim();
+        if (optionString === '') return;
 
         const item = document.createElement('div');
         item.className = 'multi-select-item';
@@ -80,18 +83,17 @@ ui.populateMultiSelectDropdown = function(optionsContainerId, options, selectedV
         const label = document.createElement('label');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.value = option;
-        checkbox.checked = selectedValues.includes(option);
-        // Store filter type directly on checkbox for easier access in event listener
-        checkbox.dataset.filterType = optionsContainerId.replace('Options', ''); // e.g., 'salesFilter'
+        checkbox.value = optionString; // Use the cleaned string
+        checkbox.checked = selectedValues.includes(optionString);
+        checkbox.dataset.filterType = optionsContainerId.replace('Options', '');
 
         label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(` ${option}`)); // Add space
+        label.appendChild(document.createTextNode(` ${optionString}`)); // Add space
         item.appendChild(label);
         fragment.appendChild(item);
     });
 
-    if (options.length === 0) {
+    if (fragment.childElementCount === 0) { // Check if fragment is empty
         container.innerHTML = '<div style="padding: 8px 15px; color: #888; font-style: italic;">ไม่มีตัวเลือก</div>';
     } else {
         container.appendChild(fragment);
@@ -99,13 +101,13 @@ ui.populateMultiSelectDropdown = function(optionsContainerId, options, selectedV
 };
 
 /**
- * Toggles the visibility of a dropdown.
- * @param {string} dropdownId - ID of the dropdown element.
+ * Toggles the visibility of a dropdown, closing others.
+ * @param {string} dropdownId - ID of the dropdown element to toggle.
  */
 ui.toggleDropdown = function(dropdownId) {
     const dropdown = document.getElementById(dropdownId);
     if (dropdown) {
-        // Hide other dropdowns first for better UX
+        // Hide other open dropdowns first
         document.querySelectorAll('.multi-select-dropdown.show').forEach(openDropdown => {
             if (openDropdown.id !== dropdownId) {
                 openDropdown.classList.remove('show');
@@ -119,10 +121,10 @@ ui.toggleDropdown = function(dropdownId) {
 };
 
 /**
- * Updates the text of the multi-select button based on selections.
+ * Updates the text of the multi-select button based on current selections.
  * @param {string} buttonId - ID of the button element.
- * @param {string} optionsContainerId - ID of the div holding the options.
- * @param {string} defaultText - Text to display when nothing or everything is selected.
+ * @param {string} optionsContainerId - ID of the div holding the checkbox options.
+ * @param {string} defaultText - Text to display when none or all are selected.
  */
 ui.updateMultiSelectButtonText = function(buttonId, optionsContainerId, defaultText) {
     const button = document.getElementById(buttonId);
@@ -134,12 +136,17 @@ ui.updateMultiSelectButtonText = function(buttonId, optionsContainerId, defaultT
     const totalOptions = container.querySelectorAll('input[type="checkbox"]').length;
 
     if (selectedCount === 0 || selectedCount === totalOptions) {
-        button.textContent = defaultText; // Show default text if nothing or everything is selected
-    } else if (selectedCount <= 2) { // Show names if 1 or 2 selected
-        button.textContent = Array.from(selectedCheckboxes).map(cb => cb.value).join(', ');
-    } else { // Show count if more than 2 selected
-        button.textContent = `${selectedCount} รายการ`;
+        button.textContent = defaultText; // Show default (e.g., "ทุกเซลล์")
+    } else if (selectedCount <= 2) {
+        // Show names if 1 or 2 are selected, truncate if too long
+        let text = Array.from(selectedCheckboxes).map(cb => cb.value).join(', ');
+        if (text.length > 20) { // Simple length check for truncation
+             text = text.substring(0, 18) + '...';
+        }
+        button.textContent = text;
+    } else {
+        button.textContent = `${selectedCount} รายการ`; // Show count for 3 or more
     }
 };
 
-window.ui = ui;
+window.ui = ui; // Expose the ui object globally
