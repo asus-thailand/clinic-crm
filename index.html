@@ -5,7 +5,9 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beauty Clinic CRM - Excel Edition</title>
+    
     <link rel="stylesheet" href="style.css">
+
 </head>
 <body>
     <header class="header">
@@ -28,58 +30,40 @@
     </header>
 
     <div class="stats-container">
-        <div class="stat-card"> <div class="stat-title">ลูกค้าทั้งหมด</div> <div class="stat-value" id="totalCustomers">0</div> <div class="stat-change stat-up">📈 Active Records</div> </div>
-        <div class="stat-card"> <div class="stat-title">ลูกค้าใหม่วันนี้</div> <div class="stat-value" id="todayCustomers">0</div> <div class="stat-change" style="color: #007bff;">📅 Today</div> </div>
-        <div class="stat-card"> <div class="stat-title">รอติดตาม</div> <div class="stat-value" id="pendingCustomers">0</div> <div class="stat-change stat-down">⏰ Pending</div> </div>
-        <div class="stat-card"> <div class="stat-title">ปิดการขาย</div> <div class="stat-value" id="closedDeals">0</div> <div class="stat-change stat-up">✅ Closed</div> </div>
+        <div class="stat-card">
+            <div class="stat-title">ลูกค้าทั้งหมด</div>
+            <div class="stat-value" id="totalCustomers">0</div>
+            <div class="stat-change stat-up">📈 Active Records</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">ลูกค้าใหม่วันนี้</div>
+            <div class="stat-value" id="todayCustomers">0</div>
+            <div class="stat-change" style="color: #007bff;">📅 Today</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">รอติดตาม</div>
+            <div class="stat-value" id="pendingCustomers">0</div>
+            <div class="stat-change stat-down">⏰ Pending</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">ปิดการขาย</div>
+            <div class="stat-value" id="closedDeals">0</div>
+            <div class="stat-change stat-up">✅ Closed</div>
+        </div>
     </div>
 
     <div class="toolbar">
         <div class="toolbar-left">
             <div class="search-container">
-                <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัส...">
+                <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา ชื่อ, เบอร์โทร, รหัสลูกค้า...">
                 <span class="search-icon">🔍</span>
             </div>
             <select class="filter-select" id="statusFilter">
-                <option value="">ทุก Last Status</option>
-                </select>
-
-            <div class="multi-select-container">
-                <button class="filter-select multi-select-button" id="salesFilterButton">ทุกเซลล์</button>
-                <div class="multi-select-dropdown" id="salesFilterDropdown">
-                    <div class="multi-select-actions">
-                        <button class="multi-select-action-btn" data-action="selectAll" data-target="salesFilterDropdown">เลือกทั้งหมด</button>
-                        <button class="multi-select-action-btn" data-action="clearAll" data-target="salesFilterDropdown">ล้าง</button>
-                    </div>
-                    <div class="multi-select-options" id="salesFilterOptions">
-                        </div>
-                </div>
-            </div>
-
-            <div class="multi-select-container">
-                <button class="filter-select multi-select-button" id="channelFilterButton">ทุกช่องทาง</button>
-                <div class="multi-select-dropdown" id="channelFilterDropdown">
-                     <div class="multi-select-actions">
-                        <button class="multi-select-action-btn" data-action="selectAll" data-target="channelFilterDropdown">เลือกทั้งหมด</button>
-                        <button class="multi-select-action-btn" data-action="clearAll" data-target="channelFilterDropdown">ล้าง</button>
-                    </div>
-                    <div class="multi-select-options" id="channelFilterOptions">
-                        </div>
-                </div>
-            </div>
-
-             <div class="multi-select-container">
-                <button class="filter-select multi-select-button" id="procedureFilterButton">ทุกหัตถการ</button>
-                <div class="multi-select-dropdown" id="procedureFilterDropdown">
-                     <div class="multi-select-actions">
-                        <button class="multi-select-action-btn" data-action="selectAll" data-target="procedureFilterDropdown">เลือกทั้งหมด</button>
-                        <button class="multi-select-action-btn" data-action="clearAll" data-target="procedureFilterDropdown">ล้าง</button>
-                    </div>
-                    <div class="multi-select-options" id="procedureFilterOptions">
-                        </div>
-                </div>
-            </div>
-
+                <option value="">ทุกสถานะ</option>
+            </select>
+            <select class="filter-select" id="salesFilter">
+                <option value="">ทุกเซลล์</option>
+            </select>
         </div>
         <div class="toolbar-right">
             <div class="date-filter-container">
@@ -89,7 +73,7 @@
                 <input type="date" id="startDateFilter" class="date-input">
                 <span class="date-separator">ถึง</span>
                 <input type="date" id="endDateFilter" class="date-input">
-                <button class="btn-date-filter active" id="clearDateFilter" data-preset="all">ทั้งหมด</button>
+                <button class="btn-date-filter" id="clearDateFilter">ทั้งหมด</button>
             </div>
             <div class="action-buttons">
                 <button class="btn btn-primary" id="addUserButton">+ เพิ่มลูกค้า</button>
@@ -101,28 +85,42 @@
     <div class="excel-container">
         <div class="table-wrapper">
             <table class="excel-table" id="excelTable">
-                <thead></thead>
-                <tbody id="tableBody"></tbody>
+                <thead>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
             </table>
         </div>
-        <div class="pagination-container" id="paginationContainer"></div>
+        <div class="pagination-container" id="paginationContainer">
+        </div>
     </div>
 
     <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" data-action="edit">✏️ แก้ไข</div>
+        <div class="context-menu-item" data-action="copy">📋 คัดลอก</div>
+        <div class="context-menu-item" data-action="paste">📄 วาง</div>
+        <div class="context-menu-separator"></div>
         <div class="context-menu-item" data-action="delete" id="deleteRowMenuItem">🗑️ ลบแถว</div>
-        </div>
-
+        <div class="context-menu-item" data-action="clear">🧹 ล้างเซลล์</div>
+    </div>
+    
     <div class="status-indicator" id="statusIndicator"></div>
-    <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"><div class="spinner"></div><p>กำลังโหลด...</p></div></div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูล...</p>
+        </div>
+    </div>
 
     <div class="modal" id="importModal">
         <div class="modal-content">
             <span class="close-button" data-modal-close="importModal">&times;</span>
             <h2>นำเข้าข้อมูลจาก CSV</h2>
-            <p>เลือกไฟล์ .csv ที่มี Headers ตรงกับตาราง</p>
-            <input type="file" id="csvFile" accept=".csv" style="margin: 15px 0;">
+            <p>กรุณาเลือกไฟล์ .csv ที่มี Headers ตรงกับตาราง</p>
+            <input type="file" id="csvFile" accept=".csv">
             <button class="btn btn-primary" id="importBtn">นำเข้าข้อมูล</button>
-            <p id="importStatus" style="margin-top: 10px; font-weight: bold;"></p>
+            <p id="importStatus" class="import-status"></p>
         </div>
     </div>
 
@@ -132,12 +130,14 @@
             <h2>อัปเดตสถานะลูกค้า</h2>
             <p>ลูกค้า: <strong id="modalCustomerName"></strong></p>
             <div class="modal-input-group">
-                <label for="modalStatusSelect">สถานะใหม่ (Status Sale):</label>
-                <select id="modalStatusSelect"><option value="">-- เลือกสถานะ --</option></select>
+                <label for="modalStatusSelect">สถานะใหม่:</label>
+                <select id="modalStatusSelect">
+                    <option value="">-- เลือกสถานะ --</option>
+                </select>
             </div>
             <div class="modal-input-group">
                 <label for="modalNotesText">เหตุผล/บันทึกเพิ่มเติม:</label>
-                <textarea id="modalNotesText" rows="4" placeholder="กรอกรายละเอียด..."></textarea>
+                <textarea id="modalNotesText" rows="4" placeholder="กรอกรายละเอียดการติดต่อที่นี่..."></textarea>
             </div>
             <button class="btn btn-primary" id="submitStatusUpdateBtn">บันทึกสถานะ</button>
             <input type="hidden" id="modalCustomerId">
@@ -145,10 +145,11 @@
     </div>
 
     <div class="modal" id="historyModal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content">
             <span class="close-button" data-modal-close="historyModal">&times;</span>
             <h2>ประวัติการติดตาม: <span id="historyCustomerName"></span></h2>
-            <div id="historyTimelineContainer" class="timeline-container"></div>
+            <div id="historyTimelineContainer" class="timeline-container">
+            </div>
         </div>
     </div>
 
@@ -158,7 +159,8 @@
                 <h2 id="editModalTitle">แก้ไขข้อมูลลูกค้า</h2>
                 <button class="edit-modal-close" id="closeEditModalBtn">&times;</button>
             </div>
-            <form id="editCustomerForm" class="edit-modal-body"></form>
+            <form id="editCustomerForm" class="edit-modal-body">
+                </form>
             <div class="edit-modal-footer">
                 <button type="button" class="btn-cancel" id="cancelEditBtn">ยกเลิก</button>
                 <button type="submit" class="btn-save" form="editCustomerForm">บันทึก</button>
