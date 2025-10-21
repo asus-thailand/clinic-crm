@@ -98,7 +98,8 @@ const FIELD_MAPPING = {
     'ประเภทหัตถการ':  { field: 'procedure', section: 'admin' },
     'มัดจำ':               { field: 'deposit', section: 'admin' },
     'ขอเบอร์ Y/N':        { field: 'confirm_y', section: 'admin' },
-    'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
+    // [FIXED] ลบบรรทัด "มัดจำออนไลน์ Y/N" ออกตามที่ร้องขอ
+    // 'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' }, 
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
     'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' }, 
