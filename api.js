@@ -197,14 +197,15 @@ api.bulkInsertCustomers = async function(customers) {
  * @param {string} userId The ID of the user performing the update.
  */
 api.addStatusUpdate = async function(customerId, status, notes, userId) {
-    // Match the column name used in fetchStatusHistory's SELECT
-    const createdByColumn = 'updated_by'; // Or 'created_by' if that's your actual column name
+    // [FIXED] เปลี่ยนชื่อคอลัมน์เป็น 'created_by' เพื่อให้สอดคล้องกัน
+    // นี่คือคอลัมน์ใน 'customer_status_history' ที่ลิงก์ไปยัง 'users.id'
+    const createdByColumn = 'created_by';
 
     const historyData = {
         customer_id: customerId,
         status: status,
         notes: notes,
-        [createdByColumn]: userId // Use the correct column name dynamically
+        [createdByColumn]: userId // ใช้ชื่อคอลัมน์ที่ถูกต้อง
     };
 
     const { error } = await window.supabaseClient
@@ -221,13 +222,14 @@ api.addStatusUpdate = async function(customerId, status, notes, userId) {
  * @returns {Promise<Array>} An array of history records.
  */
 api.fetchStatusHistory = async function(customerId) {
-    // Make sure the foreign key column name ('updated_by') matches your database schema
-    const foreignKeyColumn = 'updated_by';
+    // [FIXED] เปลี่ยนชื่อคอลัมน์เป็น 'created_by' เพื่อให้สอดคล้องกัน
+    // และเปลี่ยนชื่อตัวแปรให้ชัดเจนขึ้น
+    const userForeignKeyColumn = 'created_by';
 
     const { data, error } = await window.supabaseClient
         .from('customer_status_history')
         // Explicitly tells Supabase to join 'users' via the specified foreign key
-        .select(`*, users!${foreignKeyColumn}(username, role)`)
+        .select(`*, users!${userForeignKeyColumn}(username, role)`)
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
 
