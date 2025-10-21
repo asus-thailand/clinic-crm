@@ -59,7 +59,8 @@ const DROPDOWN_OPTIONS = {
         "ตาทีมแพทย์/ปลูกผม"
     ],
     confirm_y: ["Y", "N"],
-    transfer_100: ["Y", "N"],
+    // [FIXED] ลบบรรทัด 'transfer_100' ออกตามที่ร้องขอ
+    // transfer_100: ["Y", "N"], 
     status_1: ["status 1", "status 2", "status 3", "status 4", "ไม่สนใจ", "ปิดการขาย", "ตามต่อ"],
     cs_confirm: ["CSX", "CSY"],
     last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
@@ -153,7 +154,7 @@ async function initializeApp() {
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
     } catch (error) {
         console.error('Initialization failed:', error);
-        ui.showStatus('เกิดข้อผิดพลาด: ' + error.message, true);
+        ui.showStatus('เกิดข้อผิดพลาด: '... ' + error.message, true);
         document.body.innerHTML = `<div style="color: red; padding: 20px;">Initialization failed: ${error.message}. Please check console or contact support.</div>`;
     } finally {
         ui.showLoading(false);
