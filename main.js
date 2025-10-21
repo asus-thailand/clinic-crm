@@ -154,7 +154,8 @@ async function initializeApp() {
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
     } catch (error) {
         console.error('Initialization failed:', error);
-        ui.showStatus('เกิดข้อผิดพลาด: '... ' + error.message, true);
+        // [FIXED] แก้ไข SyntaxError '...' ที่ผมเผลอใส่เข้าไป
+        ui.showStatus('เกิดข้อผิดพลาด: ' + error.message, true);
         document.body.innerHTML = `<div style="color: red; padding: 20px;">Initialization failed: ${error.message}. Please check console or contact support.</div>`;
     } finally {
         ui.showLoading(false);
