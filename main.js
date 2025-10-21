@@ -19,7 +19,6 @@ const state = {
     editingCustomerId: null
 };
 
-// [MODIFIED] อัปเดตตัวเลือก Dropdown ตามที่ร้องขอ
 // [FIXED] ลบเครื่องหมาย / (slash) ที่ต่อท้ายตัวเลือก channel ทั้งหมด
 const DROPDOWN_OPTIONS = {
     channel: [
@@ -103,8 +102,9 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             // แปลงจาก พ.ศ. ถ้าจำเป็น
             if (year > 2500) year -= 543;
 
-            // ตรวจสอบปีที่สมเหตุสมผล
-            if (year < 1900 || year > 2100) return null;
+            // [FIXED] ขยายช่วงปีให้กว้างขึ้น เพื่อป้องกัน Data Loss
+            // จากเดิม 1900-2100 เปลี่ยนเป็น 1800-2200
+            if (year < 1800 || year > 2200) return null;
             
             const formattedDate = `${year}-${month}-${day}`;
             // ตรวจสอบความถูกต้องอีกครั้ง
