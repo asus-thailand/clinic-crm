@@ -57,7 +57,7 @@ ui.showStatus = function(message, isError = false) {
 ui.updateUIAfterLogin = function(user) {
     const userBadge = document.querySelector('.user-badge');
     if (userBadge && user) {
-        const userRole = (user.role || 'sales').toLowerCase(); 
+        const userRole = (user.role || 'sales').toLowerCase();
         const role = userRole.charAt(0).toUpperCase() + userRole.slice(1);
         userBadge.textContent = `${role} - ${user.username}`;
         const roleColors = { 'administrator': '#dc3545', 'admin': '#007bff', 'sales': '#28a745' };
@@ -96,7 +96,7 @@ const FIELD_MAPPING = {
     'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
-    'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' }, 
+    'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' },
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
@@ -135,10 +135,10 @@ ui.renderTableHeaders = function() {
         if (config.section === 'admin') { th.classList.add('header-admin-section'); }
         else if (config.section === 'sales') { th.classList.add('header-sales-section'); }
         else if (headerText === '#') { th.classList.add('row-number'); }
-        
+
         tr.appendChild(th);
     });
-    thead.innerHTML = ''; 
+    thead.innerHTML = '';
     thead.appendChild(tr);
 };
 
@@ -179,26 +179,32 @@ function createRowElement(row, index, page, pageSize) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
-    if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
+    // --- [MODIFIED] อัปเดตเงื่อนไขการไฮไลท์สีเขียว ---
+    const isClosed = row.status_1 === 'ปิดการขาย' &&
+                     (row.last_status === '100%' || row.last_status === 'ONLINE') &&
+                     row.closed_amount; // เช็คว่า closed_amount มีค่า (ไม่ใช่ null หรือ undefined หรือ empty string)
+    if (isClosed) {
         tr.classList.add('row-deal-closed');
     }
+    // --- สิ้นสุดส่วนที่แก้ไข ---
 
-    // --- [MODIFIED] ปรับปรุงตรรกะการไฮไลท์เคสค้างแบบ 2 ระดับ ---
-    if (row.date && !tr.classList.contains('row-deal-closed')) {
+
+    // --- ตรรกะการไฮไลท์เคสค้าง (เหมือนเดิม) ---
+    if (row.date && !isClosed) { // ไม่ไฮไลท์สีแดงถ้าปิดการขายแล้ว
         const today = new Date();
-        today.setHours(0, 0, 0, 0); 
+        today.setHours(0, 0, 0, 0);
         const caseDate = new Date(row.date);
         const timeDiff = today.getTime() - caseDate.getTime();
         const daysOld = Math.floor(timeDiff / (1000 * 3600 * 24));
 
-        // ตรวจสอบเงื่อนไขที่นานที่สุดก่อน (สำคัญ)
         if (daysOld > 21) {
-            tr.classList.add('row-stale-case-21'); // ระดับวิกฤต
+            tr.classList.add('row-stale-case-21');
         } else if (daysOld > 15) {
-            tr.classList.add('row-stale-case-15'); // ระดับแจ้งเตือน
+            tr.classList.add('row-stale-case-15');
         }
     }
-    // --- สิ้นสุดส่วนที่แก้ไข ---
+    // --- สิ้นสุดส่วนเคสค้าง ---
+
 
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
@@ -227,13 +233,15 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
     tbody.appendChild(fragment);
 }
 
+// ... (โค้ดส่วนที่เหลือของ ui.js เหมือนเดิมทุกประการ) ...
+
 // ================================================================================
 // MODAL & FORM MANAGEMENT (REFACTORED)
 // ================================================================================
 
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
-    form.innerHTML = ''; 
+    form.innerHTML = '';
 
     const adminSection = document.createElement('div');
     adminSection.className = 'modal-section admin-section';
@@ -248,12 +256,12 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     const salesContent = document.createElement('div');
     salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
-    
+
     const dealClosingFields = ['last_status', 'status_1', 'closed_amount'];
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
-        if (!field) return; 
+        if (!field) return;
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
@@ -267,7 +275,7 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
         formGroup.dataset.fieldGroup = field;
-        
+
         let inputHtml = '';
         if (field === 'reason') {
             inputHtml = `<textarea name="${field}" ${!isEditable ? 'disabled' : ''}>${escapeHtml(value)}</textarea>`;
@@ -278,9 +286,9 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             const fieldType = (field === 'date' || field === 'appointment_date' || field === 'old_appointment') ? 'date' : 'text';
             inputHtml = `<input type="${fieldType}" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
         }
-        
+
         formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
-        
+
         if (config.section === 'admin') {
             adminContent.appendChild(formGroup);
         } else if (config.section === 'sales') {
@@ -295,7 +303,9 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     const status1Input = form.querySelector('[name="status_1"]');
     const closedAmountInput = form.querySelector('[name="closed_amount"]');
     const highlightFields = () => {
-        const isClosingAttempt = (lastStatusInput.value === '100%') || (status1Input.value === 'ปิดการขาย') || (closedAmountInput.value && closedAmountInput.value.trim() !== '');
+        const isClosingAttempt = (lastStatusInput.value === '100%' || lastStatusInput.value === 'ONLINE') || // Modified condition
+                                 status1Input.value === 'ปิดการขาย' ||
+                                 (closedAmountInput.value && closedAmountInput.value.trim() !== '');
         dealClosingFields.forEach(fieldName => {
             const group = form.querySelector(`[data-field-group="${fieldName}"]`);
             if (group) { group.classList.toggle('highlight-deal-closing', isClosingAttempt); }
@@ -344,7 +354,7 @@ ui.renderHistoryTimeline = function(historyData) {
 
     container.innerHTML = historyData.map(item => {
         let roleClass = 'history-default';
-        
+
         let userDisplay = 'Unknown';
         if (item.users) {
             const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
