@@ -60,7 +60,7 @@ const DROPDOWN_OPTIONS = {
     ],
     confirm_y: ["Y", "N"],
     // [FIXED] ลบบรรทัด 'transfer_100' ออกตามที่ร้องขอ
-    // transfer_100: ["Y", "N"],
+    // transfer_100: ["Y", "N"], 
     status_1: ["status 1", "status 2", "status 3", "status 4", "ไม่สนใจ", "ปิดการขาย", "ตามต่อ"],
     cs_confirm: ["CSX", "CSY"],
     last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
@@ -85,12 +85,12 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
 
     // 1. ถ้าเป็น YYYY-MM-DD อยู่แล้ว (เช่น '2024-10-21')
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-
+        
         // [FIXED] Timezone Bug (Oct 2025)
         // ต้องเติม 'Z' เพื่อบังคับให้ new Date() สร้างเวลาเป็น UTC
         // มิฉะนั้น .toISOString() จะแปลงเวลาท้องถิ่น (เช่น GMT+7) กลับไป UTC ทำให้วันที่ผิดเพี้ยน 1 วัน
-        const date = new Date(dateStr + 'T00:00:00Z');
-
+        const date = new Date(dateStr + 'T00:00:00Z'); 
+        
         if (!isNaN(date.getTime()) && date.toISOString().startsWith(dateStr)) {
              return dateStr;
         }
@@ -110,7 +110,7 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             // [FIXED] ขยายช่วงปีให้กว้างขึ้น เพื่อป้องกัน Data Loss
             // จากเดิม 1900-2100 เปลี่ยนเป็น 1800-2200
             if (year < 1800 || year > 2200) return null;
-
+            
             const formattedDate = `${year}-${month}-${day}`;
             // ตรวจสอบความถูกต้องอีกครั้ง (ต้องเติม Z ที่นี่ด้วย)
             const date = new Date(formattedDate + 'T00:00:00Z');
@@ -119,11 +119,11 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             }
         }
     }
-
+    
     // 3. ถ้าเป็น format อื่นๆ ที่ new Date() อาจจะ parse ผิดพลาด
     // เราเลือกที่จะไม่รองรับ ดีกว่าการบันทึกข้อมูลผิด (Fail-fast)
     // การใช้ new Date(dateStr) ถูกลบออกไปเพื่อป้องกัน Timezone Bug
-
+    
     console.warn(`Invalid or unhandled date format: ${dateStr}. Returning null.`);
     return null; // ถ้าไม่ตรง format ที่รองรับ ให้คืนค่า null
 }
@@ -289,7 +289,6 @@ function handleImportClick() {
     if (importStatus) importStatus.textContent = '';
 }
 
-// [FIXED] แก้ไขฟังก์ชันนี้ให้รันเลข Lead Code ตามลำดับใน CSV เริ่มต้นที่ 1236
 async function handleProcessCSV() {
     const csvFileInput = document.getElementById('csvFile');
     const importStatus = document.getElementById('importStatus');
@@ -310,25 +309,20 @@ async function handleProcessCSV() {
         if (lines.length < 2) throw new Error('ไฟล์ CSV ต้องมีอย่างน้อย 1 บรรทัดสำหรับ Header และ 1 บรรทัดสำหรับข้อมูล');
 
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-        const requiredHeaders = ['name', 'phone', 'channel', 'sales']; // Headers ที่จำเป็นต้องมี
+        const requiredHeaders = ['name', 'phone', 'channel', 'sales'];
         const missingHeaders = requiredHeaders.filter(req => !headers.includes(req));
         if (missingHeaders.length > 0) throw new Error(`ไฟล์ CSV ขาด Header ที่จำเป็น: ${missingHeaders.join(', ')}`);
 
-        // [NEW] สร้างตัวนับ เริ่มต้นที่ 1236 สำหรับ CSV Import โดยเฉพาะ
-        let csvLeadCodeCounter = 1236;
-        // [REMOVED] ไม่ต้องเรียก api.getLatestLeadCode() จากฐานข้อมูลแล้ว
-        // let currentLeadCode = await api.getLatestLeadCode();
-        // if (isNaN(currentLeadCode)) { currentLeadCode = 1000; } // <-- ลบส่วนนี้ออก
+        let currentLeadCode = await api.getLatestLeadCode();
+        if (isNaN(currentLeadCode)) { currentLeadCode = 1000; }
 
         const customersToInsert = [];
-        const todayStr = new Date().toISOString().split('T')[0]; // วันที่ปัจจุบัน
+        const todayStr = new Date().toISOString().split('T')[0];
 
-        // เริ่มวนลูปตั้งแต่ i = 1 (ข้าม header)
         for (let i = 1; i < lines.length; i++) {
-            // ... (โค้ด parse ข้อมูล CSV เหมือนเดิม) ...
             const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-            if (values.length === 0 || values.every(v => v === '')) continue; // ข้ามแถวว่าง
-            if (values.length !== headers.length) { console.warn(`Skipping line ${i + 1}: Mismatched columns.`); continue; } // ข้ามแถวที่จำนวนคอลัมน์ไม่ตรง
+            if (values.length === 0 || values.every(v => v === '')) continue;
+            if (values.length !== headers.length) { console.warn(`Skipping line ${i + 1}: Mismatched columns.`); continue; }
 
             const customer = {};
             let hasEssentialData = false;
@@ -336,63 +330,43 @@ async function handleProcessCSV() {
                 const value = values[index] ?? '';
                 const fieldConfig = Object.values(ui.FIELD_MAPPING).find(config => config.field === header);
                 if (fieldConfig?.field) {
-                    // Normalize วันที่
-                    if (['date', 'old_appointment', 'appointment_date'].includes(header)) {
-                        customer[header] = normalizeDateStringToYYYYMMDD(value);
-                    } else {
-                        customer[header] = value;
-                    }
-                    // เช็คว่ามีข้อมูลที่จำเป็นหรือไม่ (เช่น name, phone)
+                    if (['date', 'old_appointment', 'appointment_date'].includes(header)) { customer[header] = normalizeDateStringToYYYYMMDD(value); }
+                    else { customer[header] = value; }
                     if (requiredHeaders.includes(header) && value !== '') { hasEssentialData = true; }
                 }
             });
 
-            // ข้ามแถวถ้าไม่มีข้อมูลจำเป็นเลย
-            if (!hasEssentialData && !customer.name && !customer.phone) {
-                console.warn(`Skipping line ${i + 1}: Lacks essential data.`);
-                continue;
-            }
+            if (!hasEssentialData && !customer.name && !customer.phone) { console.warn(`Skipping line ${i + 1}: Lacks essential data.`); continue; }
 
-            // --- ใส่ค่า Default ถ้าข้อมูลบางช่องหายไป ---
             customer.name = customer.name || `ลูกค้า #${i}`;
             customer.phone = customer.phone || 'N/A';
             customer.channel = customer.channel || 'ไม่ระบุ';
             customer.sales = customer.sales || state.currentUser?.username || 'N/A';
-            customer.date = customer.date || todayStr; // ใช้วันที่ปัจจุบันถ้าไม่มีใน CSV
+            customer.date = customer.date || todayStr;
 
-            // [CHANGED] กำหนด Lead Code โดยใช้ตัวนับสำหรับ CSV โดยเฉพาะ
-            customer.lead_code = csvLeadCodeCounter.toString();
-            csvLeadCodeCounter++; // เพิ่มค่าสำหรับแถวถัดไป
+            currentLeadCode++;
+            customer.lead_code = currentLeadCode.toString();
 
-            // [REMOVED] ลบโค้ดที่ใช้เลขจากฐานข้อมูลออก
-            // currentLeadCode++;
-            // customer.lead_code = currentLeadCode.toString();
-
-            customersToInsert.push(customer); // เพิ่มข้อมูลลูกค้าเข้ารายการรอ Insert
+            customersToInsert.push(customer);
         }
 
-        // ถ้าไม่มีข้อมูลที่สามารถนำเข้าได้เลย
         if (customersToInsert.length === 0) throw new Error('ไม่พบข้อมูลลูกค้าที่สามารถนำเข้าได้ในไฟล์');
 
-        // แสดงสถานะและทำการ Bulk Insert
         if (importStatus) importStatus.textContent = `กำลังนำเข้าข้อมูล ${customersToInsert.length} รายการ...`;
         await api.bulkInsertCustomers(customersToInsert);
 
-        // แจ้งผลสำเร็จ, ปิด Modal, และโหลดข้อมูลใหม่
         ui.showStatus(`นำเข้าข้อมูล ${customersToInsert.length} รายการสำเร็จ!`, false);
         ui.hideModal('importModal');
-        initializeApp(); // รีเฟรชข้อมูลทั้งหมด
+        initializeApp();
 
     } catch (error) {
-        // แสดง Error ถ้าการ Import ล้มเหลว
         console.error('CSV Import Error:', error);
         ui.showStatus(`นำเข้าไม่สำเร็จ: ${error.message}`, true);
         if (importStatus) { importStatus.textContent = `เกิดข้อผิดพลาด: ${error.message}`; importStatus.style.color = 'red'; }
     } finally {
-        ui.showLoading(false); // ซ่อน Loading Overlay เสมอ
+        ui.showLoading(false);
     }
 }
-
 
 function setupEventListeners() {
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
@@ -559,26 +533,10 @@ async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
 }
 
-// [FIXED] แก้ไขฟังก์ชันนี้ให้รับ Lead Code ที่ผู้ใช้ป้อนเข้ามา (จาก prompt)
 async function handleAddCustomer() {
-
-    // 1. ถามผู้ใช้สำหรับ Lead Code
-    const leadCodeInput = prompt(
-        "กรุณาระบุ 'ลำดับที่' (Lead Code) สำหรับลูกค้าใหม่:\n\n(หากต้องการให้ระบบรันเลขอัตโนมัติ ให้เว้นว่างไว้)",
-        "" // ค่าเริ่มต้นเป็นช่องว่าง
-    );
-
-    // 2. ถ้าผู้ใช้กด "Cancel" (leadCodeInput จะเป็น null) ให้ออกจากฟังก์ชัน
-    if (leadCodeInput === null) {
-        return; // ผู้ใช้กดยกเลิก
-    }
-
-    // 3. ถ้าผู้ใช้กด "OK" (ไม่ว่าจะพิมพ์อะไรมาหรือไม่) ให้ทำงานต่อ
     ui.showLoading(true);
     try {
-        // 4. ส่งค่าที่ผู้ใช้ป้อน (จะเป็น "1236" หรือ "" (ค่าว่าง)) ไปยัง api.addCustomer
-        const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', leadCodeInput);
-
+        const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A');
         if (newCustomer) {
             await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', 'ระบบสร้าง Lead อัตโนมัติ', state.currentUser.id);
             const now = new Date();
@@ -596,7 +554,6 @@ async function handleAddCustomer() {
         ui.showLoading(false);
     }
 }
-
 
 function handleTableClick(event) {
     const target = event.target;
