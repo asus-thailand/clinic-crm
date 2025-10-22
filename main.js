@@ -12,6 +12,7 @@ const state = {
     customers: [],
     filteredCustomers: [],
     salesList: [],
+    // [NEW] เพิ่ม channel และ procedure เข้าไปใน activeFilters
     activeFilters: { search: '', status: '', sales: '', channel: '', procedure: '' },
     dateFilter: { startDate: null, endDate: null, preset: 'all' },
     pagination: { currentPage: 1, pageSize: 50 },
@@ -19,16 +20,58 @@ const state = {
     editingCustomerId: null
 };
 
+// [FIXED] ลบเครื่องหมาย / (slash) ที่ต่อท้ายตัวเลือก channel ทั้งหมด
 const DROPDOWN_OPTIONS = {
-    channel: ["เพื่อนแนะนำ","Walk-In","PHONE-IN","Line@","Fbc By หมอธีร์ (ปลูกผม)","Fbc By หมอธีร์ (หัตถการอื่น)","FBC HAIR CLINIC","Fbc ตาสองชั้น ยกคิ้ว เสริมจมูก","Fbc ปรับรูปหน้า Botox Filler HIFU","เว็บไซต์","AGENCY","IG","Tiktok ","FMBC"],
-    procedure: ["ตา Dr.T","ตาทีมแพทย์","ปลูกผม","ปลูกหนวด/เครา","ปลูกคิ้ว","FaceLift","จมูก/ปาก/คาง","Thermage","Ultraformer","Filler","BOTOX","Laser กำจัดขน","SKIN อื่น ๆ","ตา Dr.T/ปลูกผม","ตา/SKIN","ผม/SKIN","ตา/อื่นๆ","ผม/อื่นๆ","ตาทีมแพทย์/ปลูกผม"],
+    channel: [
+        "เพื่อนแนะนำ", // [FIXED] ลบ / ออก
+        "Walk-In",     // [FIXED] ลบ / ออก
+        "PHONE-IN",    // [FIXED] ลบ / ออก
+        "Line@",       // [FIXED] ลบ / ออก
+        "Fbc By หมอธีร์ (ปลูกผม)", // [FIXED] ลบ / ออก
+        "Fbc By หมอธีร์ (หัตถการอื่น)", // [FIXED] ลบ / ออก
+        "FBC HAIR CLINIC", // [FIXED] ลบ / ออก
+        "Fbc ตาสองชั้น ยกคิ้ว เสริมจมูก", // [FIXED] ลบ / ออก
+        "Fbc ปรับรูปหน้า Botox Filler HIFU", // [FIXED] ลบ / ออก
+        "เว็บไซต์",     // [FIXED] ลบ / ออก
+        "AGENCY",       // [FIXED] ลบ / ออก
+        "IG",           // [FIXED] ลบ / ออก
+        "Tiktok ",      // (อันนี้มี space ต่อท้าย แต่ไม่มี /)
+        "FMBC"
+    ],
+    procedure: [
+        "ตา Dr.T",
+        "ตาทีมแพทย์",
+        "ปลูกผม",
+        "ปลูกหนวด/เครา",
+        "ปลูกคิ้ว",
+        "FaceLift",
+        "จมูก/ปาก/คาง",
+        "Thermage",
+        "Ultraformer",
+        "Filler",
+        "BOTOX",
+        "Laser กำจัดขน",
+        "SKIN อื่น ๆ",
+        "ตา Dr.T/ปลูกผม",
+        "ตา/SKIN",
+        "ผม/SKIN",
+        "ตา/อื่นๆ",
+        "ผม/อื่นๆ",
+        "ตาทีมแพทย์/ปลูกผม"
+    ],
     confirm_y: ["Y", "N"],
     status_1: ["status 1", "status 2", "status 3", "status 4", "ไม่สนใจ", "ปิดการขาย", "ตามต่อ"],
     cs_confirm: ["CSX", "CSY"],
     last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
 };
 
-const SALES_EDITABLE_FIELDS = ['update_access', 'last_status', 'status_1', 'reason', 'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date', 'closed_date'];
+// [NEW] เพิ่ม closed_date ให้ Sales แก้ไขได้
+const SALES_EDITABLE_FIELDS = [
+    'update_access', 'last_status', 'status_1', 'reason',
+    'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date',
+    'closed_date'
+];
+
 
 /**
  * Normalizes date string to YYYY-MM-DD format, handling different inputs and timezones safely.
@@ -49,7 +92,7 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             const month = parts[1].padStart(2, '0');
             let year = parseInt(parts[2], 10);
             if (year > 2500) year -= 543;
-            if (year < 1800 || year > 2200) return null;
+            if (year < 1800 || year > 2200) return null; // ขยายช่วงปี
             const formattedDate = `${year}-${month}-${day}`;
             const date = new Date(formattedDate + 'T00:00:00Z');
             if (!isNaN(date.getTime()) && date.toISOString().startsWith(formattedDate)) {
@@ -72,18 +115,21 @@ async function initializeApp() {
             throw new Error('Dependencies (Supabase, API, UI) not loaded correctly.');
         }
 
-        ui.renderTableHeaders();
+        ui.renderTableHeaders(); // Render headers early
         const session = await api.getSession();
-        if (!session) { window.location.replace('login.html'); return; }
+        if (!session) { window.location.replace('login.html'); return; } // Redirect if not logged in
         let userProfile = await api.getUserProfile(session.user.id);
         if (!userProfile) userProfile = await api.createDefaultUserProfile(session.user);
         // Ensure userProfile exists before proceeding
         if (!userProfile) throw new Error('Failed to load or create user profile.');
 
         state.currentUser = { id: session.user.id, ...userProfile };
-        window.state = state;
-        ui.updateUIAfterLogin(state.currentUser);
-        const [customers, salesList] = await Promise.all([api.fetchAllCustomers(), api.fetchSalesList()]);
+        window.state = state; // Make state globally accessible
+        ui.updateUIAfterLogin(state.currentUser); // Update header UI
+        const [customers, salesList] = await Promise.all([
+            api.fetchAllCustomers(),
+            api.fetchSalesList()
+        ]);
 
         // Normalize dates after fetching
         (customers || []).forEach(c => {
@@ -95,7 +141,7 @@ async function initializeApp() {
         state.customers = customers || [];
         state.salesList = salesList || [];
 
-        // Populate filters
+        // Populate filter dropdowns
         const statuses = [...new Set(state.customers.map(c => c.last_status).filter(Boolean))].sort();
         ui.populateFilterDropdown('salesFilter', state.salesList);
         ui.populateFilterDropdown('statusFilter', statuses);
@@ -104,18 +150,22 @@ async function initializeApp() {
 
         setDateFilterPreset('all'); // Set default date filter and trigger initial render
         ui.showStatus('โหลดข้อมูลสำเร็จ', false);
+
     } catch (error) {
         console.error('Initialization failed:', error);
         ui.showStatus('เกิดข้อผิดพลาดในการโหลด: ' + error.message, true);
         // Display a user-friendly error message instead of replacing the whole body
         const errorDiv = document.createElement('div');
-        errorDiv.style.color = 'red';
-        errorDiv.style.padding = '20px';
-        errorDiv.style.backgroundColor = '#fff';
-        errorDiv.style.margin = '20px';
-        errorDiv.style.borderRadius = '8px';
+        errorDiv.style.color = 'red'; errorDiv.style.padding = '20px'; errorDiv.style.backgroundColor = '#fff';
+        errorDiv.style.margin = '20px'; errorDiv.style.borderRadius = '8px';
         errorDiv.textContent = `Initialization failed: ${error.message}. Please refresh or contact support.`;
-        document.body.prepend(errorDiv); // Add error message at the top
+        // Check if body exists before prepending
+        if(document.body) {
+            document.body.prepend(errorDiv); // Add error message at the top
+        } else {
+             // Fallback if body isn't ready somehow
+             alert(`Initialization failed: ${error.message}. Please refresh.`);
+        }
     } finally {
         ui.showLoading(false);
     }
@@ -128,53 +178,61 @@ function updateVisibleData() {
     // --- Sorting ---
     const sortedCustomers = [...customers].sort((a, b) => {
         const { column, direction } = state.sort;
-        const valA = a[column] || '';
+        const valA = a[column] || ''; // Use empty string for null/undefined
         const valB = b[column] || '';
+
+        // Handle Date and Lead Code sorting specifically
         if (['date', 'closed_date', 'lead_code'].includes(column)) {
+            // Numeric sort for lead_code if possible
             if(column === 'lead_code') {
                 const numA = parseInt(valA, 10);
                 const numB = parseInt(valB, 10);
+                // Only sort numerically if both parse successfully
                 if (!isNaN(numA) && !isNaN(numB)) {
                     if (numA < numB) return direction === 'asc' ? -1 : 1;
                     if (numA > numB) return direction === 'asc' ? 1 : -1;
-                    return 0;
+                    return 0; // Equal numbers
                 }
-                 // Fallback to string sort if parsing fails
-                 if (valA < valB) return direction === 'asc' ? -1 : 1;
-                 if (valA > valB) return direction === 'asc' ? 1 : -1;
-                 return 0;
+                // Fallback to string sort if parsing fails for either value
+            } else { // Date sorting
+                // Compare dates as UTC timestamps for consistency
+                const dateA = new Date(valA + 'T00:00:00Z');
+                const dateB = new Date(valB + 'T00:00:00Z');
+                const timeA = dateA.getTime();
+                const timeB = dateB.getTime();
+
+                // Handle invalid dates (treat NaN as Infinity or -Infinity based on sort direction)
+                const effectiveTimeA = isNaN(timeA) ? (direction === 'asc' ? Infinity : -Infinity) : timeA;
+                const effectiveTimeB = isNaN(timeB) ? (direction === 'asc' ? Infinity : -Infinity) : timeB;
+
+                if (effectiveTimeA < effectiveTimeB) return direction === 'asc' ? -1 : 1;
+                if (effectiveTimeA > effectiveTimeB) return direction === 'asc' ? 1 : -1;
+                return 0; // Equal dates or both invalid
             }
-            const dateA = new Date(valA + 'T00:00:00Z'); // Compare as UTC
-            const dateB = new Date(valB + 'T00:00:00Z');
-            const timeA = dateA.getTime();
-            const timeB = dateB.getTime();
-            if (isNaN(timeA) && isNaN(timeB)) return 0;
-            if (isNaN(timeA)) return direction === 'desc' ? 1 : -1; // Invalid dates last when descending
-            if (isNaN(timeB)) return direction === 'desc' ? -1 : 1; // Invalid dates last when descending
-            if (timeA < timeB) return direction === 'asc' ? -1 : 1;
-            if (timeA > timeB) return direction === 'asc' ? 1 : -1;
-            return 0;
         }
-        // Default string sort (case-insensitive)
+
+        // Default string sort (case-insensitive) for other columns
         const strA = String(valA).toLowerCase();
         const strB = String(valB).toLowerCase();
         if (strA < strB) return direction === 'asc' ? -1 : 1;
         if (strA > strB) return direction === 'asc' ? 1 : -1;
-        return 0;
+        return 0; // Equal strings
     });
 
     // --- Filtering ---
-    let filtered = sortedCustomers;
+    let filtered = sortedCustomers; // Start with sorted data
+
     // Date Range Filter
     if (state.dateFilter.startDate && state.dateFilter.endDate) {
         filtered = filtered.filter(c => {
-            if (!c.date) return false;
-            return c.date >= state.dateFilter.startDate && c.date <= state.dateFilter.endDate;
+            // Ensure customer has a date and it falls within the range
+            return c.date && c.date >= state.dateFilter.startDate && c.date <= state.dateFilter.endDate;
         });
     }
-    // Other Filters
+
+    // Other Filters (Search, Status, Sales, Channel, Procedure)
     const { search, status, sales, channel, procedure } = state.activeFilters;
-    if (search || status || sales || channel || procedure) {
+    if (search || status || sales || channel || procedure) { // Apply only if any filter is active
         const lowerCaseSearch = search.toLowerCase();
         filtered = filtered.filter(customer => {
             const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
@@ -186,18 +244,18 @@ function updateVisibleData() {
             return matchesSearch && matchesStatus && matchesSales && matchesChannel && matchesProcedure;
         });
     }
-    state.filteredCustomers = filtered;
 
+    state.filteredCustomers = filtered; // Update the state with the final filtered list
 
     // --- Pagination ---
     const { currentPage, pageSize } = state.pagination;
     const totalRecords = state.filteredCustomers.length;
-    // Handle totalPages calculation carefully when totalRecords is 0
-    const totalPages = totalRecords > 0 ? Math.ceil(totalRecords / pageSize) : 1;
-    // Ensure currentPage is within valid bounds
+    const totalPages = totalRecords > 0 ? Math.ceil(totalRecords / pageSize) : 1; // Ensure totalPages is at least 1
+    // Correct currentPage if it's out of bounds after filtering
     const validCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
     if (validCurrentPage !== currentPage) {
-        state.pagination.currentPage = validCurrentPage; // Correct currentPage if out of bounds
+        console.log(`Adjusting currentPage from ${currentPage} to ${validCurrentPage}`);
+        state.pagination.currentPage = validCurrentPage; // Correct the state
     }
     const startIndex = (validCurrentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
@@ -212,51 +270,53 @@ function updateVisibleData() {
 
 
 function updateDashboardStats() {
-    const dataSet = state.filteredCustomers; // Stats should reflect filtered data
-    document.getElementById('totalCustomers').textContent = dataSet.length;
+    const dataSet = state.filteredCustomers; // Stats based on current filter
+    const totalCustomersEl = document.getElementById('totalCustomers');
+    const todayCustomersEl = document.getElementById('todayCustomers');
+    const pendingCustomersEl = document.getElementById('pendingCustomers');
+    const closedDealsEl = document.getElementById('closedDeals');
+
+    if(totalCustomersEl) totalCustomersEl.textContent = dataSet.length;
+
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('todayCustomers').textContent = dataSet.filter(c => c.date === today).length;
-    document.getElementById('pendingCustomers').textContent = dataSet.filter(c => c.status_1 === 'ตามต่อ').length;
-    document.getElementById('closedDeals').textContent = dataSet.filter(c => c.status_1 === 'ปิดการขาย' && c.last_status === '100%' && c.closed_amount).length;
+    if(todayCustomersEl) todayCustomersEl.textContent = dataSet.filter(c => c.date === today).length;
+    if(pendingCustomersEl) pendingCustomersEl.textContent = dataSet.filter(c => c.status_1 === 'ตามต่อ').length;
+    if(closedDealsEl) closedDealsEl.textContent = dataSet.filter(c => c.status_1 === 'ปิดการขาย' && c.last_status === '100%' && c.closed_amount).length;
 }
 
 function setDateFilterPreset(preset) {
     const today = new Date();
     let startDate = new Date();
-    let endDate = new Date(today); // Use today as default end date
+    let endDate = new Date(today);
 
     switch(preset) {
-        case '7d': startDate.setDate(today.getDate() - 6); break;
-        case '30d': startDate.setDate(today.getDate() - 29); break;
-        case 'today': startDate = new Date(today); break; // Start of today
-        case 'all': default: startDate = null; endDate = null; break; // Clear dates
+        case '7d': startDate.setUTCDate(today.getUTCDate() - 6); break; // Use UTC dates
+        case '30d': startDate.setUTCDate(today.getUTCDate() - 29); break;
+        case 'today': startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())); break;
+        case 'all': default: startDate = null; endDate = null; break;
     }
 
-    // Set time to cover the whole day for comparisons
-    if (startDate) startDate.setUTCHours(0, 0, 0, 0); // Use UTC for consistency
-    if (endDate) endDate.setUTCHours(23, 59, 59, 999); // Use UTC
+    if (startDate) startDate.setUTCHours(0, 0, 0, 0);
+    if (endDate) endDate.setUTCHours(23, 59, 59, 999);
 
-    // Format dates for state and input fields
     const startDateString = startDate ? startDate.toISOString().split('T')[0] : '';
     const endDateString = endDate ? endDate.toISOString().split('T')[0] : '';
 
     state.dateFilter = { startDate: startDateString, endDate: endDateString, preset };
 
-    // Update input fields
     const startInput = document.getElementById('startDateFilter');
     const endInput = document.getElementById('endDateFilter');
     if (startInput) startInput.value = startDateString;
     if (endInput) endInput.value = endDateString;
 
-    // Update UI buttons
     document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.preset === preset);
     });
     const clearButton = document.getElementById('clearDateFilter');
     if (clearButton) clearButton.classList.toggle('active', preset === 'all');
 
-    state.pagination.currentPage = 1; // Reset page on filter change
-    updateVisibleData(); // Trigger re-render
+    state.pagination.currentPage = 1;
+    updateVisibleData();
 }
 
 function debounce(func, delay = 300) {
@@ -275,7 +335,7 @@ function handleImportClick() {
     }
     ui.showModal('importModal');
     const csvFileInput = document.getElementById('csvFile');
-    if (csvFileInput) csvFileInput.value = ''; // Clear previous file selection
+    if (csvFileInput) csvFileInput.value = '';
     const importStatus = document.getElementById('importStatus');
     if (importStatus) importStatus.textContent = '';
 }
@@ -301,12 +361,11 @@ async function handleProcessCSV() {
         const missingHeaders = requiredHeaders.filter(req => !headers.includes(req));
         if (missingHeaders.length > 0) throw new Error(`ไฟล์ CSV ขาด Header ที่จำเป็น: ${missingHeaders.join(', ')}`);
 
-        let csvLeadCodeCounter = 1236; // Start counter for CSV import
+        let csvLeadCodeCounter = 1236; // Start counter specific to this CSV import
         const customersToInsert = [];
         const todayStr = new Date().toISOString().split('T')[0];
 
         for (let i = 1; i < lines.length; i++) {
-            // Robust CSV parsing (handles quotes)
             const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
             if (values.length === 0 || values.every(v => v === '')) continue;
             if (values.length !== headers.length) { console.warn(`Skipping line ${i + 1}: Column count mismatch.`); continue; }
@@ -331,7 +390,6 @@ async function handleProcessCSV() {
                 continue;
             }
 
-            // Defaults
             customer.name = customer.name || `ลูกค้า #${i}`;
             customer.phone = customer.phone || 'N/A';
             customer.channel = customer.channel || 'ไม่ระบุ';
@@ -350,7 +408,7 @@ async function handleProcessCSV() {
 
         ui.showStatus(`นำเข้าข้อมูล ${customersToInsert.length} รายการสำเร็จ!`, false);
         ui.hideModal('importModal');
-        initializeApp(); // Refresh data after successful import
+        initializeApp(); // Refresh data
 
     } catch (error) {
         console.error('CSV Import Error:', error);
@@ -370,11 +428,11 @@ function setupEventListeners() {
     document.getElementById('importBtn')?.addEventListener('click', handleProcessCSV);
     document.getElementById('refreshButton')?.addEventListener('click', () => {
         state.activeFilters = { search: '', status: '', sales: '', channel: '', procedure: '' };
-        document.querySelectorAll('.filter-select, .search-input').forEach(el => el.value = ''); // Clear all filters
-        setDateFilterPreset('all'); // Reset date and trigger update
+        document.querySelectorAll('.filter-select, .search-input').forEach(el => el.value = '');
+        setDateFilterPreset('all'); // Resets date and triggers updateVisibleData
     });
 
-    // Filters (Debounced Search, Direct Change for Selects)
+    // Filters
     document.getElementById('searchInput')?.addEventListener('input', debounce(e => {
         state.activeFilters.search = e.target.value; state.pagination.currentPage = 1; updateVisibleData();
     }));
@@ -389,7 +447,7 @@ function setupEventListeners() {
         button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset));
     });
     document.getElementById('clearDateFilter')?.addEventListener('click', () => setDateFilterPreset('all'));
-    const debouncedDateChange = debounce(handleCustomDateChange, 500); // Debounce custom date changes
+    const debouncedDateChange = debounce(handleCustomDateChange, 500);
     document.getElementById('startDateFilter')?.addEventListener('change', debouncedDateChange);
     document.getElementById('endDateFilter')?.addEventListener('change', debouncedDateChange);
 
@@ -404,10 +462,7 @@ function setupEventListeners() {
             if (page === 'prev' && currentPage > 1) newPage--;
             else if (page === 'next' && currentPage < totalPages) newPage++;
             else if (page !== 'prev' && page !== 'next') newPage = parseInt(page);
-            if (newPage !== currentPage) {
-                state.pagination.currentPage = newPage;
-                updateVisibleData();
-            }
+            if (newPage !== currentPage) { state.pagination.currentPage = newPage; updateVisibleData(); }
         }
     });
     document.getElementById('paginationContainer')?.addEventListener('change', event => {
@@ -424,7 +479,7 @@ function setupEventListeners() {
     // Context Menu
     const contextMenu = document.getElementById('contextMenu');
     contextMenu?.addEventListener('click', handleContextMenuItemClick);
-    window.addEventListener('click', (event) => { if (contextMenu && !contextMenu.contains(event.target) && !event.target.closest('tr[data-id]')) { ui.hideContextMenu(); } }); // Hide if clicking outside menu/table rows
+    window.addEventListener('click', (event) => { if (contextMenu && !contextMenu.contains(event.target) && !event.target.closest('tr[data-id]')) { ui.hideContextMenu(); } });
 
     // Modals
     document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
@@ -446,7 +501,6 @@ function handleSort(column) {
         state.sort.column = column;
         state.sort.direction = 'desc'; // Default desc
     }
-    // No need to reset page for sorting
     updateVisibleData();
 }
 
@@ -454,7 +508,6 @@ function handleSort(column) {
 function handleCustomDateChange() {
     let start = document.getElementById('startDateFilter').value;
     let end = document.getElementById('endDateFilter').value;
-    // Only update if both dates are set OR both are cleared
     if (start && end) {
         if (start <= end) {
             state.dateFilter = { startDate: start, endDate: end, preset: 'custom' };
@@ -464,11 +517,7 @@ function handleCustomDateChange() {
             updateVisibleData();
         } else { ui.showStatus('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', true); }
     } else if (!start && !end && state.dateFilter.preset !== 'all') {
-         // If both are cleared manually, switch back to 'all'
          setDateFilterPreset('all');
-    } else if (start || end) {
-        // If only one is set, it's an incomplete range, do nothing or show warning
-        // console.warn("Incomplete date range selected.");
     }
 }
 
@@ -480,8 +529,8 @@ function getAllowedNextStatuses(currentStatus) {
         case "status 1": return ["status 2", ...specialStatuses];
         case "status 2": return ["status 3", ...specialStatuses];
         case "status 3": return ["status 4", ...specialStatuses];
-        case "status 4": return [...specialStatuses]; // Can only move to special statuses from 4
-        default: return [...specialStatuses]; // If already in a special status, can stay or change to another special one
+        case "status 4": return [...specialStatuses];
+        default: return [...specialStatuses]; // Can stay or change special status
     }
 }
 
@@ -490,7 +539,7 @@ function showUpdateStatusModal(customer) {
     const userRole = (state.currentUser?.role || 'sales').toLowerCase();
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     let allowedStatuses = isAdmin ? DROPDOWN_OPTIONS.status_1 : getAllowedNextStatuses(customer.status_1);
-    select.innerHTML = '<option value="">-- เลือกสถานะ --</option>'; // Always clear first
+    select.innerHTML = '<option value="">-- เลือกสถานะ --</option>';
     allowedStatuses.forEach(opt => { const optionEl = document.createElement('option'); optionEl.value = opt; optionEl.textContent = opt; select.appendChild(optionEl); });
     const notesTextArea = document.getElementById('modalNotesText'); if (notesTextArea) notesTextArea.value = customer.reason || '';
     ui.showModal('statusUpdateModal', { customerId: customer.id, customerName: customer.name || customer.lead_code || 'N/A' });
@@ -513,55 +562,53 @@ function hideEditModal() {
 
 // Handles saving data from the Edit Modal
 async function handleSaveEditForm(event) {
-    event.preventDefault(); // Prevent default form submission
+    event.preventDefault();
     if (!state.editingCustomerId) return;
 
     const form = event.target;
     const formData = new FormData(form);
     const updatedData = {};
     for (const [key, value] of formData.entries()) {
-        // Trim strings, leave other types as is (though form usually gives strings)
         updatedData[key] = typeof value === 'string' ? value.trim() : value;
     }
 
-    // [NEW] Add validation for required 'date' field
-    if (!updatedData.date) {
+    // --- [FIXED] Validate required 'date' field ONLY for Admins ---
+    const userRole = (state.currentUser?.role || '').toLowerCase();
+    const isAdmin = userRole === 'admin' || userRole === 'administrator';
+
+    if (!updatedData.date && isAdmin) { // Check if 'date' is empty AND user is Admin
         ui.showStatus('กรุณากรอก "วัน/เดือน/ปี"', true);
         const dateInput = form.querySelector('[name="date"]');
-        if (dateInput) dateInput.focus(); // Focus on the empty required field
-        return; // Stop submission
+        if (dateInput) dateInput.focus();
+        return; // Stop submission ONLY if Admin and date is empty
     }
+    // --- End Validation Fix ---
 
-
-    // Normalize all potential date fields AFTER basic validation
+    // Normalize dates AFTER checking required field (for Admin)
     updatedData.date = normalizeDateStringToYYYYMMDD(updatedData.date);
     updatedData.old_appointment = normalizeDateStringToYYYYMMDD(updatedData.old_appointment);
     updatedData.appointment_date = normalizeDateStringToYYYYMMDD(updatedData.appointment_date);
     updatedData.closed_date = normalizeDateStringToYYYYMMDD(updatedData.closed_date);
 
-    // Re-check normalized date (it might become null if format was invalid)
-    if (!updatedData.date) {
-        ui.showStatus('รูปแบบ "วัน/เดือน/ปี" ไม่ถูกต้อง', true);
+    // Re-check normalized 'date' ONLY if Admin (because it might become null)
+    if (!updatedData.date && isAdmin) {
+        ui.showStatus('รูปแบบ "วัน/เดือน/ปี" ไม่ถูกต้อง หรือวันที่ยังไม่ได้กรอก', true);
         const dateInput = form.querySelector('[name="date"]');
         if (dateInput) dateInput.focus();
-        return; // Stop submission if normalization failed
+        return;
     }
-
 
     const originalCustomer = state.customers.find(c => String(c.id) === String(state.editingCustomerId));
     if (!originalCustomer) { ui.showStatus('Error: ไม่พบข้อมูลลูกค้าเดิม', true); return; }
 
     // --- Deal Closing Logic ---
     const isNowClosing = updatedData.status_1 === 'ปิดการขาย' && updatedData.last_status === '100%' && updatedData.closed_amount;
-    // Auto-populate closed_date if closing now and date is missing
-    if (isNowClosing && !updatedData.closed_date) {
+    if (isNowClosing && !updatedData.closed_date) { // Auto-populate only if missing
         updatedData.closed_date = new Date().toISOString().split('T')[0];
         console.log(`Auto-populating closed_date: ${updatedData.closed_date}`);
     }
-
-    // Check completeness if attempting to close
     const isClosingAttempt = updatedData.last_status === '100%' || updatedData.status_1 === 'ปิดการขาย' || updatedData.closed_amount;
-    if (isClosingAttempt) {
+    if (isClosingAttempt) { // Check completeness if attempting to close
         const isClosingComplete = updatedData.last_status === '100%' && updatedData.status_1 === 'ปิดการขาย' && updatedData.closed_amount;
         if (!isClosingComplete) {
             ui.showStatus('การปิดการขายต้องกรอก: Last Status (100%), Status Sale (ปิดการขาย), และ ยอดที่ปิดได้ ให้ครบถ้วน', true);
@@ -572,48 +619,56 @@ async function handleSaveEditForm(event) {
 
     ui.showLoading(true);
     try {
-        // --- API Call ---
         const updatedCustomer = await api.updateCustomer(state.editingCustomerId, updatedData);
 
-        // --- Post-API Normalization (Good Practice) ---
+        // Normalize dates from response
         updatedCustomer.date = normalizeDateStringToYYYYMMDD(updatedCustomer.date);
         updatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(updatedCustomer.old_appointment);
         updatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(updatedCustomer.appointment_date);
         updatedCustomer.closed_date = normalizeDateStringToYYYYMMDD(updatedCustomer.closed_date);
 
         // --- History Logging (Sales Only) ---
-        const userRole = (state.currentUser?.role || '').toLowerCase();
         if (userRole === 'sales') {
             const historyPromises = [];
             for (const [key, value] of Object.entries(updatedData)) {
                 const originalValue = originalCustomer[key] ?? '';
                 const newValue = value ?? '';
+                // Only log if value actually changed
                 if (String(originalValue) !== String(newValue)) {
-                    const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h].field === key) || key;
-                    // Format values for logging (especially dates)
+                    const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h]?.field === key) || key; // Safer find
                     const originalFormatted = (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key)) ? formatDateToDMY(originalValue) : originalValue;
                     const newFormatted = (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key)) ? formatDateToDMY(newValue) : newValue;
-                    const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}'`; // Show 'ว่าง' for empty
+                    const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}'`;
                     historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
                 }
             }
-            // Use Promise.allSettled for robustness if one log fails
-            if (historyPromises.length > 0) { await Promise.allSettled(historyPromises); }
+            if (historyPromises.length > 0) { await Promise.allSettled(historyPromises); } // Use allSettled
         }
 
         // --- Update Local State ---
+        // Find index again in case array mutated elsewhere (unlikely but safer)
         const index = state.customers.findIndex(c => String(c.id) === String(state.editingCustomerId));
-        if (index !== -1) { state.customers[index] = updatedCustomer; }
-        else { state.customers.push(updatedCustomer); } // Fallback
+        if (index !== -1) {
+             // Create a new object for immutability (optional but good practice)
+             state.customers = [
+                 ...state.customers.slice(0, index),
+                 updatedCustomer,
+                 ...state.customers.slice(index + 1),
+             ];
+             // Or direct mutation if preferred: state.customers[index] = updatedCustomer;
+        } else {
+            console.warn("Updated customer not found in local state, adding instead.");
+            state.customers.push(updatedCustomer); // Add if somehow missing
+        }
 
-        // --- UI Updates ---
         hideEditModal();
-        updateVisibleData(); // Refresh table
+        updateVisibleData(); // Refresh UI
         ui.showStatus('บันทึกข้อมูลสำเร็จ', false);
 
     } catch (error) {
         console.error('Save failed:', error);
-        ui.showStatus('บันทึกข้อมูลไม่สำเร็จ: ' + error.message, true);
+        // Provide more context in error message if possible
+        ui.showStatus(`บันทึกข้อมูลไม่สำเร็จ: ${error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'}`, true);
     } finally {
         ui.showLoading(false);
     }
@@ -623,7 +678,7 @@ async function handleSaveEditForm(event) {
 async function handleLogout() {
     if (confirm('ต้องการออกจากระบบหรือไม่?')) {
         await api.signOut();
-        window.location.replace('login.html'); // Redirect after sign out
+        window.location.replace('login.html');
     }
 }
 
@@ -635,48 +690,43 @@ async function handleAddCustomer() {
     try {
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', leadCodeInput);
         if (newCustomer) {
-            // Log creation immediately
-            await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `สร้างโดย ${state.currentUser?.username || 'System'}`, state.currentUser?.id || null); // Pass user ID
+            await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `สร้างโดย ${state.currentUser?.username || 'System'}`, state.currentUser?.id || null);
 
-            // Set default call time and normalize dates
             const now = new Date();
             newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            newCustomer.date = normalizeDateStringToYYYYMMDD(newCustomer.date); // Should be set by API
-            newCustomer.old_appointment = null; // Ensure defaults are null or normalized
+            newCustomer.date = normalizeDateStringToYYYYMMDD(newCustomer.date); // Normalize date from API
+            newCustomer.old_appointment = null; // Set defaults
             newCustomer.appointment_date = null;
             newCustomer.closed_date = null;
 
-            state.customers.unshift(newCustomer); // Add to beginning of local array
-            updateVisibleData(); // Refresh table
-            showEditModal(newCustomer.id); // Open edit modal immediately
+            state.customers.unshift(newCustomer); // Add to local state
+            updateVisibleData(); // Update UI
+            showEditModal(newCustomer.id); // Open edit modal
             ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
         } else {
-            throw new Error("API did not return new customer data."); // More specific error
+            throw new Error("API did not return new customer data.");
         }
     } catch (error) {
         console.error("Error adding customer:", error);
-        ui.showStatus('เพิ่มลูกค้าไม่สำเร็จ: ' + error.message, true);
+        ui.showStatus(`เพิ่มลูกค้าไม่สำเร็จ: ${error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'}`, true);
     } finally {
         ui.showLoading(false);
     }
 }
 
 
-// Handles clicks on buttons within the table body (Edit, Update, History)
 function handleTableClick(event) {
-    const button = event.target.closest('button[data-action]'); // More specific selector
-    if (!button || button.disabled) return; // Ignore clicks not on buttons or disabled ones
+    const button = event.target.closest('button[data-action]');
+    if (!button || button.disabled) return;
 
     const action = button.dataset.action;
     const row = button.closest('tr[data-id]');
     const id = row?.dataset.id;
     if (!id) return;
 
-    // Find customer data using the ID
     const customer = state.customers.find(c => String(c.id) === String(id));
     if (!customer) { ui.showStatus('ไม่พบข้อมูลลูกค้าสำหรับ ID นี้', true); return; }
 
-    // Perform action based on button clicked
     if (action === 'edit-customer') showEditModal(id);
     if (action === 'update-status') showUpdateStatusModal(customer);
     if (action === 'view-history') handleViewHistory(id, customer.name || customer.lead_code);
@@ -686,21 +736,20 @@ function handleTableClick(event) {
 async function handleViewHistory(customerId, customerName) {
     ui.showModal('historyModal', { customerName: customerName || 'N/A' });
     const timelineContainer = document.getElementById('historyTimelineContainer');
-    if (timelineContainer) timelineContainer.innerHTML = '<p>กำลังโหลดประวัติ...</p>'; // Show loading text
-    ui.showLoading(true); // Also show overlay loading
+    if (timelineContainer) timelineContainer.innerHTML = '<p>กำลังโหลดประวัติ...</p>';
+    ui.showLoading(true);
     try {
         const historyData = await api.fetchStatusHistory(customerId);
-        ui.renderHistoryTimeline(historyData); // Render fetched data
+        ui.renderHistoryTimeline(historyData);
     } catch (error) {
-        console.error("Error fetching history:", error); // Log error
+        console.error("Error fetching history:", error);
         ui.showStatus('ไม่สามารถโหลดประวัติได้: ' + error.message, true);
-        if(timelineContainer) timelineContainer.innerHTML = `<p style="color: red;">เกิดข้อผิดพลาด: ${error.message}</p>`; // Show error in modal
+        if(timelineContainer) timelineContainer.innerHTML = `<p style="color: red;">เกิดข้อผิดพลาด: ${error.message}</p>`;
     } finally {
         ui.showLoading(false);
     }
 }
 
-// Handles submitting the quick status update modal
 async function handleSubmitStatusUpdate() {
     const customerId = document.getElementById('modalCustomerId')?.value;
     const newStatus = document.getElementById('modalStatusSelect')?.value;
@@ -726,24 +775,27 @@ async function handleSubmitStatusUpdate() {
             console.log(`Auto-populating closed_date via status update: ${updateData.closed_date}`);
         }
 
-        // 1. Log the status update first
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
-        // 2. Update the customer record
         const updatedCustomer = await api.updateCustomer(customerId, updateData);
 
-        // 3. Normalize dates from response
         updatedCustomer.date = normalizeDateStringToYYYYMMDD(updatedCustomer.date);
         updatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(updatedCustomer.old_appointment);
         updatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(updatedCustomer.appointment_date);
         updatedCustomer.closed_date = normalizeDateStringToYYYYMMDD(updatedCustomer.closed_date);
 
-        // 4. Update local state
+        // Update local state (more robustly)
         const index = state.customers.findIndex(c => String(c.id) === String(customerId));
-        if (index !== -1) { state.customers[index] = updatedCustomer; }
-        else { state.customers.push(updatedCustomer); } // Fallback
+        if (index !== -1) {
+             state.customers = [
+                 ...state.customers.slice(0, index),
+                 updatedCustomer,
+                 ...state.customers.slice(index + 1),
+             ];
+        } else { state.customers.push(updatedCustomer); }
 
-        updateVisibleData(); // Refresh table
-        ui.hideModal('statusUpdateModal'); // Close modal
+
+        updateVisibleData();
+        ui.hideModal('statusUpdateModal');
         ui.showStatus('อัปเดตสถานะสำเร็จ', false);
     } catch (error) {
         console.error("Error submitting status update:", error);
@@ -754,29 +806,26 @@ async function handleSubmitStatusUpdate() {
 }
 
 
-// Handles right-click on table rows for context menu
 function handleContextMenu(event) {
     const row = event.target.closest('tr[data-id]');
     if (!row || !row.dataset.id) return;
     const userRole = (state.currentUser?.role || 'sales').toLowerCase();
-    // Only show for admin/administrator
     if (userRole !== 'admin' && userRole !== 'administrator') return;
-    event.preventDefault(); // Prevent browser default context menu
-    state.contextMenuRowId = row.dataset.id; // Store ID for action
-    ui.showContextMenu(event); // Show custom menu
+    event.preventDefault();
+    state.contextMenuRowId = row.dataset.id;
+    ui.showContextMenu(event);
 }
 
 
-// Handles clicks on context menu items
 async function handleContextMenuItemClick(event) {
     const menuItem = event.target.closest('.context-menu-item[data-action]');
-    if (!menuItem) return; // Clicked outside an action item
+    if (!menuItem) return;
 
     const action = menuItem.dataset.action;
     const customerId = state.contextMenuRowId;
     if (!action || !customerId) return;
 
-    ui.hideContextMenu(); // Hide menu immediately
+    ui.hideContextMenu();
 
     if (action === 'delete') {
         const customerToDelete = state.customers.find(c => String(c.id) === String(customerId));
@@ -785,14 +834,16 @@ async function handleContextMenuItemClick(event) {
             ui.showLoading(true);
             try {
                 await api.deleteCustomer(customerId);
+                // Remove from local state AFTER successful API call
                 state.customers = state.customers.filter(c => String(c.id) !== String(customerId));
-                // Adjust pagination if needed after deletion
-                const totalRecords = state.filteredCustomers.length -1; // Predict new count
-                const totalPages = Math.max(1, Math.ceil(totalRecords / state.pagination.pageSize));
+                // Adjust pagination if current page becomes empty
+                const totalRecordsNow = state.filteredCustomers.length -1; // Predict new count based on *filtered* list
+                const pageSize = state.pagination.pageSize;
+                const totalPages = Math.max(1, Math.ceil(totalRecordsNow / pageSize));
                 if (state.pagination.currentPage > totalPages) {
                      state.pagination.currentPage = totalPages;
                 }
-                updateVisibleData(); // Refresh table with potentially adjusted page
+                updateVisibleData(); // Refresh table
                 ui.showStatus('ลบข้อมูลสำเร็จ', false);
             } catch (error) {
                 console.error("Error deleting customer:", error);
@@ -802,20 +853,24 @@ async function handleContextMenuItemClick(event) {
             }
         }
     }
-    // Add other context menu actions here (e.g., copy)
-
-    state.contextMenuRowId = null; // Clear stored ID
+    state.contextMenuRowId = null; // Clear ID after action
 }
 
 
 // --- App Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Basic check if core libraries seem loaded
     if (window.supabase && window.supabase.createClient && typeof ui === 'object' && typeof api === 'object') {
         initializeApp();
         setupEventListeners();
     } else {
         console.error("Critical dependencies (Supabase, UI, API) not found.");
-        document.body.innerHTML = '<div style="color: red; padding: 20px;">Error loading application components. Please refresh.</div>';
+        // Avoid replacing body if possible, show an alert or a banner
+         const banner = document.createElement('div');
+         banner.style.backgroundColor = 'red'; banner.style.color = 'white'; banner.style.padding = '10px';
+         banner.style.textAlign = 'center'; banner.style.position = 'fixed'; banner.style.top = '0';
+         banner.style.left = '0'; banner.style.width = '100%'; banner.style.zIndex = '9999';
+         banner.textContent = 'Error loading application components. Please refresh.';
+         document.body.prepend(banner);
+        // document.body.innerHTML = '<div style="color: red; padding: 20px;">Error loading application components. Please refresh.</div>';
     }
 });
