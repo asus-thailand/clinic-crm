@@ -4,29 +4,44 @@
 
 const ui = {};
 
-// [FIXED] ย้าย Magic Numbers ของการไฮไลท์แถวมาเป็นค่าคงที่ (Constants)
-// ทำให้ง่ายต่อการบำรุงรักษาและแก้ไขในอนาคต
-const STALE_CASE_WARNING_DAYS = 15; // จำนวนวันที่จะไฮไลท์สีเหลือง (เตือน)
-const STALE_CASE_CRITICAL_DAYS = 21; // จำนวนวันที่จะไฮไลท์สีแดง (วิกฤต)
+// ค่าคงที่สำหรับการไฮไลท์แถว (Constants)
+const STALE_CASE_WARNING_DAYS = 15;
+const STALE_CASE_CRITICAL_DAYS = 21;
 
 // ================================================================================
 // UTILITY FUNCTIONS
 // ================================================================================
 
+/**
+ * Parses a date string (YYYY-MM-DD) into a UTC Date object.
+ * Returns null if the string is invalid.
+ */
 function parseDateString(dateStr) {
-    if (!dateStr) return null;
-    // [FIXED] ใช้ UTC เพื่อความสอดคล้อง
-    const date = new Date(dateStr + 'T00:00:00Z');
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+    const date = new Date(dateStr + 'T00:00:00Z'); // Create as UTC
     return isNaN(date.getTime()) ? null : date;
 }
 
-function formatDateToDMY(dateStr) {
-    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || '';
-    const dateObj = parseDateString(dateStr);
-    if (!dateObj) return dateStr || '';
-    // ใช้ getUTCDate() เพราะ parseDateString สร้าง Date เป็น UTC
+/**
+ * Formats a date string (YYYY-MM-DD) or a Date object into DD/MM/YYYY format.
+ * Assumes the input date string or Date object represents a UTC date.
+ */
+function formatDateToDMY(dateInput) {
+    let dateObj;
+    if (typeof dateInput === 'string') {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) return dateInput || ''; // Return original if not YYYY-MM-DD
+        dateObj = parseDateString(dateInput);
+    } else if (dateInput instanceof Date) {
+        dateObj = dateInput;
+    } else {
+        return dateInput || ''; // Return original if not string or Date
+    }
+
+    if (!dateObj || isNaN(dateObj.getTime())) return dateInput || ''; // Return original if invalid date
+
+    // Use UTC methods as the date is UTC
     const day = String(dateObj.getUTCDate()).padStart(2, '0');
-    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0'); // Month is 0-indexed
     const year = dateObj.getUTCFullYear();
     return `${day}/${month}/${year}`;
 }
@@ -94,7 +109,7 @@ ui.updateSortIndicator = function(column, direction) {
 const FIELD_MAPPING = {
     '#':                  { field: null, section: 'special' },
     'วัน/เดือน/ปี':     { field: 'date', section: 'admin', sortable: true },
-    'ลำดับที่':           { field: 'lead_code', section: 'admin' },
+    'ลำดับที่':           { field: 'lead_code', section: 'admin', sortable: true }, // Added sortable
     'ชื่อลูกค้า':         { field: 'name', section: 'admin' },
     'เบอร์ติดต่อ':       { field: 'phone', section: 'admin' },
     'ช่องทางสื่อ':       { field: 'channel', section: 'admin' },
@@ -107,13 +122,12 @@ const FIELD_MAPPING = {
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
-    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false }, // เหตุผลไม่แสดงเป็น Header
+    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
     'ETC':                { field: 'etc', section: 'sales' },
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
     'DR.':                { field: 'dr', section: 'sales' },
     'ยอดที่ปิดได้':      { field: 'closed_amount', section: 'sales' },
-    // [NEW] เพิ่มฟิลด์ วันที่ปิดการขาย
     'วันที่ปิดการขาย':   { field: 'closed_date', section: 'sales', sortable: true },
     'วันที่นัดทำหัตถการ':{ field: 'appointment_date', section: 'sales' },
     'จัดการ':              { field: null, section: 'sales' }
@@ -130,13 +144,13 @@ ui.renderTableHeaders = function() {
     if (!thead) return;
     const tr = document.createElement('tr');
     Object.entries(FIELD_MAPPING).forEach(([headerText, config]) => {
-        if (config.isHeader === false) return; // ข้ามฟิลด์ที่กำหนด isHeader: false
+        if (config.isHeader === false) return;
 
         const th = document.createElement('th');
         if (config.sortable) {
             th.dataset.sortable = config.field;
             th.classList.add('sortable-header');
-            th.innerHTML = `${headerText}<span class="sort-indicator"></span>`;
+            th.innerHTML = `${escapeHtml(headerText)}<span class="sort-indicator"></span>`; // Escape header text
         } else {
             th.textContent = headerText;
         }
@@ -158,16 +172,17 @@ ui.renderTableHeaders = function() {
 function createCell(row, fieldName) {
     const td = document.createElement('td');
     td.dataset.field = fieldName;
-    // [NEW] เพิ่ม closed_date เข้าไปในรายการฟิลด์วันที่
     const dateFields = ['date', 'old_appointment', 'appointment_date', 'closed_date'];
     if (dateFields.includes(fieldName)) {
         td.textContent = formatDateToDMY(row[fieldName]);
     } else {
-        td.textContent = row[fieldName] || '';
+        // Use textContent for safety against XSS
+        td.textContent = row[fieldName] ?? ''; // Use ?? for null/undefined
     }
     return td;
 }
 
+// [FIXED #6] Use setAttribute for data-name to prevent potential HTML injection
 function createActionsCell(row, currentUser) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
@@ -177,51 +192,81 @@ function createActionsCell(row, currentUser) {
     const isOwner = currentUser && row.sales === currentUser.username;
     const canEdit = isAdmin || isOwner;
     const disabledAttribute = !canEdit ? 'disabled' : '';
-    td.innerHTML = `
-        <button class="btn-edit" data-action="edit-customer" data-id="${row.id}" ${disabledAttribute}>แก้ไข</button>
-        <button class="btn-update" data-action="update-status" data-id="${row.id}" data-name="${escapeHtml(displayName)}" ${disabledAttribute}>อัปเดต</button>
-        <button class="btn-history" data-action="view-history" data-id="${row.id}" data-name="${escapeHtml(displayName)}">ประวัติ</button>
-    `;
+
+    // Create buttons using DOM methods for better security
+    const editButton = document.createElement('button');
+    editButton.className = 'btn-edit';
+    editButton.dataset.action = 'edit-customer';
+    editButton.dataset.id = row.id;
+    editButton.textContent = 'แก้ไข';
+    if (!canEdit) editButton.disabled = true;
+
+    const updateButton = document.createElement('button');
+    updateButton.className = 'btn-update';
+    updateButton.dataset.action = 'update-status';
+    updateButton.dataset.id = row.id;
+    updateButton.setAttribute('data-name', displayName); // Use setAttribute
+    updateButton.textContent = 'อัปเดต';
+    if (!canEdit) updateButton.disabled = true;
+
+    const historyButton = document.createElement('button');
+    historyButton.className = 'btn-history';
+    historyButton.dataset.action = 'view-history';
+    historyButton.dataset.id = row.id;
+    historyButton.setAttribute('data-name', displayName); // Use setAttribute
+    historyButton.textContent = 'ประวัติ';
+
+    td.appendChild(editButton);
+    td.appendChild(updateButton);
+    td.appendChild(historyButton);
     return td;
 }
+
 
 function createRowElement(row, index, page, pageSize) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
+    // Highlight closed deals
     if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
         tr.classList.add('row-deal-closed');
     }
 
-    // --- [MODIFIED] ปรับปรุงตรรกะการไฮไลท์เคสค้างแบบ 2 ระดับ ---
-    // [FIXED] ใช้ตัวแปรค่าคงที่ STALE_CASE... แทน Magic Numbers
+    // --- [FIXED #5] Timezone bug fix for stale case highlighting ---
+    // Calculate days old using UTC comparison
     if (row.date && !tr.classList.contains('row-deal-closed')) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const caseDate = new Date(row.date);
-        const timeDiff = today.getTime() - caseDate.getTime();
-        const daysOld = Math.floor(timeDiff / (1000 * 3600 * 24));
+        const todayUTC = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())); // Start of today in UTC
+        const caseDateUTC = parseDateString(row.date); // Already UTC if valid
 
-        // ตรวจสอบเงื่อนไขที่นานที่สุดก่อน (สำคัญ)
-        if (daysOld > STALE_CASE_CRITICAL_DAYS) {
-            tr.classList.add('row-stale-case-21'); // ระดับวิกฤต (class name ยังใช้ 21 แต่ logic ใช้ตัวแปร)
-        } else if (daysOld > STALE_CASE_WARNING_DAYS) {
-            tr.classList.add('row-stale-case-15'); // ระดับแจ้งเตือน (class name ยังใช้ 15 แต่ logic ใช้ตัวแปร)
+        if (caseDateUTC) { // Only calculate if caseDate is valid
+            const timeDiff = todayUTC.getTime() - caseDateUTC.getTime(); // Difference in milliseconds
+            // Calculate days, ensuring integer division
+            const daysOld = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+            if (daysOld >= STALE_CASE_CRITICAL_DAYS) { // Use >= for clarity
+                tr.classList.add('row-stale-case-21');
+            } else if (daysOld >= STALE_CASE_WARNING_DAYS) {
+                tr.classList.add('row-stale-case-15');
+            }
         }
     }
-    // --- สิ้นสุดส่วนที่แก้ไข ---
+    // --- End Stale Case Highlighting Fix ---
 
+    // Row Number Cell
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
     rowNumberCell.textContent = (page - 1) * pageSize + index + 1;
     tr.appendChild(rowNumberCell);
-    Object.entries(FIELD_MAPPING).slice(1).forEach(([header, config]) => {
-        // ข้ามฟิลด์ที่ไม่ใช่ header (เช่น 'เหตุผล')
+
+    // Data Cells (Iterate through FIELD_MAPPING)
+    Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
+        // Skip '#' and non-header fields like 'reason'
+        if (!config.field && header !== 'จัดการ') return;
         if (config.isHeader === false) return;
 
         if (header === 'จัดการ') {
-            tr.appendChild(createActionsCell(row, window.state.currentUser));
-        } else if (config && config.field) {
+            tr.appendChild(createActionsCell(row, window.state?.currentUser)); // Pass current user
+        } else if (config.field) {
             tr.appendChild(createCell(row, config.field));
         }
     });
@@ -232,11 +277,11 @@ function createRowElement(row, index, page, pageSize) {
 ui.renderTable = function(paginatedCustomers, page, pageSize) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
-    const fragment = document.createDocumentFragment();
+    const fragment = document.createDocumentFragment(); // Use fragment for performance
     paginatedCustomers.forEach((row, index) => {
         fragment.appendChild(createRowElement(row, index, page, pageSize));
     });
-    tbody.innerHTML = '';
+    tbody.innerHTML = ''; // Clear previous content
     tbody.appendChild(fragment);
 }
 
@@ -246,7 +291,8 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
 
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
-    form.innerHTML = '';
+    if (!form) return;
+    form.innerHTML = ''; // Clear previous form
 
     const adminSection = document.createElement('div');
     adminSection.className = 'modal-section admin-section';
@@ -262,43 +308,65 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
 
-    // [NEW] เพิ่ม closed_date เข้าไปในกลุ่มฟิลด์ปิดการขาย
     const dealClosingFields = ['last_status', 'status_1', 'closed_amount', 'closed_date'];
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
-        if (!field) return; // ข้ามพวก # หรือ จัดการ
+        if (!field) return; // Skip non-data fields
 
-        const value = customer[field] || '';
+        const value = customer[field] ?? ''; // Use ?? for null/undefined
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const userRole = (currentUser?.role || 'sales').toLowerCase();
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
-        // [NEW] เพิ่ม closed_date ให้ Sales แก้ไขได้
         const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason', 'closed_date'];
         const isEditableBySales = isSalesUser && allSalesEditableFields.includes(field);
-
-        // [FIXED] ลบเงื่อนไข `&& field !== 'lead_code'` ออกเพื่อให้ Admin แก้ไขได้
-        const isEditable = (isAdmin || isEditableBySales);
-
+        const isEditable = (isAdmin || isEditableBySales); // Admin can edit anything, Sales can edit specific fields
 
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
         formGroup.dataset.fieldGroup = field;
 
-        let inputHtml = '';
-        if (field === 'reason') {
-            inputHtml = `<textarea name="${field}" ${!isEditable ? 'disabled' : ''}>${escapeHtml(value)}</textarea>`;
-        } else if (options) {
-            const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('');
-            inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
-        } else {
-            // [NEW] กำหนดประเภท input สำหรับ closed_date เป็น date
-            const fieldType = (['date', 'appointment_date', 'old_appointment', 'closed_date'].includes(field)) ? 'date' : 'text';
-            inputHtml = `<input type="${fieldType}" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
-        }
+        const label = document.createElement('label');
+        label.htmlFor = field;
+        label.textContent = header;
+        formGroup.appendChild(label);
 
-        formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
+        let inputElement;
+        if (field === 'reason') {
+            inputElement = document.createElement('textarea');
+            inputElement.name = field;
+            inputElement.value = value;
+            if (!isEditable) inputElement.disabled = true;
+        } else if (options) {
+            inputElement = document.createElement('select');
+            inputElement.name = field;
+            if (!isEditable) inputElement.disabled = true;
+            // Add default empty option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- เลือก --';
+            inputElement.appendChild(defaultOption);
+            // Add other options
+            options.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt; // No need to escape value for options
+                optionEl.textContent = opt; // textContent handles escaping
+                if (opt === value) optionEl.selected = true;
+                inputElement.appendChild(optionEl);
+            });
+        } else {
+            inputElement = document.createElement('input');
+            const fieldType = (['date', 'appointment_date', 'old_appointment', 'closed_date'].includes(field)) ? 'date' : 'text';
+            inputElement.type = fieldType;
+            inputElement.name = field;
+            inputElement.value = value;
+            if (!isEditable) inputElement.disabled = true;
+            // Special handling for lead_code - make it non-editable even for admin after creation? (Decided against this for now)
+            // if (field === 'lead_code' && !isAdmin) inputElement.disabled = true;
+        }
+        inputElement.id = field; // Link label correctly
+        formGroup.appendChild(inputElement);
 
         if (config.section === 'admin') {
             adminContent.appendChild(formGroup);
@@ -310,29 +378,29 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     form.appendChild(adminSection);
     form.appendChild(salesSection);
 
-    // --- ไฮไลท์ฟิลด์ที่เกี่ยวข้องกับการปิดการขาย ---
+    // --- Add highlighting logic ---
     const lastStatusInput = form.querySelector('[name="last_status"]');
     const status1Input = form.querySelector('[name="status_1"]');
     const closedAmountInput = form.querySelector('[name="closed_amount"]');
-    // [NEW] เพิ่ม closedDateInput
     const closedDateInput = form.querySelector('[name="closed_date"]');
 
     const highlightFields = () => {
-        const isClosingAttempt = (lastStatusInput.value === '100%') || (status1Input.value === 'ปิดการขาย') || (closedAmountInput.value && closedAmountInput.value.trim() !== '');
+        const isClosingAttempt = (lastStatusInput?.value === '100%') || (status1Input?.value === 'ปิดการขาย') || (closedAmountInput?.value && closedAmountInput.value.trim() !== '');
         dealClosingFields.forEach(fieldName => {
             const group = form.querySelector(`[data-field-group="${fieldName}"]`);
             if (group) { group.classList.toggle('highlight-deal-closing', isClosingAttempt); }
         });
     };
-    // [NEW] เพิ่ม closedDateInput เข้าไปใน event listeners
     [lastStatusInput, status1Input, closedAmountInput, closedDateInput].forEach(input => {
         if (input) {
             input.addEventListener('change', highlightFields);
-            input.addEventListener('input', highlightFields);
+            input.addEventListener('input', highlightFields); // Handle typing in amount
         }
     });
-    highlightFields(); // เรียกครั้งแรกตอนสร้างฟอร์ม
-    document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || customer.lead_code || 'ลูกค้าใหม่'}`;
+    highlightFields(); // Initial highlight check
+
+    const modalTitle = document.getElementById('editModalTitle');
+    if (modalTitle) modalTitle.textContent = `แก้ไข: ${customer.name || customer.lead_code || 'ลูกค้าใหม่'}`;
 };
 
 
@@ -347,17 +415,60 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
     let buttonsHTML = `<button data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>`;
     const maxButtons = 5; let startPage, endPage;
     if (totalPages <= maxButtons) { startPage = 1; endPage = totalPages; } else { const maxPagesBeforeCurrent = Math.floor(maxButtons / 2); const maxPagesAfterCurrent = Math.ceil(maxButtons / 2) - 1; if (currentPage <= maxPagesBeforeCurrent) { startPage = 1; endPage = maxButtons; } else if (currentPage + maxPagesAfterCurrent >= totalPages) { startPage = totalPages - maxButtons + 1; endPage = totalPages; } else { startPage = currentPage - maxPagesBeforeCurrent; endPage = currentPage + maxPagesAfterCurrent; } }
-    if (startPage > 1) { buttonsHTML += `<button data-page="1">1</button>`; if (startPage > 2) buttonsHTML += `<span>...</span>`; }
+    if (startPage > 1) { buttonsHTML += `<button data-page="1">1</button>`; if (startPage > 2) buttonsHTML += `<span class="pagination-ellipsis">...</span>`; } // Added class for ellipsis
     for (let i = startPage; i <= endPage; i++) { buttonsHTML += `<button data-page="${i}" class="${i === currentPage ? 'active' : ''}">${i}</button>`; }
-    if (endPage < totalPages) { if (endPage < totalPages - 1) buttonsHTML += `<span>...</span>`; buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`; }
+    if (endPage < totalPages) { if (endPage < totalPages - 1) buttonsHTML += `<span class="pagination-ellipsis">...</span>`; buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`; }
     buttonsHTML += `<button data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>`;
     const controlsHTML = `<div class="pagination-controls">${buttonsHTML}</div>`;
     container.innerHTML = `${pageSizeHTML}${infoHTML}${controlsHTML}`;
 };
 
-ui.showModal = function(modalId, context = {}) { const modal = document.getElementById(modalId); if (!modal) return; if (modalId === 'statusUpdateModal' || modalId === 'historyModal') { const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`); if (nameElement) nameElement.textContent = context.customerName || 'N/A'; if (modalId === 'statusUpdateModal') { const customerIdElement = modal.querySelector('#modalCustomerId'); if (customerIdElement) customerIdElement.value = context.customerId || ''; } } modal.style.display = 'flex'; };
-ui.hideModal = function(modalId) { const modal = document.getElementById(modalId); if (!modal) return; modal.style.display = 'none'; if (modalId === 'statusUpdateModal') { modal.querySelector('#modalStatusSelect').value = ''; modal.querySelector('#modalNotesText').value = ''; modal.querySelector('#modalCustomerId').value = ''; } if (modalId === 'historyModal') { document.getElementById('historyTimelineContainer').innerHTML = ''; } };
-ui.populateFilterDropdown = function(elementId, options) { const select = document.getElementById(elementId); if (!select) return; while (select.options.length > 1) { select.remove(1); } (options || []).forEach(option => { if (option) { const optElement = document.createElement('option'); optElement.value = option; optElement.textContent = option; select.appendChild(optElement); } }); };
+ui.showModal = function(modalId, context = {}) {
+     const modal = document.getElementById(modalId);
+     if (!modal) return;
+     // Populate context-specific fields
+     if (modalId === 'statusUpdateModal' || modalId === 'historyModal') {
+         const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`);
+         if (nameElement) nameElement.textContent = context.customerName || 'N/A';
+         if (modalId === 'statusUpdateModal') {
+             const customerIdElement = modal.querySelector('#modalCustomerId');
+             if (customerIdElement) customerIdElement.value = context.customerId || '';
+         }
+     }
+     modal.style.display = 'flex'; // Use flex for centering
+};
+
+ui.hideModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.style.display = 'none';
+    // Clear dynamic content on hide
+    if (modalId === 'statusUpdateModal') {
+        const select = modal.querySelector('#modalStatusSelect'); if(select) select.value = '';
+        const notes = modal.querySelector('#modalNotesText'); if(notes) notes.value = '';
+        const idInput = modal.querySelector('#modalCustomerId'); if(idInput) idInput.value = '';
+    }
+    if (modalId === 'historyModal') {
+        const timeline = document.getElementById('historyTimelineContainer'); if(timeline) timeline.innerHTML = ''; // Clear history
+    }
+};
+
+ui.populateFilterDropdown = function(elementId, options) {
+    const select = document.getElementById(elementId);
+    if (!select) return;
+    // Keep the first option (e.g., "ทุกสถานะ") and remove the rest
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+    // Add new options, ensuring uniqueness and filtering out empty values
+    [...new Set(options || [])].filter(Boolean).forEach(option => {
+        const optElement = document.createElement('option');
+        optElement.value = option;
+        optElement.textContent = option;
+        select.appendChild(optElement);
+    });
+};
+
 
 ui.renderHistoryTimeline = function(historyData) {
     const container = document.getElementById('historyTimelineContainer');
@@ -369,25 +480,23 @@ ui.renderHistoryTimeline = function(historyData) {
 
     container.innerHTML = historyData.map(item => {
         let roleClass = 'history-default';
-
         let userDisplay = 'Unknown';
-        // [FIXED] เพิ่มการตรวจสอบ item.users ก่อนเข้าถึง properties
-        if (item.users) {
+
+        if (item.users) { // Check if user data exists (successful join)
             const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
             const username = item.users.username || 'N/A';
             userDisplay = `${role} - ${username}`;
-
             const roleLower = (item.users.role || '').toLowerCase();
             if (roleLower === 'admin' || roleLower === 'administrator') {
                 roleClass = 'history-admin';
             } else if (roleLower === 'sales') {
                 roleClass = 'history-sales';
             }
-        } else if (item.created_by) {
-             // Fallback: ถ้าไม่มีข้อมูล user join มา (อาจเกิดจาก user ถูกลบ)
-             userDisplay = `User ID: ${item.created_by.substring(0, 8)}...`;
+        } else if (item.created_by) { // Fallback if join failed or user deleted
+            userDisplay = `User ID: ${item.created_by.substring(0, 8)}...`;
         }
 
+        const timestamp = item.created_at ? new Date(item.created_at).toLocaleString('th-TH') : 'Invalid Date';
 
         return `
             <div class="timeline-item ${roleClass}">
@@ -396,7 +505,7 @@ ui.renderHistoryTimeline = function(historyData) {
                     <div class="timeline-status">${escapeHtml(item.status)}</div>
                     <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
                     <div class="timeline-footer">
-                        โดย: ${escapeHtml(userDisplay)} | ${new Date(item.created_at).toLocaleString('th-TH')}
+                        โดย: ${escapeHtml(userDisplay)} | ${timestamp}
                     </div>
                 </div>
             </div>`;
@@ -404,7 +513,19 @@ ui.renderHistoryTimeline = function(historyData) {
 };
 
 
-ui.showContextMenu = function(event) { const menu = document.getElementById('contextMenu'); if (!menu) return; menu.style.display = 'block'; menu.style.left = `${event.pageX}px`; menu.style.top = `${event.pageY}px`; };
-ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
+ui.showContextMenu = function(event) {
+    const menu = document.getElementById('contextMenu');
+    if (!menu) return;
+    menu.style.display = 'block';
+    // Position menu relative to the viewport
+    menu.style.left = `${event.clientX}px`;
+    menu.style.top = `${event.clientY}px`;
+};
 
+ui.hideContextMenu = function() {
+    const menu = document.getElementById('contextMenu');
+    if (menu) menu.style.display = 'none';
+};
+
+// Make the ui object globally available
 window.ui = ui;
