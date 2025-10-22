@@ -84,40 +84,65 @@ api.fetchAllCustomers = async function() {
 };
 
 /**
- * [NEW] Helper function to get the latest lead code.
- * @returns {Promise<number>} The latest lead code number (e.g., 1025).
+ * [FIXED] Gets the latest lead code, starting from 1235 if the table is empty.
+ * @returns {Promise<number>} The latest lead code number (e.g., 1235 if empty, or highest existing number).
  */
 api.getLatestLeadCode = async function() {
-    const { data, error } = await window.supabaseClient
+    const { data, error, count } = await window.supabaseClient
         .from('customers')
-        .select('lead_code')
-        .order('lead_code', { ascending: false, nulls: 'last' }) // Ensure NULLs are last
+        .select('lead_code', { count: 'exact', head: false }) // Get count efficiently
+        .order('lead_code', { ascending: false, nulls: 'last' })
         .limit(1)
-        .maybeSingle(); // Use maybeSingle to handle case where table is empty
+        .maybeSingle();
 
     if (error) {
         console.error('Error fetching latest lead code:', error);
-        return 1000; // Default starting code if error occurs or table empty
+        return 1235; // Default to 1235 if error occurs
     }
-    // Start from 1000 if no lead_code exists yet or if it's null/invalid
-    const latestCode = data?.lead_code ? parseInt(data.lead_code, 10) : 1000;
-    // Ensure the result is a valid number, default to 1000 if parsing fails
-    return isNaN(latestCode) ? 1000 : latestCode;
+
+    // [NEW LOGIC] If the table is empty (count is 0 or data is null), start from 1235
+    if (count === 0 || !data || !data.lead_code) {
+        console.log("Customer table is empty or no valid lead_code found. Starting sequence from 1235.");
+        return 1235; 
+    }
+
+    // If table is not empty, try to parse the latest code
+    const latestCode = parseInt(data.lead_code, 10);
+
+    // If parsing fails (e.g., "10-68-0002") OR if the latest code is less than 1235, return 1235
+    if (isNaN(latestCode) || latestCode < 1235) {
+         console.warn(`Latest lead_code '${data.lead_code}' is invalid or less than start sequence. Using 1235.`);
+         return 1235;
+    }
+
+    // Otherwise, return the valid latest code found
+    return latestCode;
 };
 
 
 /**
- * Adds a new customer record with an auto-incremented lead code.
+ * [FIXED] Adds a new customer record, allowing for a manual lead code OR auto-increment.
  * @param {string} salesUsername The username of the sales person creating the customer.
+ * @param {string} [manualLeadCode=""] The lead code manually entered by the user (from prompt).
  * @returns {Promise<object>} The newly created customer object.
  */
-api.addCustomer = async function(salesUsername) {
-    // Use the helper function to get the next lead code
-    const latestCode = await api.getLatestLeadCode();
-    const nextLeadCode = latestCode + 1;
+api.addCustomer = async function(salesUsername, manualLeadCode = "") {
+
+    let finalLeadCode;
+
+    // 1. ตรวจสอบว่าผู้ใช้ป้อนค่าเข้ามาใน prompt หรือไม่
+    if (manualLeadCode && manualLeadCode.trim() !== "") {
+        // ถ้าป้อน (เช่น "1236") ให้ใช้ค่านั้นเลย
+        finalLeadCode = manualLeadCode.trim();
+    } else {
+        // 2. ถ้าผู้ใช้เว้นว่าง (กด OK โดยไม่พิมพ์) ให้ใช้ระบบอัตโนมัติ
+        // (ซึ่งตอนนี้จะเริ่มที่ 1236 ถ้าตารางว่าง)
+        const latestCode = await api.getLatestLeadCode();
+        finalLeadCode = (latestCode + 1).toString();
+    }
 
     const newCustomerData = {
-        lead_code: nextLeadCode.toString(),
+        lead_code: finalLeadCode, // ใช้ Lead Code ที่เราเลือก/คำนวณ
         sales: salesUsername,
         date: new Date().toISOString().split('T')[0]
     };
@@ -128,7 +153,13 @@ api.addCustomer = async function(salesUsername) {
         .select()
         .single();
 
-    if (error) throw new Error('ไม่สามารถเพิ่มลูกค้าใหม่ได้: ' + error.message);
+    if (error) {
+         // เพิ่มการตรวจสอบ Lead Code ซ้ำ
+         if (error.message.includes('duplicate key value violates unique constraint') && error.message.includes('lead_code')) {
+             throw new Error(`ไม่สามารถเพิ่มลูกค้าใหม่ได้: 'ลำดับที่' (Lead Code) "${finalLeadCode}" นี้ถูกใช้ไปแล้ว`);
+         }
+        throw new Error('ไม่สามารถเพิ่มลูกค้าใหม่ได้: ' + error.message);
+    }
     return data;
 };
 
