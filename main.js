@@ -747,67 +747,94 @@ function hideEditModal() {
  */
 async function handleSaveEditForm(event) {
     event.preventDefault(); // Prevent standard form submission
-    if (!state.editingCustomerId) return; // Ensure we know which customer to update
-
-    const form = event.target;
-    const formData = new FormData(form);
-    const updatedData = {};
-    // Convert FormData to a plain object, trimming string values
-    for (const [key, value] of formData.entries()) {
-        updatedData[key] = typeof value === 'string' ? value.trim() : value;
-    }
-
-    // --- [FIXED] Validate required 'date' field ONLY for Admins ---
-    const userRole = (state.currentUser?.role || '').toLowerCase();
-    const isAdmin = userRole === 'admin' || userRole === 'administrator';
-
-    // If Admin is editing and 'date' field is empty, show error and stop
-    if (!updatedData.date && isAdmin) {
-        ui.showStatus('กรุณากรอก "วัน/เดือน/ปี"', true);
-        const dateInput = form.querySelector('[name="date"]');
-        if (dateInput) dateInput.focus(); // Focus the problematic field
-        return; // Halt the save process
-    }
-    // --- End Validation Fix ---
-
-    // Normalize all date fields AFTER checking required field (for Admin)
-    // Important: Normalize even if user is Sales, as they might submit invalid format
-    // if the field was somehow enabled or data came from elsewhere.
-    updatedData.date = normalizeDateStringToYYYYMMDD(updatedData.date);
-    updatedData.old_appointment = normalizeDateStringToYYYYMMDD(updatedData.old_appointment);
-    updatedData.appointment_date = normalizeDateStringToYYYYMMDD(updatedData.appointment_date);
-    updatedData.closed_date = normalizeDateStringToYYYYMMDD(updatedData.closed_date);
-
-    // Re-check normalized 'date' ONLY if Admin (as normalization might return null)
-    if (!updatedData.date && isAdmin) {
-        // This handles cases where the input was not empty but had an invalid format
-        ui.showStatus('รูปแบบ "วัน/เดือน/ปี" ไม่ถูกต้อง หรือวันที่ยังไม่ได้กรอก', true);
-        const dateInput = form.querySelector('[name="date"]');
-        if (dateInput) dateInput.focus();
-        return; // Halt if required date became null after normalization (for Admin)
-    }
-
-
-    // Get original customer data for comparison (for history logging)
-    const originalCustomer = state.customers.find(c => String(c.id) === String(state.editingCustomerId));
-    if (!originalCustomer) {
-        // This shouldn't happen if editingCustomerId is set, but good to check
-        ui.showStatus('Error: ไม่พบข้อมูลลูกค้าเดิมที่จะเปรียบเทียบ', true);
+    if (!state.editingCustomerId) {
+        console.warn("Save aborted: No editingCustomerId set.");
         return;
     }
 
+    const form = event.target;
+    const formData = new FormData(form);
+    const updatedDataFromForm = {}; // Data read directly from the form (enabled fields only)
+    for (const [key, value] of formData.entries()) {
+        updatedDataFromForm[key] = typeof value === 'string' ? value.trim() : value;
+    }
+    console.log("Data read from form (includes only enabled fields):", updatedDataFromForm);
+
+    // Get original customer data to preserve fields Sales cannot edit
+    const originalCustomer = state.customers.find(c => String(c.id) === String(state.editingCustomerId));
+    if (!originalCustomer) {
+        ui.showStatus('Error: ไม่พบข้อมูลลูกค้าเดิม', true);
+        return;
+    }
+
+    // Determine user role
+    const userRole = (state.currentUser?.role || 'sales').toLowerCase();
+    const isAdmin = userRole === 'admin' || userRole === 'administrator';
+    const isSales = !isAdmin;
+
+    // --- Data Preparation: Start with original data, then overlay editable fields ---
+    // Create a mutable copy of the original data to modify
+    let dataToSend = { ...originalCustomer };
+
+    // Iterate over fields defined in FIELD_MAPPING to decide what to potentially update
+    Object.values(ui.FIELD_MAPPING).forEach(config => {
+        const key = config.field;
+        if (!key) return; // Skip fields without a 'field' property (like '#', 'จัดการ')
+
+        // Check if the current user role is allowed to edit this field
+        const isSalesEditable = SALES_EDITABLE_FIELDS.includes(key); // Check against the defined list for Sales
+        const canEditField = isAdmin || (isSales && isSalesEditable);
+
+        // Check if this field was present in the form data (meaning it was enabled)
+        if (updatedDataFromForm.hasOwnProperty(key)) {
+            if (canEditField) {
+                 // If editable by current role, normalize and use the value from the form
+                 if (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key)) {
+                     dataToSend[key] = normalizeDateStringToYYYYMMDD(updatedDataFromForm[key]);
+                 } else {
+                     dataToSend[key] = updatedDataFromForm[key];
+                 }
+            } else {
+                 // This case should ideally not happen if UI disables fields correctly, but as a safeguard:
+                 // If a field from the form is NOT editable by the current role, keep the original value.
+                 console.warn(`User role '${userRole}' submitted non-editable field '${key}'. Preserving original value.`);
+                 // dataToSend[key] already holds the original value from the initial spread ({...originalCustomer})
+            }
+        } else if (!canEditField && dataToSend.hasOwnProperty(key)) {
+             // If the field was NOT in form data (disabled) AND is NOT editable by the current role,
+             // ensure the original value is kept (already handled by initial spread).
+             // This correctly preserves 'date' when Sales saves.
+        } else if (isAdmin && !updatedDataFromForm.hasOwnProperty(key) && dataToSend.hasOwnProperty(key)){
+             // Edge case: If Admin somehow clears a disabled field (shouldn't happen),
+             // should we allow saving null? For now, preserve original.
+             console.warn(`Admin submission missing field '${key}'. Preserving original value.`);
+        }
+    });
+    // --- End Data Preparation ---
+
+
+    // --- Validation: Check required 'date' field ONLY for Admins ---
+    // Use dataToSend.date for validation as it contains the final value
+    if (!dataToSend.date && isAdmin) {
+        ui.showStatus('กรุณากรอก "วัน/เดือน/ปี"', true);
+        const dateInput = form.querySelector('[name="date"]');
+        if (dateInput) dateInput.focus();
+        return; // Stop submission ONLY if Admin and date is empty or invalid
+    }
+    // --- End Validation ---
+
     // --- Deal Closing Logic ---
-    const isNowClosing = updatedData.status_1 === 'ปิดการขาย' && updatedData.last_status === '100%' && updatedData.closed_amount;
+    const isNowClosing = dataToSend.status_1 === 'ปิดการขาย' && dataToSend.last_status === '100%' && dataToSend.closed_amount;
     // Auto-populate closed_date only if it's currently empty and conditions are met
-    if (isNowClosing && !updatedData.closed_date) {
-        updatedData.closed_date = new Date().toISOString().split('T')[0]; // Use current date
-        console.log(`Auto-populating closed_date: ${updatedData.closed_date}`);
+    if (isNowClosing && !dataToSend.closed_date) {
+        dataToSend.closed_date = new Date().toISOString().split('T')[0]; // Use current date
+        console.log(`Auto-populating closed_date: ${dataToSend.closed_date}`);
     }
     // Check if user is attempting to close (any closing field is set)
-    const isClosingAttempt = updatedData.last_status === '100%' || updatedData.status_1 === 'ปิดการขาย' || updatedData.closed_amount;
+    const isClosingAttempt = dataToSend.last_status === '100%' || dataToSend.status_1 === 'ปิดการขาย' || dataToSend.closed_amount;
     if (isClosingAttempt) {
         // Verify all required closing fields are present
-        const isClosingComplete = updatedData.last_status === '100%' && updatedData.status_1 === 'ปิดการขาย' && updatedData.closed_amount;
+        const isClosingComplete = dataToSend.last_status === '100%' && dataToSend.status_1 === 'ปิดการขาย' && dataToSend.closed_amount;
         if (!isClosingComplete) {
             ui.showStatus('การปิดการขายต้องกรอก: Last Status (100%), Status Sale (ปิดการขาย), และ ยอดที่ปิดได้ ให้ครบถ้วน', true);
             return; // Stop save if closing info is incomplete
@@ -815,56 +842,62 @@ async function handleSaveEditForm(event) {
     }
     // --- End Deal Closing Logic ---
 
+    // Clean up internal properties before sending
+    delete dataToSend.id;
+    delete dataToSend.created_at;
+    delete dataToSend.updated_at;
+
+    console.log("Data being sent to API:", dataToSend); // Log the final data object
+
     ui.showLoading(true); // Show loading indicator during API call
     try {
         // --- API Call to Update Customer ---
-        const updatedCustomerResponse = await api.updateCustomer(state.editingCustomerId, updatedData);
+        const updatedCustomerResponse = await api.updateCustomer(state.editingCustomerId, dataToSend);
 
         // --- Post-API Data Handling ---
-        // Normalize dates from the response as API might return different format
-        const finalUpdatedCustomer = { ...updatedCustomerResponse }; // Create a copy
+        // Merge original with response, then re-normalize dates for local state consistency
+        const finalUpdatedCustomer = { ...originalCustomer, ...updatedCustomerResponse };
         finalUpdatedCustomer.date = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.date);
         finalUpdatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.old_appointment);
         finalUpdatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.appointment_date);
         finalUpdatedCustomer.closed_date = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.closed_date);
+        finalUpdatedCustomer.id = originalCustomer.id; // Ensure ID remains correct
 
         // --- History Logging (Sales Role Only) ---
         if (userRole === 'sales') {
             const historyPromises = [];
-            // Compare original data with the data sent *to* the API (updatedData)
-            for (const [key, value] of Object.entries(updatedData)) {
-                const originalValue = originalCustomer[key] ?? '';
-                const newValue = value ?? '';
-                // Log only if the value actually changed
-                if (String(originalValue) !== String(newValue)) {
-                    // Find the display name (header) for the field
-                    const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h]?.field === key) || key; // Safer lookup
-                    // Format values for readability in log (especially dates)
-                    const isDateField = ['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key);
-                    const originalFormatted = isDateField ? formatDateToDMY(originalValue) : originalValue;
-                    const newFormatted = isDateField ? formatDateToDMY(newValue) : newValue;
-                    const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}'`;
-                    // Add the history log entry via API
-                    historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
+            // Compare originalCustomer with the final state after update (finalUpdatedCustomer)
+            for (const key in finalUpdatedCustomer) {
+                if (key === 'id' || key === 'created_at' || key === 'updated_at') continue; // Skip internal keys
+
+                const fieldConfig = Object.values(ui.FIELD_MAPPING).find(config => config.field === key);
+                if (fieldConfig) { // Only log fields that are part of our defined mapping
+                    const originalValue = originalCustomer[key] ?? '';
+                    const newValue = finalUpdatedCustomer[key] ?? '';
+                    if (String(originalValue) !== String(newValue)) { // Log only actual changes
+                        const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h]?.field === key) || key;
+                        const isDateField = ['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key);
+                        const originalFormatted = isDateField ? formatDateToDMY(originalValue) : originalValue;
+                        const newFormatted = isDateField ? formatDateToDMY(newValue) : newValue;
+                        const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}'`;
+                        historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
+                    }
                 }
             }
-            // Wait for all history logs to settle (using allSettled is safer than all)
             if (historyPromises.length > 0) { await Promise.allSettled(historyPromises); }
         }
 
         // --- Update Local State (using immutable pattern) ---
         const index = state.customers.findIndex(c => String(c.id) === String(state.editingCustomerId));
         if (index !== -1) {
-             // Replace the old customer object with the new one
              state.customers = [
                  ...state.customers.slice(0, index),
-                 finalUpdatedCustomer, // Use the final, normalized updated customer data
+                 finalUpdatedCustomer, // Use the final, merged & normalized data
                  ...state.customers.slice(index + 1),
              ];
         } else {
-            // This case should ideally not happen if editingCustomerId was valid
             console.warn("Updated customer not found in local state after save. Adding instead.");
-            state.customers.push(finalUpdatedCustomer);
+            state.customers.push(finalUpdatedCustomer); // Fallback: Add if missing
         }
 
         // --- Final UI Updates ---
@@ -1092,10 +1125,12 @@ async function handleContextMenuItemClick(event) {
                 // Adjust pagination if the current page becomes empty after deletion
                 // Important: Calculate based on FILTERED list length *before* updateVisibleData recalculates it
                 const pageSize = state.pagination.pageSize;
+                // Find how many items were in the filtered list before this deletion
                 const totalFilteredRecordsBeforeDelete = state.filteredCustomers.length;
-                const itemsOnCurrentPageBeforeDelete = totalFilteredRecordsBeforeDelete % pageSize === 1 && state.pagination.currentPage === Math.ceil(totalFilteredRecordsBeforeDelete / pageSize);
+                // Check if the item deleted was the last one on the current page
+                const wasLastItemOnPage = (totalFilteredRecordsBeforeDelete % pageSize === 1 || pageSize === 1) && state.pagination.currentPage === Math.ceil(totalFilteredRecordsBeforeDelete / pageSize);
 
-                if (itemsOnCurrentPageBeforeDelete && state.pagination.currentPage > 1) {
+                if (wasLastItemOnPage && state.pagination.currentPage > 1) {
                     // If deleting the last item on a page (and it's not page 1), go to previous page
                     state.pagination.currentPage--;
                     console.log(`Adjusting page down to ${state.pagination.currentPage} after delete.`);
