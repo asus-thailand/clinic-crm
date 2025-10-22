@@ -150,7 +150,7 @@ ui.renderTableHeaders = function() {
         if (config.sortable) {
             th.dataset.sortable = config.field;
             th.classList.add('sortable-header');
-            th.innerHTML = `${escapeHtml(headerText)}<span class="sort-indicator"></span>`; // Escape header text
+            th.innerHTML = `${escapeHtml(headerText)}<span class="sort-indicator"></span>`;
         } else {
             th.textContent = headerText;
         }
@@ -176,13 +176,11 @@ function createCell(row, fieldName) {
     if (dateFields.includes(fieldName)) {
         td.textContent = formatDateToDMY(row[fieldName]);
     } else {
-        // Use textContent for safety against XSS
-        td.textContent = row[fieldName] ?? ''; // Use ?? for null/undefined
+        td.textContent = row[fieldName] ?? '';
     }
     return td;
 }
 
-// [FIXED #6] Use setAttribute for data-name to prevent potential HTML injection
 function createActionsCell(row, currentUser) {
     const td = document.createElement('td');
     td.className = 'actions-cell';
@@ -193,7 +191,6 @@ function createActionsCell(row, currentUser) {
     const canEdit = isAdmin || isOwner;
     const disabledAttribute = !canEdit ? 'disabled' : '';
 
-    // Create buttons using DOM methods for better security
     const editButton = document.createElement('button');
     editButton.className = 'btn-edit';
     editButton.dataset.action = 'edit-customer';
@@ -205,7 +202,7 @@ function createActionsCell(row, currentUser) {
     updateButton.className = 'btn-update';
     updateButton.dataset.action = 'update-status';
     updateButton.dataset.id = row.id;
-    updateButton.setAttribute('data-name', displayName); // Use setAttribute
+    updateButton.setAttribute('data-name', displayName);
     updateButton.textContent = 'อัปเดต';
     if (!canEdit) updateButton.disabled = true;
 
@@ -213,7 +210,7 @@ function createActionsCell(row, currentUser) {
     historyButton.className = 'btn-history';
     historyButton.dataset.action = 'view-history';
     historyButton.dataset.id = row.id;
-    historyButton.setAttribute('data-name', displayName); // Use setAttribute
+    historyButton.setAttribute('data-name', displayName);
     historyButton.textContent = 'ประวัติ';
 
     td.appendChild(editButton);
@@ -227,23 +224,20 @@ function createRowElement(row, index, page, pageSize) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
-    // Highlight closed deals
     if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
         tr.classList.add('row-deal-closed');
     }
 
-    // --- [FIXED #5] Timezone bug fix for stale case highlighting ---
-    // Calculate days old using UTC comparison
+    // --- Timezone bug fix for stale case highlighting ---
     if (row.date && !tr.classList.contains('row-deal-closed')) {
-        const todayUTC = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())); // Start of today in UTC
-        const caseDateUTC = parseDateString(row.date); // Already UTC if valid
+        const todayUTC = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()));
+        const caseDateUTC = parseDateString(row.date);
 
-        if (caseDateUTC) { // Only calculate if caseDate is valid
-            const timeDiff = todayUTC.getTime() - caseDateUTC.getTime(); // Difference in milliseconds
-            // Calculate days, ensuring integer division
+        if (caseDateUTC) {
+            const timeDiff = todayUTC.getTime() - caseDateUTC.getTime();
             const daysOld = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
 
-            if (daysOld >= STALE_CASE_CRITICAL_DAYS) { // Use >= for clarity
+            if (daysOld >= STALE_CASE_CRITICAL_DAYS) {
                 tr.classList.add('row-stale-case-21');
             } else if (daysOld >= STALE_CASE_WARNING_DAYS) {
                 tr.classList.add('row-stale-case-15');
@@ -252,20 +246,17 @@ function createRowElement(row, index, page, pageSize) {
     }
     // --- End Stale Case Highlighting Fix ---
 
-    // Row Number Cell
     const rowNumberCell = document.createElement('td');
     rowNumberCell.className = 'row-number';
     rowNumberCell.textContent = (page - 1) * pageSize + index + 1;
     tr.appendChild(rowNumberCell);
 
-    // Data Cells (Iterate through FIELD_MAPPING)
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
-        // Skip '#' and non-header fields like 'reason'
         if (!config.field && header !== 'จัดการ') return;
         if (config.isHeader === false) return;
 
         if (header === 'จัดการ') {
-            tr.appendChild(createActionsCell(row, window.state?.currentUser)); // Pass current user
+            tr.appendChild(createActionsCell(row, window.state?.currentUser));
         } else if (config.field) {
             tr.appendChild(createCell(row, config.field));
         }
@@ -277,11 +268,11 @@ function createRowElement(row, index, page, pageSize) {
 ui.renderTable = function(paginatedCustomers, page, pageSize) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
-    const fragment = document.createDocumentFragment(); // Use fragment for performance
+    const fragment = document.createDocumentFragment();
     paginatedCustomers.forEach((row, index) => {
         fragment.appendChild(createRowElement(row, index, page, pageSize));
     });
-    tbody.innerHTML = ''; // Clear previous content
+    tbody.innerHTML = '';
     tbody.appendChild(fragment);
 }
 
@@ -292,7 +283,7 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
     if (!form) return;
-    form.innerHTML = ''; // Clear previous form
+    form.innerHTML = '';
 
     const adminSection = document.createElement('div');
     adminSection.className = 'modal-section admin-section';
@@ -312,16 +303,16 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
-        if (!field) return; // Skip non-data fields
+        if (!field) return;
 
-        const value = customer[field] ?? ''; // Use ?? for null/undefined
+        const value = customer[field] ?? '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const userRole = (currentUser?.role || 'sales').toLowerCase();
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
         const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason', 'closed_date'];
         const isEditableBySales = isSalesUser && allSalesEditableFields.includes(field);
-        const isEditable = (isAdmin || isEditableBySales); // Admin can edit anything, Sales can edit specific fields
+        const isEditable = (isAdmin || isEditableBySales);
 
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
@@ -342,16 +333,14 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             inputElement = document.createElement('select');
             inputElement.name = field;
             if (!isEditable) inputElement.disabled = true;
-            // Add default empty option
             const defaultOption = document.createElement('option');
             defaultOption.value = '';
             defaultOption.textContent = '-- เลือก --';
             inputElement.appendChild(defaultOption);
-            // Add other options
             options.forEach(opt => {
                 const optionEl = document.createElement('option');
-                optionEl.value = opt; // No need to escape value for options
-                optionEl.textContent = opt; // textContent handles escaping
+                optionEl.value = opt;
+                optionEl.textContent = opt;
                 if (opt === value) optionEl.selected = true;
                 inputElement.appendChild(optionEl);
             });
@@ -362,10 +351,13 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             inputElement.name = field;
             inputElement.value = value;
             if (!isEditable) inputElement.disabled = true;
-            // Special handling for lead_code - make it non-editable even for admin after creation? (Decided against this for now)
-            // if (field === 'lead_code' && !isAdmin) inputElement.disabled = true;
+
+            // [NEW] Add 'required' attribute specifically to the 'date' field input
+            if (field === 'date') {
+                inputElement.required = true;
+            }
         }
-        inputElement.id = field; // Link label correctly
+        inputElement.id = field;
         formGroup.appendChild(inputElement);
 
         if (config.section === 'admin') {
@@ -394,10 +386,10 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     [lastStatusInput, status1Input, closedAmountInput, closedDateInput].forEach(input => {
         if (input) {
             input.addEventListener('change', highlightFields);
-            input.addEventListener('input', highlightFields); // Handle typing in amount
+            input.addEventListener('input', highlightFields);
         }
     });
-    highlightFields(); // Initial highlight check
+    highlightFields();
 
     const modalTitle = document.getElementById('editModalTitle');
     if (modalTitle) modalTitle.textContent = `แก้ไข: ${customer.name || customer.lead_code || 'ลูกค้าใหม่'}`;
@@ -415,7 +407,7 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
     let buttonsHTML = `<button data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>`;
     const maxButtons = 5; let startPage, endPage;
     if (totalPages <= maxButtons) { startPage = 1; endPage = totalPages; } else { const maxPagesBeforeCurrent = Math.floor(maxButtons / 2); const maxPagesAfterCurrent = Math.ceil(maxButtons / 2) - 1; if (currentPage <= maxPagesBeforeCurrent) { startPage = 1; endPage = maxButtons; } else if (currentPage + maxPagesAfterCurrent >= totalPages) { startPage = totalPages - maxButtons + 1; endPage = totalPages; } else { startPage = currentPage - maxPagesBeforeCurrent; endPage = currentPage + maxPagesAfterCurrent; } }
-    if (startPage > 1) { buttonsHTML += `<button data-page="1">1</button>`; if (startPage > 2) buttonsHTML += `<span class="pagination-ellipsis">...</span>`; } // Added class for ellipsis
+    if (startPage > 1) { buttonsHTML += `<button data-page="1">1</button>`; if (startPage > 2) buttonsHTML += `<span class="pagination-ellipsis">...</span>`; }
     for (let i = startPage; i <= endPage; i++) { buttonsHTML += `<button data-page="${i}" class="${i === currentPage ? 'active' : ''}">${i}</button>`; }
     if (endPage < totalPages) { if (endPage < totalPages - 1) buttonsHTML += `<span class="pagination-ellipsis">...</span>`; buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`; }
     buttonsHTML += `<button data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>`;
@@ -426,7 +418,6 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
 ui.showModal = function(modalId, context = {}) {
      const modal = document.getElementById(modalId);
      if (!modal) return;
-     // Populate context-specific fields
      if (modalId === 'statusUpdateModal' || modalId === 'historyModal') {
          const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`);
          if (nameElement) nameElement.textContent = context.customerName || 'N/A';
@@ -435,32 +426,29 @@ ui.showModal = function(modalId, context = {}) {
              if (customerIdElement) customerIdElement.value = context.customerId || '';
          }
      }
-     modal.style.display = 'flex'; // Use flex for centering
+     modal.style.display = 'flex';
 };
 
 ui.hideModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
     modal.style.display = 'none';
-    // Clear dynamic content on hide
     if (modalId === 'statusUpdateModal') {
         const select = modal.querySelector('#modalStatusSelect'); if(select) select.value = '';
         const notes = modal.querySelector('#modalNotesText'); if(notes) notes.value = '';
         const idInput = modal.querySelector('#modalCustomerId'); if(idInput) idInput.value = '';
     }
     if (modalId === 'historyModal') {
-        const timeline = document.getElementById('historyTimelineContainer'); if(timeline) timeline.innerHTML = ''; // Clear history
+        const timeline = document.getElementById('historyTimelineContainer'); if(timeline) timeline.innerHTML = '';
     }
 };
 
 ui.populateFilterDropdown = function(elementId, options) {
     const select = document.getElementById(elementId);
     if (!select) return;
-    // Keep the first option (e.g., "ทุกสถานะ") and remove the rest
     while (select.options.length > 1) {
         select.remove(1);
     }
-    // Add new options, ensuring uniqueness and filtering out empty values
     [...new Set(options || [])].filter(Boolean).forEach(option => {
         const optElement = document.createElement('option');
         optElement.value = option;
@@ -482,7 +470,7 @@ ui.renderHistoryTimeline = function(historyData) {
         let roleClass = 'history-default';
         let userDisplay = 'Unknown';
 
-        if (item.users) { // Check if user data exists (successful join)
+        if (item.users) {
             const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
             const username = item.users.username || 'N/A';
             userDisplay = `${role} - ${username}`;
@@ -492,7 +480,7 @@ ui.renderHistoryTimeline = function(historyData) {
             } else if (roleLower === 'sales') {
                 roleClass = 'history-sales';
             }
-        } else if (item.created_by) { // Fallback if join failed or user deleted
+        } else if (item.created_by) {
             userDisplay = `User ID: ${item.created_by.substring(0, 8)}...`;
         }
 
@@ -517,7 +505,6 @@ ui.showContextMenu = function(event) {
     const menu = document.getElementById('contextMenu');
     if (!menu) return;
     menu.style.display = 'block';
-    // Position menu relative to the viewport
     menu.style.left = `${event.clientX}px`;
     menu.style.top = `${event.clientY}px`;
 };
@@ -527,5 +514,4 @@ ui.hideContextMenu = function() {
     if (menu) menu.style.display = 'none';
 };
 
-// Make the ui object globally available
 window.ui = ui;
