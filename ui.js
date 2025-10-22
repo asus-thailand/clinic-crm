@@ -54,15 +54,6 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-// [NEW] Function to truncate text
-function truncateText(text, maxLength = 80) {
-    if (!text || typeof text !== 'string') return '';
-    if (text.length <= maxLength) {
-        return text;
-    }
-    return text.substring(0, maxLength) + '...';
-}
-
 
 // ================================================================================
 // LOADING & STATUS INDICATORS
@@ -198,6 +189,7 @@ function createActionsCell(row, currentUser) {
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     const isOwner = currentUser && row.sales === currentUser.username;
     const canEdit = isAdmin || isOwner;
+    const disabledAttribute = !canEdit ? 'disabled' : '';
 
     const editButton = document.createElement('button');
     editButton.className = 'btn-edit';
@@ -240,11 +232,16 @@ function createRowElement(row, index, page, pageSize) {
     if (row.date && !tr.classList.contains('row-deal-closed')) {
         const todayUTC = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()));
         const caseDateUTC = parseDateString(row.date);
+
         if (caseDateUTC) {
             const timeDiff = todayUTC.getTime() - caseDateUTC.getTime();
             const daysOld = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-            if (daysOld >= STALE_CASE_CRITICAL_DAYS) { tr.classList.add('row-stale-case-21'); }
-            else if (daysOld >= STALE_CASE_WARNING_DAYS) { tr.classList.add('row-stale-case-15'); }
+
+            if (daysOld >= STALE_CASE_CRITICAL_DAYS) {
+                tr.classList.add('row-stale-case-21');
+            } else if (daysOld >= STALE_CASE_WARNING_DAYS) {
+                tr.classList.add('row-stale-case-15');
+            }
         }
     }
     // --- End Stale Case Highlighting Fix ---
@@ -255,9 +252,14 @@ function createRowElement(row, index, page, pageSize) {
     tr.appendChild(rowNumberCell);
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
-        if (!config.field && header !== 'จัดการ') return; if (config.isHeader === false) return;
-        if (header === 'จัดการ') { tr.appendChild(createActionsCell(row, window.state?.currentUser)); }
-        else if (config.field) { tr.appendChild(createCell(row, config.field)); }
+        if (!config.field && header !== 'จัดการ') return;
+        if (config.isHeader === false) return;
+
+        if (header === 'จัดการ') {
+            tr.appendChild(createActionsCell(row, window.state?.currentUser));
+        } else if (config.field) {
+            tr.appendChild(createCell(row, config.field));
+        }
     });
     return tr;
 }
@@ -267,7 +269,9 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
     const fragment = document.createDocumentFragment();
-    paginatedCustomers.forEach((row, index) => { fragment.appendChild(createRowElement(row, index, page, pageSize)); });
+    paginatedCustomers.forEach((row, index) => {
+        fragment.appendChild(createRowElement(row, index, page, pageSize));
+    });
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
 }
@@ -279,68 +283,118 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
     if (!form) return;
-    form.innerHTML = ''; // Clear previous form
+    form.innerHTML = '';
 
-    const adminSection = document.createElement('div'); adminSection.className = 'modal-section admin-section';
-    adminSection.innerHTML = '<h3 class="modal-section-title">ส่วนของแอดมิน</h3>';
-    const adminContent = document.createElement('div'); adminContent.className = 'modal-section-content';
+    const adminSection = document.createElement('div');
+    adminSection.className = 'modal-section admin-section';
+    adminSection.innerHTML = '<h3 class="modal-section-title">ส่วนของแอดมิน (Admin Section)</h3>';
+    const adminContent = document.createElement('div');
+    adminContent.className = 'modal-section-content';
     adminSection.appendChild(adminContent);
 
-    const salesSection = document.createElement('div'); salesSection.className = 'modal-section sales-section';
-    salesSection.innerHTML = '<h3 class="modal-section-title">ส่วนของเซลล์</h3>';
-    const salesContent = document.createElement('div'); salesContent.className = 'modal-section-content';
+    const salesSection = document.createElement('div');
+    salesSection.className = 'modal-section sales-section';
+    salesSection.innerHTML = '<h3 class="modal-section-title">ส่วนของเซลล์ (Sales Section)</h3>';
+    const salesContent = document.createElement('div');
+    salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
 
     const dealClosingFields = ['last_status', 'status_1', 'closed_amount', 'closed_date'];
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
-        const field = config.field; if (!field) return;
+        const field = config.field;
+        if (!field) return;
 
         const value = customer[field] ?? '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const userRole = (currentUser?.role || 'sales').toLowerCase();
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
-        const isSalesUser = !isAdmin;
-        // Include status_1 and reason implicitly for Sales editing logic
-        const allSalesEditable = [...salesEditableFields, 'status_1', 'reason'];
-        const isEditableBySales = isSalesUser && allSalesEditable.includes(field);
-        const isEditable = isAdmin || isEditableBySales;
+        const isSalesUser = userRole === 'sales';
+        const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason', 'closed_date'];
+        const isEditableBySales = isSalesUser && allSalesEditableFields.includes(field);
+        const isEditable = (isAdmin || isEditableBySales);
 
-        const formGroup = document.createElement('div'); formGroup.className = 'form-group'; formGroup.dataset.fieldGroup = field;
-        const label = document.createElement('label'); label.htmlFor = field; label.textContent = header;
+        const formGroup = document.createElement('div');
+        formGroup.className = 'form-group';
+        formGroup.dataset.fieldGroup = field;
+
+        const label = document.createElement('label');
+        label.htmlFor = field;
+        label.textContent = header;
         formGroup.appendChild(label);
 
         let inputElement;
         if (field === 'reason') {
-            inputElement = document.createElement('textarea'); inputElement.name = field; inputElement.value = value;
+            inputElement = document.createElement('textarea');
+            inputElement.name = field;
+            inputElement.value = value;
             if (!isEditable) inputElement.disabled = true;
         } else if (options) {
-            inputElement = document.createElement('select'); inputElement.name = field; if (!isEditable) inputElement.disabled = true;
-            const defaultOpt = document.createElement('option'); defaultOpt.value = ''; defaultOpt.textContent = '-- เลือก --'; inputElement.appendChild(defaultOpt);
-            options.forEach(opt => { const optEl = document.createElement('option'); optEl.value = opt; optEl.textContent = opt; if (opt === value) optEl.selected = true; inputElement.appendChild(optEl); });
+            inputElement = document.createElement('select');
+            inputElement.name = field;
+            if (!isEditable) inputElement.disabled = true;
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '-- เลือก --';
+            inputElement.appendChild(defaultOption);
+            options.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt;
+                optionEl.textContent = opt;
+                if (opt === value) optionEl.selected = true;
+                inputElement.appendChild(optionEl);
+            });
         } else {
             inputElement = document.createElement('input');
             const fieldType = (['date', 'appointment_date', 'old_appointment', 'closed_date'].includes(field)) ? 'date' : 'text';
-            inputElement.type = fieldType; inputElement.name = field; inputElement.value = value;
+            inputElement.type = fieldType;
+            inputElement.name = field;
+            inputElement.value = value;
             if (!isEditable) inputElement.disabled = true;
-            if (field === 'date') inputElement.required = true; // Still required visually and for Admin logic
-        }
-        inputElement.id = field; formGroup.appendChild(inputElement);
 
-        if (config.section === 'admin') adminContent.appendChild(formGroup);
-        else if (config.section === 'sales') salesContent.appendChild(formGroup);
+            // [NEW] Add 'required' attribute specifically to the 'date' field input
+            if (field === 'date') {
+                inputElement.required = true;
+            }
+        }
+        inputElement.id = field;
+        formGroup.appendChild(inputElement);
+
+        if (config.section === 'admin') {
+            adminContent.appendChild(formGroup);
+        } else if (config.section === 'sales') {
+            salesContent.appendChild(formGroup);
+        }
     });
 
-    form.appendChild(adminSection); form.appendChild(salesSection);
+    form.appendChild(adminSection);
+    form.appendChild(salesSection);
 
-    const lastStatusInput = form.querySelector('[name="last_status"]'); const status1Input = form.querySelector('[name="status_1"]');
-    const closedAmountInput = form.querySelector('[name="closed_amount"]'); const closedDateInput = form.querySelector('[name="closed_date"]');
-    const highlightFields = () => { const isAttempt = (lastStatusInput?.value === '100%') || (status1Input?.value === 'ปิดการขาย') || (closedAmountInput?.value?.trim() !== ''); dealClosingFields.forEach(f => { const g = form.querySelector(`[data-field-group="${f}"]`); if (g) g.classList.toggle('highlight-deal-closing', isAttempt); }); };
-    [lastStatusInput, status1Input, closedAmountInput, closedDateInput].forEach(inp => { if (inp) { inp.addEventListener('change', highlightFields); inp.addEventListener('input', highlightFields); } });
+    // --- Add highlighting logic ---
+    const lastStatusInput = form.querySelector('[name="last_status"]');
+    const status1Input = form.querySelector('[name="status_1"]');
+    const closedAmountInput = form.querySelector('[name="closed_amount"]');
+    const closedDateInput = form.querySelector('[name="closed_date"]');
+
+    const highlightFields = () => {
+        const isClosingAttempt = (lastStatusInput?.value === '100%') || (status1Input?.value === 'ปิดการขาย') || (closedAmountInput?.value && closedAmountInput.value.trim() !== '');
+        dealClosingFields.forEach(fieldName => {
+            const group = form.querySelector(`[data-field-group="${fieldName}"]`);
+            if (group) { group.classList.toggle('highlight-deal-closing', isClosingAttempt); }
+        });
+    };
+    [lastStatusInput, status1Input, closedAmountInput, closedDateInput].forEach(input => {
+        if (input) {
+            input.addEventListener('change', highlightFields);
+            input.addEventListener('input', highlightFields);
+        }
+    });
     highlightFields();
 
-    const modalTitle = document.getElementById('editModalTitle'); if (modalTitle) modalTitle.textContent = `แก้ไข: ${customer.name || customer.lead_code || 'ลูกค้าใหม่'}`;
+    const modalTitle = document.getElementById('editModalTitle');
+    if (modalTitle) modalTitle.textContent = `แก้ไข: ${customer.name || customer.lead_code || 'ลูกค้าใหม่'}`;
 };
+
 
 ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) {
     const container = document.getElementById('paginationContainer');
@@ -352,7 +406,7 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
     const infoHTML = `<div class="pagination-info">แสดง ${startRecord} - ${endRecord} จากทั้งหมด ${totalRecords}</div>`;
     let buttonsHTML = `<button data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>`;
     const maxButtons = 5; let startPage, endPage;
-    if (totalPages <= maxButtons) { startPage = 1; endPage = totalPages; } else { const maxB = Math.floor(maxButtons / 2); const maxA = Math.ceil(maxButtons / 2) - 1; if (currentPage <= maxB) { startPage = 1; endPage = maxButtons; } else if (currentPage + maxA >= totalPages) { startPage = totalPages - maxButtons + 1; endPage = totalPages; } else { startPage = currentPage - maxB; endPage = currentPage + maxA; } }
+    if (totalPages <= maxButtons) { startPage = 1; endPage = totalPages; } else { const maxPagesBeforeCurrent = Math.floor(maxButtons / 2); const maxPagesAfterCurrent = Math.ceil(maxButtons / 2) - 1; if (currentPage <= maxPagesBeforeCurrent) { startPage = 1; endPage = maxButtons; } else if (currentPage + maxPagesAfterCurrent >= totalPages) { startPage = totalPages - maxButtons + 1; endPage = totalPages; } else { startPage = currentPage - maxPagesBeforeCurrent; endPage = currentPage + maxPagesAfterCurrent; } }
     if (startPage > 1) { buttonsHTML += `<button data-page="1">1</button>`; if (startPage > 2) buttonsHTML += `<span class="pagination-ellipsis">...</span>`; }
     for (let i = startPage; i <= endPage; i++) { buttonsHTML += `<button data-page="${i}" class="${i === currentPage ? 'active' : ''}">${i}</button>`; }
     if (endPage < totalPages) { if (endPage < totalPages - 1) buttonsHTML += `<span class="pagination-ellipsis">...</span>`; buttonsHTML += `<button data-page="${totalPages}">${totalPages}</button>`; }
@@ -361,14 +415,49 @@ ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pa
     container.innerHTML = `${pageSizeHTML}${infoHTML}${controlsHTML}`;
 };
 
-ui.showModal = function(modalId, context = {}) { const modal = document.getElementById(modalId); if (!modal) return; if (modalId === 'statusUpdateModal' || modalId === 'historyModal') { const nameEl = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`); if (nameEl) nameEl.textContent = context.customerName || 'N/A'; if (modalId === 'statusUpdateModal') { const idEl = modal.querySelector('#modalCustomerId'); if (idEl) idEl.value = context.customerId || ''; } } modal.style.display = 'flex'; };
-ui.hideModal = function(modalId) { const modal = document.getElementById(modalId); if (!modal) return; modal.style.display = 'none'; if (modalId === 'statusUpdateModal') { const sel = modal.querySelector('#modalStatusSelect'); if(sel) sel.value = ''; const notes = modal.querySelector('#modalNotesText'); if(notes) notes.value = ''; const idInp = modal.querySelector('#modalCustomerId'); if(idInp) idInp.value = ''; } if (modalId === 'historyModal') { const tl = document.getElementById('historyTimelineContainer'); if(tl) tl.innerHTML = ''; } };
-ui.populateFilterDropdown = function(elementId, options) { const select = document.getElementById(elementId); if (!select) return; while (select.options.length > 1) select.remove(1); [...new Set(options || [])].filter(Boolean).forEach(opt => { const optEl = document.createElement('option'); optEl.value = opt; optEl.textContent = opt; select.appendChild(optEl); }); };
+ui.showModal = function(modalId, context = {}) {
+     const modal = document.getElementById(modalId);
+     if (!modal) return;
+     if (modalId === 'statusUpdateModal' || modalId === 'historyModal') {
+         const nameElement = modal.querySelector(`#${modalId.replace('Modal', '')}CustomerName`);
+         if (nameElement) nameElement.textContent = context.customerName || 'N/A';
+         if (modalId === 'statusUpdateModal') {
+             const customerIdElement = modal.querySelector('#modalCustomerId');
+             if (customerIdElement) customerIdElement.value = context.customerId || '';
+         }
+     }
+     modal.style.display = 'flex';
+};
+
+ui.hideModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.style.display = 'none';
+    if (modalId === 'statusUpdateModal') {
+        const select = modal.querySelector('#modalStatusSelect'); if(select) select.value = '';
+        const notes = modal.querySelector('#modalNotesText'); if(notes) notes.value = '';
+        const idInput = modal.querySelector('#modalCustomerId'); if(idInput) idInput.value = '';
+    }
+    if (modalId === 'historyModal') {
+        const timeline = document.getElementById('historyTimelineContainer'); if(timeline) timeline.innerHTML = '';
+    }
+};
+
+ui.populateFilterDropdown = function(elementId, options) {
+    const select = document.getElementById(elementId);
+    if (!select) return;
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+    [...new Set(options || [])].filter(Boolean).forEach(option => {
+        const optElement = document.createElement('option');
+        optElement.value = option;
+        optElement.textContent = option;
+        select.appendChild(optElement);
+    });
+};
 
 
-/**
- * [FIXED] Renders the history timeline, truncating long notes.
- */
 ui.renderHistoryTimeline = function(historyData) {
     const container = document.getElementById('historyTimelineContainer');
     if (!container) return;
@@ -381,30 +470,28 @@ ui.renderHistoryTimeline = function(historyData) {
         let roleClass = 'history-default';
         let userDisplay = 'Unknown';
 
-        if (item.users) { // User data joined successfully
+        if (item.users) {
             const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
             const username = item.users.username || 'N/A';
             userDisplay = `${role} - ${username}`;
             const roleLower = (item.users.role || '').toLowerCase();
-            if (roleLower === 'admin' || roleLower === 'administrator') roleClass = 'history-admin';
-            else if (roleLower === 'sales') roleClass = 'history-sales';
-        } else if (item.created_by) { // Fallback if user data missing
+            if (roleLower === 'admin' || roleLower === 'administrator') {
+                roleClass = 'history-admin';
+            } else if (roleLower === 'sales') {
+                roleClass = 'history-sales';
+            }
+        } else if (item.created_by) {
             userDisplay = `User ID: ${item.created_by.substring(0, 8)}...`;
         }
 
         const timestamp = item.created_at ? new Date(item.created_at).toLocaleString('th-TH') : 'Invalid Date';
-
-        // --- NEW: Truncate notes ---
-        const notesText = item.notes || 'ไม่มีบันทึกเพิ่มเติม';
-        const truncatedNotes = truncateText(notesText, 80); // Use the new utility function
 
         return `
             <div class="timeline-item ${roleClass}">
                 <div class="timeline-icon">✓</div>
                 <div class="timeline-content">
                     <div class="timeline-status">${escapeHtml(item.status)}</div>
-                    {/* Display truncated notes, add title attribute for full text on hover */}
-                    <div class="timeline-notes" title="${escapeHtml(notesText)}">${escapeHtml(truncatedNotes)}</div>
+                    <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
                     <div class="timeline-footer">
                         โดย: ${escapeHtml(userDisplay)} | ${timestamp}
                     </div>
@@ -414,7 +501,17 @@ ui.renderHistoryTimeline = function(historyData) {
 };
 
 
-ui.showContextMenu = function(event) { const menu = document.getElementById('contextMenu'); if (!menu) return; menu.style.display = 'block'; menu.style.left = `${event.clientX}px`; menu.style.top = `${event.clientY}px`; };
-ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
+ui.showContextMenu = function(event) {
+    const menu = document.getElementById('contextMenu');
+    if (!menu) return;
+    menu.style.display = 'block';
+    menu.style.left = `${event.clientX}px`;
+    menu.style.top = `${event.clientY}px`;
+};
 
-window.ui = ui; // Make ui object global
+ui.hideContextMenu = function() {
+    const menu = document.getElementById('contextMenu');
+    if (menu) menu.style.display = 'none';
+};
+
+window.ui = ui;
