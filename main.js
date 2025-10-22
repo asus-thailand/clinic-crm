@@ -85,8 +85,12 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
 
     // 1. ถ้าเป็น YYYY-MM-DD อยู่แล้ว (เช่น '2024-10-21')
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        // ตรวจสอบความถูกต้องของวันที่ (เช่น ไม่มีวันที่ 30/02)
-        const date = new Date(dateStr + 'T00:00:00'); // ใช้ T00:00:00 เพื่อให้แน่ใจว่า parse ถูกต้อง
+        
+        // [FIXED] Timezone Bug (Oct 2025)
+        // ต้องเติม 'Z' เพื่อบังคับให้ new Date() สร้างเวลาเป็น UTC
+        // มิฉะนั้น .toISOString() จะแปลงเวลาท้องถิ่น (เช่น GMT+7) กลับไป UTC ทำให้วันที่ผิดเพี้ยน 1 วัน
+        const date = new Date(dateStr + 'T00:00:00Z'); 
+        
         if (!isNaN(date.getTime()) && date.toISOString().startsWith(dateStr)) {
              return dateStr;
         }
@@ -108,8 +112,8 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             if (year < 1800 || year > 2200) return null;
             
             const formattedDate = `${year}-${month}-${day}`;
-            // ตรวจสอบความถูกต้องอีกครั้ง
-            const date = new Date(formattedDate + 'T00:00:00');
+            // ตรวจสอบความถูกต้องอีกครั้ง (ต้องเติม Z ที่นี่ด้วย)
+            const date = new Date(formattedDate + 'T00:00:00Z');
             if (!isNaN(date.getTime()) && date.toISOString().startsWith(formattedDate)) {
                  return formattedDate;
             }
