@@ -59,10 +59,15 @@
                 <span class="search-icon">🔍</span>
             </div>
             <select class="filter-select" id="statusFilter">
-                <option value="">ทุกสถานะ</option>
-            </select>
+                <option value="">ทุกสถานะ (Last)</option> </select>
             <select class="filter-select" id="salesFilter">
                 <option value="">ทุกเซลล์</option>
+            </select>
+            <select class="filter-select" id="channelFilter">
+                <option value="">ทุกช่องทาง</option>
+            </select>
+            <select class="filter-select" id="procedureFilter">
+                <option value="">ทุกหัตถการ</option>
             </select>
         </div>
         <div class="toolbar-right">
@@ -96,12 +101,7 @@
     </div>
 
     <div class="context-menu" id="contextMenu">
-        <div class="context-menu-item" data-action="edit">✏️ แก้ไข</div>
-        <div class="context-menu-item" data-action="copy">📋 คัดลอก</div>
-        <div class="context-menu-item" data-action="paste">📄 วาง</div>
-        <div class="context-menu-separator"></div>
         <div class="context-menu-item" data-action="delete" id="deleteRowMenuItem">🗑️ ลบแถว</div>
-        <div class="context-menu-item" data-action="clear">🧹 ล้างเซลล์</div>
     </div>
     
     <div class="status-indicator" id="statusIndicator"></div>
