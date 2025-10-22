@@ -15,7 +15,8 @@ const STALE_CASE_CRITICAL_DAYS = 21; // จำนวนวันที่จะ�
 
 function parseDateString(dateStr) {
     if (!dateStr) return null;
-    const date = new Date(dateStr + 'T00:00:00');
+    // [FIXED] ใช้ UTC เพื่อความสอดคล้อง
+    const date = new Date(dateStr + 'T00:00:00Z');
     return isNaN(date.getTime()) ? null : date;
 }
 
@@ -23,11 +24,13 @@ function formatDateToDMY(dateStr) {
     if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || '';
     const dateObj = parseDateString(dateStr);
     if (!dateObj) return dateStr || '';
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const year = dateObj.getFullYear();
+    // ใช้ getUTCDate() เพราะ parseDateString สร้าง Date เป็น UTC
+    const day = String(dateObj.getUTCDate()).padStart(2, '0');
+    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const year = dateObj.getUTCFullYear();
     return `${day}/${month}/${year}`;
 }
+
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -98,20 +101,20 @@ const FIELD_MAPPING = {
     'ประเภทหัตถการ':  { field: 'procedure', section: 'admin' },
     'มัดจำ':               { field: 'deposit', section: 'admin' },
     'ขอเบอร์ Y/N':        { field: 'confirm_y', section: 'admin' },
-    // [FIXED] ลบบรรทัด "มัดจำออนไลน์ Y/N" ออกตามที่ร้องขอ
-    // 'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
     'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' },
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
-    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
+    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false }, // เหตุผลไม่แสดงเป็น Header
     'ETC':                { field: 'etc', section: 'sales' },
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
     'DR.':                { field: 'dr', section: 'sales' },
     'ยอดที่ปิดได้':      { field: 'closed_amount', section: 'sales' },
+    // [NEW] เพิ่มฟิลด์ วันที่ปิดการขาย
+    'วันที่ปิดการขาย':   { field: 'closed_date', section: 'sales', sortable: true },
     'วันที่นัดทำหัตถการ':{ field: 'appointment_date', section: 'sales' },
     'จัดการ':              { field: null, section: 'sales' }
 };
@@ -127,7 +130,7 @@ ui.renderTableHeaders = function() {
     if (!thead) return;
     const tr = document.createElement('tr');
     Object.entries(FIELD_MAPPING).forEach(([headerText, config]) => {
-        if (config.isHeader === false) return;
+        if (config.isHeader === false) return; // ข้ามฟิลด์ที่กำหนด isHeader: false
 
         const th = document.createElement('th');
         if (config.sortable) {
@@ -155,7 +158,8 @@ ui.renderTableHeaders = function() {
 function createCell(row, fieldName) {
     const td = document.createElement('td');
     td.dataset.field = fieldName;
-    const dateFields = ['date', 'old_appointment', 'appointment_date'];
+    // [NEW] เพิ่ม closed_date เข้าไปในรายการฟิลด์วันที่
+    const dateFields = ['date', 'old_appointment', 'appointment_date', 'closed_date'];
     if (dateFields.includes(fieldName)) {
         td.textContent = formatDateToDMY(row[fieldName]);
     } else {
@@ -212,6 +216,7 @@ function createRowElement(row, index, page, pageSize) {
     rowNumberCell.textContent = (page - 1) * pageSize + index + 1;
     tr.appendChild(rowNumberCell);
     Object.entries(FIELD_MAPPING).slice(1).forEach(([header, config]) => {
+        // ข้ามฟิลด์ที่ไม่ใช่ header (เช่น 'เหตุผล')
         if (config.isHeader === false) return;
 
         if (header === 'จัดการ') {
@@ -222,6 +227,7 @@ function createRowElement(row, index, page, pageSize) {
     });
     return tr;
 }
+
 
 ui.renderTable = function(paginatedCustomers, page, pageSize) {
     const tbody = document.getElementById('tableBody');
@@ -256,23 +262,24 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
 
-    const dealClosingFields = ['last_status', 'status_1', 'closed_amount'];
+    // [NEW] เพิ่ม closed_date เข้าไปในกลุ่มฟิลด์ปิดการขาย
+    const dealClosingFields = ['last_status', 'status_1', 'closed_amount', 'closed_date'];
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
-        if (!field) return;
+        if (!field) return; // ข้ามพวก # หรือ จัดการ
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const userRole = (currentUser?.role || 'sales').toLowerCase();
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
-        const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason'];
+        // [NEW] เพิ่ม closed_date ให้ Sales แก้ไขได้
+        const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason', 'closed_date'];
         const isEditableBySales = isSalesUser && allSalesEditableFields.includes(field);
 
-        // [FIXED] ลบเงื่อนไข `&& field !== 'lead_code'` ออก
-        // เพื่อให้ Admin สามารถแก้ไขฟิลด์ lead_code ได้
-        const isEditable = (isAdmin || isEditableBySales); // เดิม: (isAdmin || isEditableBySales) && field !== 'lead_code';
+        // [FIXED] ลบเงื่อนไข `&& field !== 'lead_code'` ออกเพื่อให้ Admin แก้ไขได้
+        const isEditable = (isAdmin || isEditableBySales);
 
 
         const formGroup = document.createElement('div');
@@ -286,7 +293,8 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}" ${opt === value ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('');
             inputHtml = `<select name="${field}" ${!isEditable ? 'disabled' : ''}><option value="">-- เลือก --</option>${optionsHtml}</select>`;
         } else {
-            const fieldType = (field === 'date' || field === 'appointment_date' || field === 'old_appointment') ? 'date' : 'text';
+            // [NEW] กำหนดประเภท input สำหรับ closed_date เป็น date
+            const fieldType = (['date', 'appointment_date', 'old_appointment', 'closed_date'].includes(field)) ? 'date' : 'text';
             inputHtml = `<input type="${fieldType}" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
         }
 
@@ -302,9 +310,13 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     form.appendChild(adminSection);
     form.appendChild(salesSection);
 
+    // --- ไฮไลท์ฟิลด์ที่เกี่ยวข้องกับการปิดการขาย ---
     const lastStatusInput = form.querySelector('[name="last_status"]');
     const status1Input = form.querySelector('[name="status_1"]');
     const closedAmountInput = form.querySelector('[name="closed_amount"]');
+    // [NEW] เพิ่ม closedDateInput
+    const closedDateInput = form.querySelector('[name="closed_date"]');
+
     const highlightFields = () => {
         const isClosingAttempt = (lastStatusInput.value === '100%') || (status1Input.value === 'ปิดการขาย') || (closedAmountInput.value && closedAmountInput.value.trim() !== '');
         dealClosingFields.forEach(fieldName => {
@@ -312,15 +324,17 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             if (group) { group.classList.toggle('highlight-deal-closing', isClosingAttempt); }
         });
     };
-    [lastStatusInput, status1Input, closedAmountInput].forEach(input => {
+    // [NEW] เพิ่ม closedDateInput เข้าไปใน event listeners
+    [lastStatusInput, status1Input, closedAmountInput, closedDateInput].forEach(input => {
         if (input) {
             input.addEventListener('change', highlightFields);
             input.addEventListener('input', highlightFields);
         }
     });
-    highlightFields();
-    document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || 'ลูกค้าใหม่'}`;
+    highlightFields(); // เรียกครั้งแรกตอนสร้างฟอร์ม
+    document.getElementById('editModalTitle').textContent = `แก้ไข: ${customer.name || customer.lead_code || 'ลูกค้าใหม่'}`;
 };
+
 
 ui.renderPaginationControls = function(totalPages, currentPage, totalRecords, pageSize) {
     const container = document.getElementById('paginationContainer');
@@ -357,6 +371,7 @@ ui.renderHistoryTimeline = function(historyData) {
         let roleClass = 'history-default';
 
         let userDisplay = 'Unknown';
+        // [FIXED] เพิ่มการตรวจสอบ item.users ก่อนเข้าถึง properties
         if (item.users) {
             const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
             const username = item.users.username || 'N/A';
@@ -368,7 +383,11 @@ ui.renderHistoryTimeline = function(historyData) {
             } else if (roleLower === 'sales') {
                 roleClass = 'history-sales';
             }
+        } else if (item.created_by) {
+             // Fallback: ถ้าไม่มีข้อมูล user join มา (อาจเกิดจาก user ถูกลบ)
+             userDisplay = `User ID: ${item.created_by.substring(0, 8)}...`;
         }
+
 
         return `
             <div class="timeline-item ${roleClass}">
@@ -383,6 +402,7 @@ ui.renderHistoryTimeline = function(historyData) {
             </div>`;
     }).join('');
 };
+
 
 ui.showContextMenu = function(event) { const menu = document.getElementById('contextMenu'); if (!menu) return; menu.style.display = 'block'; menu.style.left = `${event.pageX}px`; menu.style.top = `${event.pageY}px`; };
 ui.hideContextMenu = function() { const menu = document.getElementById('contextMenu'); if (menu) menu.style.display = 'none'; };
