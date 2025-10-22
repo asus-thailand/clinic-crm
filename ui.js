@@ -62,7 +62,7 @@ ui.showStatus = function(message, isError = false) {
 ui.updateUIAfterLogin = function(user) {
     const userBadge = document.querySelector('.user-badge');
     if (userBadge && user) {
-        const userRole = (user.role || 'sales').toLowerCase(); 
+        const userRole = (user.role || 'sales').toLowerCase();
         const role = userRole.charAt(0).toUpperCase() + userRole.slice(1);
         userBadge.textContent = `${role} - ${user.username}`;
         const roleColors = { 'administrator': '#dc3545', 'admin': '#007bff', 'sales': '#28a745' };
@@ -99,10 +99,10 @@ const FIELD_MAPPING = {
     'มัดจำ':               { field: 'deposit', section: 'admin' },
     'ขอเบอร์ Y/N':        { field: 'confirm_y', section: 'admin' },
     // [FIXED] ลบบรรทัด "มัดจำออนไลน์ Y/N" ออกตามที่ร้องขอ
-    // 'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' }, 
+    // 'มัดจำออนไลน์ Y/N': { field: 'transfer_100', section: 'admin' },
     'CS ผู้ส่ง Lead':     { field: 'cs_confirm', section: 'admin' },
     'เซลล์':               { field: 'sales', section: 'admin' },
-    'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' }, 
+    'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' },
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
@@ -141,10 +141,10 @@ ui.renderTableHeaders = function() {
         if (config.section === 'admin') { th.classList.add('header-admin-section'); }
         else if (config.section === 'sales') { th.classList.add('header-sales-section'); }
         else if (headerText === '#') { th.classList.add('row-number'); }
-        
+
         tr.appendChild(th);
     });
-    thead.innerHTML = ''; 
+    thead.innerHTML = '';
     thead.appendChild(tr);
 };
 
@@ -193,7 +193,7 @@ function createRowElement(row, index, page, pageSize) {
     // [FIXED] ใช้ตัวแปรค่าคงที่ STALE_CASE... แทน Magic Numbers
     if (row.date && !tr.classList.contains('row-deal-closed')) {
         const today = new Date();
-        today.setHours(0, 0, 0, 0); 
+        today.setHours(0, 0, 0, 0);
         const caseDate = new Date(row.date);
         const timeDiff = today.getTime() - caseDate.getTime();
         const daysOld = Math.floor(timeDiff / (1000 * 3600 * 24));
@@ -240,7 +240,7 @@ ui.renderTable = function(paginatedCustomers, page, pageSize) {
 
 ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesList, dropdownOptions) {
     const form = document.getElementById('editCustomerForm');
-    form.innerHTML = ''; 
+    form.innerHTML = '';
 
     const adminSection = document.createElement('div');
     adminSection.className = 'modal-section admin-section';
@@ -255,12 +255,12 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     const salesContent = document.createElement('div');
     salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
-    
+
     const dealClosingFields = ['last_status', 'status_1', 'closed_amount'];
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
-        if (!field) return; 
+        if (!field) return;
 
         const value = customer[field] || '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
@@ -269,12 +269,16 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         const isSalesUser = userRole === 'sales';
         const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason'];
         const isEditableBySales = isSalesUser && allSalesEditableFields.includes(field);
-        const isEditable = (isAdmin || isEditableBySales) && field !== 'lead_code';
+
+        // [FIXED] ลบเงื่อนไข `&& field !== 'lead_code'` ออก
+        // เพื่อให้ Admin สามารถแก้ไขฟิลด์ lead_code ได้
+        const isEditable = (isAdmin || isEditableBySales); // เดิม: (isAdmin || isEditableBySales) && field !== 'lead_code';
+
 
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
         formGroup.dataset.fieldGroup = field;
-        
+
         let inputHtml = '';
         if (field === 'reason') {
             inputHtml = `<textarea name="${field}" ${!isEditable ? 'disabled' : ''}>${escapeHtml(value)}</textarea>`;
@@ -285,9 +289,9 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             const fieldType = (field === 'date' || field === 'appointment_date' || field === 'old_appointment') ? 'date' : 'text';
             inputHtml = `<input type="${fieldType}" name="${field}" value="${escapeHtml(value)}" ${!isEditable ? 'disabled' : ''}>`;
         }
-        
+
         formGroup.innerHTML = `<label for="${field}">${header}</label>${inputHtml}`;
-        
+
         if (config.section === 'admin') {
             adminContent.appendChild(formGroup);
         } else if (config.section === 'sales') {
@@ -351,7 +355,7 @@ ui.renderHistoryTimeline = function(historyData) {
 
     container.innerHTML = historyData.map(item => {
         let roleClass = 'history-default';
-        
+
         let userDisplay = 'Unknown';
         if (item.users) {
             const role = (item.users.role || 'User').charAt(0).toUpperCase() + (item.users.role || 'User').slice(1);
