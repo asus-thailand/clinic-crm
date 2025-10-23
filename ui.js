@@ -123,7 +123,7 @@ ui.updateSortIndicator = function(column, direction) {
 
 
 // ================================================================================
-// SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED)
+// SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED) - *** แก้ไขแล้ว ***
 // ================================================================================
 
 const FIELD_MAPPING = {
@@ -143,10 +143,10 @@ const FIELD_MAPPING = {
     'Status Sale':      { field: 'status_1', section: 'sales' }, // <-- แสดง (ถูกต้อง)
     'Last Status':      { field: 'last_status', section: 'sales' },
 
-    // --- [START] แก้ไขตรงนี้ครับ ---
-    'เหตุผล':              { field: 'reason', section: 'sales' }, // <-- ทำให้แสดง โดยลบ isHeader: false
-    'ETC':                { field: 'etc', section: 'sales', isHeader: false }, // <-- ทำให้ซ่อน โดยเพิ่ม isHeader: false
-    // --- [END] แก้ไข ---
+    // --- [START] แก้ไขตรงนี้ *** ---
+    'เหตุผล':              { field: 'reason', section: 'sales' }, // <-- **แสดง** คอลัมน์ เหตุผล
+    'ETC':                { field: 'etc', section: 'sales', isHeader: false }, // <-- **ซ่อน** คอลัมน์ ETC
+    // --- [END] แก้ไข *** ---
 
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
@@ -157,7 +157,7 @@ const FIELD_MAPPING = {
     'จัดการ':              { field: null, section: 'sales' }
 };
 
-ui.FIELD_MAPPING = FIELD_MAPPING;
+ui.FIELD_MAPPING = FIELD_MAPPING; // อย่าลืมบรรทัดนี้
 
 // ================================================================================
 // DYNAMIC TABLE HEADER RENDERING (REFACTORED)
