@@ -1,5 +1,5 @@
 // ================================================================================
-// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL VERSION with CSV Import & Updated Dropdowns)
+// BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL VERSION - Updated Deal Close Logic includes "online")
 // ================================================================================
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -53,9 +53,10 @@ const DROPDOWN_OPTIONS = {
     last_status: ["100%", "75%", "50%", "25%", "0%", "ONLINE", "เคส OFF"]
 };
 
-// Fields editable by Sales role (in addition to status_1 and reason handled separately)
+// Fields editable by Sales role via Edit Modal (excluding status_1 and reason)
+// *** หมายเหตุ: status_1 และ reason จะถูกจัดการผ่าน Quick Update Modal เป็นหลัก ***
 const SALES_EDITABLE_FIELDS = [
-    'update_access', 'last_status', 'reason', // Reason implicitly editable with status_1
+    'update_access', 'last_status', /* 'reason' removed from direct edit */
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date',
     'closed_date' // Added closed_date
 ];
@@ -277,7 +278,7 @@ function updateVisibleData() {
         filtered = filtered.filter(customer => {
             const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
             const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
-            const matchesStatus = !status || (customer.last_status || '').trim() === status;
+            const matchesStatus = !status || (customer.last_status || '').trim() === status; // Filter uses last_status
             const matchesSales = !sales || customer.sales === sales;
             const matchesChannel = !channel || customer.channel === channel;
             const matchesProcedure = !procedure || customer.procedure === procedure;
@@ -317,7 +318,8 @@ function updateVisibleData() {
 
 
 /**
- * Updates the KPI cards based on the currently filtered customer data.
+ * Updates KPI cards based on filtered data.
+ * [FIXED] Updated condition for counting closed deals includes "online".
  */
 function updateDashboardStats() {
     const dataSet = state.filteredCustomers; // Stats based on current filter
@@ -331,14 +333,19 @@ function updateDashboardStats() {
     const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
     if(todayCustomersEl) todayCustomersEl.textContent = dataSet.filter(c => c.date === today).length;
     if(pendingCustomersEl) pendingCustomersEl.textContent = dataSet.filter(c => c.status_1 === 'ตามต่อ').length;
-    // Count closed deals based on specific criteria
+
+    // --- [START] แก้ไขเงื่อนไขการนับปิดการขาย ---
+    // Count closed deals if status_1 is 'ปิดการขาย', last_status is '100%' OR 'online', AND closed_amount exists
     if(closedDealsEl) closedDealsEl.textContent = dataSet.filter(
-        c => c.status_1 === 'ปิดการขาย' && c.last_status === '100%' && c.closed_amount
+        c => c.status_1 === 'ปิดการขาย' &&
+             (c.last_status === '100%' || c.last_status === 'online') && // Changed condition
+             c.closed_amount
     ).length;
+    // --- [END] แก้ไข ---
 }
 
 /**
- * Sets the date filter based on a preset ('today', '7d', '30d', 'all') and updates the UI.
+ * Sets date filter preset.
  */
 function setDateFilterPreset(preset) {
     const today = new Date(); // Current date
@@ -368,8 +375,8 @@ function setDateFilterPreset(preset) {
 
     // Update date input fields
     const startInput = document.getElementById('startDateFilter');
-    const endInput = document.getElementById('endDateFilter');
     if (startInput) startInput.value = startDateString;
+    const endInput = document.getElementById('endDateFilter');
     if (endInput) endInput.value = endDateString;
 
     // Update button active states
@@ -383,503 +390,283 @@ function setDateFilterPreset(preset) {
     updateVisibleData(); // Trigger data refresh and UI update
 }
 
-/**
- * Debounce function to limit the rate at which a function can fire.
- */
-function debounce(func, delay = 300) {
-    let timeoutId;
-    return (...args) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => { func.apply(this, args); }, delay);
-    };
-}
+/** Debounce function. */
+function debounce(func, delay = 300) { let timeoutId; return (...args) => { clearTimeout(timeoutId); timeoutId = setTimeout(() => { func.apply(this, args); }, delay); }; }
 
-/**
- * Handles the click event for the main "Import" button, showing the modal.
- */
+/** Handles Import button click. */
 function handleImportClick() {
-    // Check permissions
     const userRole = (state.currentUser?.role || '').toLowerCase();
     if (userRole !== 'admin' && userRole !== 'administrator') {
-        ui.showStatus('เฉพาะ Administrator เท่านั้นที่สามารถนำเข้าข้อมูลได้', true);
-        return;
+        ui.showStatus('เฉพาะ Administrator เท่านั้นที่สามารถนำเข้าข้อมูลได้', true); return;
     }
-    // Show the import modal and clear previous state
     ui.showModal('importModal');
-    const csvFileInput = document.getElementById('csvFile');
-    if (csvFileInput) csvFileInput.value = ''; // Clear file input
-    const importStatus = document.getElementById('importStatus');
-    if (importStatus) importStatus.textContent = ''; // Clear status message
+    const csvFileInput = document.getElementById('csvFile'); if (csvFileInput) csvFileInput.value = '';
+    const importStatus = document.getElementById('importStatus'); if (importStatus) importStatus.textContent = '';
 }
 
-/**
- * Handles processing the selected CSV file for bulk import.
- */
+/** Handles CSV file processing. */
 async function handleProcessCSV() {
     const csvFileInput = document.getElementById('csvFile');
     const importStatus = document.getElementById('importStatus');
-
-    // Basic validation: Check if a file is selected
-    if (!csvFileInput?.files?.length) {
-        if (importStatus) { importStatus.textContent = 'กรุณาเลือกไฟล์ CSV'; importStatus.style.color = 'red'; }
-        return;
-    }
-
+    if (!csvFileInput?.files?.length) { if (importStatus) { importStatus.textContent = 'กรุณาเลือกไฟล์ CSV'; importStatus.style.color = 'red'; } return; }
     const file = csvFileInput.files[0];
     if (importStatus) { importStatus.textContent = 'กำลังประมวลผลไฟล์...'; importStatus.style.color = 'inherit'; }
     ui.showLoading(true);
-
     try {
         const fileContent = await file.text();
-        const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== ''); // Split lines and remove empty ones
-
-        // Validate minimum content (header + 1 data row)
+        const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '');
         if (lines.length < 2) throw new Error('ไฟล์ CSV ต้องมีอย่างน้อย 1 Header และ 1 บรรทัดข้อมูล');
-
-        // Parse header and validate required columns
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-        const requiredHeaders = ['name', 'phone', 'channel', 'sales']; // Essential headers
+        const requiredHeaders = ['name', 'phone', 'channel', 'sales'];
         const missingHeaders = requiredHeaders.filter(req => !headers.includes(req));
         if (missingHeaders.length > 0) throw new Error(`ไฟล์ CSV ขาด Header ที่จำเป็น: ${missingHeaders.join(', ')}`);
-
-        let csvLeadCodeCounter = 1236; // Start lead code sequence specifically for this import
+        let csvLeadCodeCounter = 1236; // Example starting code
         const customersToInsert = [];
-        const todayStr = new Date().toISOString().split('T')[0]; // Default date if missing
-
-        // Process data rows
+        const todayStr = new Date().toISOString().split('T')[0];
         for (let i = 1; i < lines.length; i++) {
-            // Use robust CSV parsing regex to handle quoted commas
             const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-
-            // Skip empty rows or rows with mismatched column count
-            if (!values.length || values.every(v => v === '')) continue;
-            if (values.length !== headers.length) {
-                console.warn(`Skipping line ${i + 1}: Column count mismatch (${values.length} vs ${headers.length}).`);
-                continue;
-            }
-
-            const customer = {};
-            let hasEssentialData = false;
-            // Map CSV values to customer object keys based on FIELD_MAPPING
+            if (!values.length || values.every(v => v === '') || values.length !== headers.length) continue;
+            const customer = {}; let hasEssentialData = false;
             headers.forEach((header, index) => {
-                const value = values[index] ?? ''; // Use empty string for missing values
+                const value = values[index] ?? '';
                 const fieldConfig = Object.values(ui.FIELD_MAPPING).find(config => config.field === header);
-                if (fieldConfig?.field) { // Check if the header corresponds to a known field
-                    // Normalize date fields
-                    if (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(header)) {
-                        customer[header] = normalizeDateStringToYYYYMMDD(value);
-                    } else {
-                        customer[header] = value; // Assign other values directly
-                    }
-                    // Check if essential data is present
+                if (fieldConfig?.field) {
+                    if (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(header)) customer[header] = normalizeDateStringToYYYYMMDD(value);
+                    else customer[header] = value;
                     if (requiredHeaders.includes(header) && value !== '') hasEssentialData = true;
                 }
             });
-
-            // Skip row if essential data (name or phone) is missing
-            if (!hasEssentialData && !customer.name && !customer.phone) {
-                console.warn(`Skipping line ${i + 1}: Missing essential data (name or phone).`);
-                continue;
-            }
-
-            // Apply defaults for missing non-essential data
-            customer.name = customer.name || `ลูกค้า #${i}`;
-            customer.phone = customer.phone || 'N/A';
-            customer.channel = customer.channel || 'ไม่ระบุ';
-            customer.sales = customer.sales || state.currentUser?.username || 'N/A'; // Assign to current user if missing
-            customer.date = customer.date || todayStr; // Use today if date missing
-            customer.lead_code = csvLeadCodeCounter.toString(); // Assign sequential lead code for this import
-            csvLeadCodeCounter++;
-
-            customersToInsert.push(customer);
+            if (!hasEssentialData && !customer.name && !customer.phone) continue;
+            customer.name = customer.name || `ลูกค้า #${i}`; customer.phone = customer.phone || 'N/A';
+            customer.channel = customer.channel || 'ไม่ระบุ'; customer.sales = customer.sales || state.currentUser?.username || 'N/A';
+            customer.date = customer.date || todayStr; customer.lead_code = csvLeadCodeCounter.toString();
+            csvLeadCodeCounter++; customersToInsert.push(customer);
         }
-
-        // Check if any valid customers were found
         if (customersToInsert.length === 0) throw new Error('ไม่พบข้อมูลลูกค้าที่ถูกต้องในไฟล์ CSV');
-
-        // Perform bulk insert via API
         if (importStatus) importStatus.textContent = `กำลังนำเข้า ${customersToInsert.length} รายการ...`;
         await api.bulkInsertCustomers(customersToInsert);
-
-        // Success: Show message, hide modal, refresh data
         ui.showStatus(`นำเข้าข้อมูล ${customersToInsert.length} รายการสำเร็จ!`, false);
-        ui.hideModal('importModal');
-        initializeApp(); // Re-initialize to fetch all data including new ones
-
+        ui.hideModal('importModal'); initializeApp();
     } catch (error) {
-        // Handle import errors
-        console.error('CSV Import Error:', error);
-        ui.showStatus(`นำเข้าไม่สำเร็จ: ${error.message}`, true);
+        console.error('CSV Import Error:', error); ui.showStatus(`นำเข้าไม่สำเร็จ: ${error.message}`, true);
         if (importStatus) { importStatus.textContent = `เกิดข้อผิดพลาด: ${error.message}`; importStatus.style.color = 'red'; }
-    } finally {
-        ui.showLoading(false); // Ensure loading overlay is hidden
-    }
+    } finally { ui.showLoading(false); }
 }
 
-/**
- * Sets up all necessary event listeners for UI elements.
- */
+/** Sets up event listeners. */
 function setupEventListeners() {
-    // Header Buttons
     document.getElementById('logoutButton')?.addEventListener('click', handleLogout);
-    // Toolbar Buttons & Filters
     document.getElementById('addUserButton')?.addEventListener('click', handleAddCustomer);
     document.getElementById('importButton')?.addEventListener('click', handleImportClick);
     document.getElementById('refreshButton')?.addEventListener('click', () => {
-        // Reset all filters and date preset
         state.activeFilters = { search: '', status: '', sales: '', channel: '', procedure: '' };
-        document.querySelectorAll('.filter-select, .search-input').forEach(el => el.value = ''); // Clear UI inputs
-        setDateFilterPreset('all'); // Resets date and triggers updateVisibleData
+        document.querySelectorAll('.filter-select, .search-input').forEach(el => el.value = '');
+        setDateFilterPreset('all');
     });
-    // Search Input (Debounced)
-    document.getElementById('searchInput')?.addEventListener('input', debounce(e => {
-        state.activeFilters.search = e.target.value; state.pagination.currentPage = 1; updateVisibleData();
-    }, 300)); // Apply debounce
-    // Filter Select Dropdowns
+    document.getElementById('searchInput')?.addEventListener('input', debounce(e => { state.activeFilters.search = e.target.value; state.pagination.currentPage = 1; updateVisibleData(); }, 300));
     ['statusFilter', 'salesFilter', 'channelFilter', 'procedureFilter'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', e => {
-            // Extract filter key from element ID (e.g., 'statusFilter' -> 'status')
-            const filterKey = id.replace('Filter', '');
-            state.activeFilters[filterKey] = e.target.value;
-            state.pagination.currentPage = 1; // Reset page on filter change
-            updateVisibleData();
+            const filterKey = id.replace('Filter', ''); state.activeFilters[filterKey] = e.target.value; state.pagination.currentPage = 1; updateVisibleData();
         });
     });
-
-    // Date Filter Controls
     document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => button.addEventListener('click', () => setDateFilterPreset(button.dataset.preset)));
     document.getElementById('clearDateFilter')?.addEventListener('click', () => setDateFilterPreset('all'));
-    const debouncedDateChange = debounce(handleCustomDateChange, 500); // Debounce manual date input
+    const debouncedDateChange = debounce(handleCustomDateChange, 500);
     document.getElementById('startDateFilter')?.addEventListener('change', debouncedDateChange);
     document.getElementById('endDateFilter')?.addEventListener('change', debouncedDateChange);
-
-    // Pagination Controls (Event Delegation)
     document.getElementById('paginationContainer')?.addEventListener('click', event => {
-        const button = event.target.closest('button[data-page]'); // Target buttons with data-page attribute
+        const button = event.target.closest('button[data-page]');
         if (button) {
-            const page = button.dataset.page;
-            const currentPage = state.pagination.currentPage;
+            const page = button.dataset.page; const currentPage = state.pagination.currentPage;
             const totalPages = Math.ceil(state.filteredCustomers.length / state.pagination.pageSize) || 1;
             let newPage = currentPage;
-
             if (page === 'prev' && currentPage > 1) newPage--;
             else if (page === 'next' && currentPage < totalPages) newPage++;
-            else if (page !== 'prev' && page !== 'next') newPage = parseInt(page); // Specific page number
-
-            // Update only if page actually changed
-            if (newPage !== currentPage) {
-                state.pagination.currentPage = newPage;
-                updateVisibleData();
-            }
+            else if (page !== 'prev' && page !== 'next') newPage = parseInt(page);
+            if (newPage !== currentPage) { state.pagination.currentPage = newPage; updateVisibleData(); }
         }
     });
-    // Page Size Selector
     document.getElementById('paginationContainer')?.addEventListener('change', event => {
-        if (event.target.id === 'pageSize') {
-            state.pagination.pageSize = parseInt(event.target.value);
-            state.pagination.currentPage = 1; // Go back to page 1 when size changes
-            updateVisibleData();
-        }
+        if (event.target.id === 'pageSize') { state.pagination.pageSize = parseInt(event.target.value); state.pagination.currentPage = 1; updateVisibleData(); }
     });
-
-    // Table Body Interactions (Event Delegation)
     const tableBody = document.getElementById('tableBody');
-    tableBody?.addEventListener('click', handleTableClick); // Handles Edit, Update, History clicks
-    tableBody?.addEventListener('contextmenu', handleContextMenu); // Handles right-click
-
-    // Context Menu Interaction
-    const contextMenu = document.getElementById('contextMenu');
-    contextMenu?.addEventListener('click', handleContextMenuItemClick); // Handles clicks on menu items
-    // Global click listener to hide context menu
-    window.addEventListener('click', (event) => {
-        // Hide if click is outside the menu AND not on a table row (to allow right-click)
-        if (contextMenu && contextMenu.style.display === 'block' &&
-            !contextMenu.contains(event.target) &&
-            !event.target.closest('tr[data-id]')) {
-            ui.hideContextMenu();
-        }
-    });
-
-    // Modal Buttons
-    document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate); // Quick Status Update Modal
-    document.getElementById('importBtn')?.addEventListener('click', handleProcessCSV); // Import Modal Process Button
-    document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm); // Edit Modal Save Button
-    document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal); // Edit Modal Close ('X')
-    document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal); // Edit Modal Cancel Button
-    // Generic Modal Close Buttons (using data attribute)
+    tableBody?.addEventListener('click', handleTableClick);
+    tableBody?.addEventListener('contextmenu', handleContextMenu);
+    document.getElementById('contextMenu')?.addEventListener('click', handleContextMenuItemClick);
+    window.addEventListener('click', (event) => { const menu = document.getElementById('contextMenu'); if (menu?.style.display === 'block' && !menu.contains(event.target) && !event.target.closest('tr[data-id]')) ui.hideContextMenu(); });
+    document.getElementById('submitStatusUpdateBtn')?.addEventListener('click', handleSubmitStatusUpdate);
+    document.getElementById('importBtn')?.addEventListener('click', handleProcessCSV);
+    document.getElementById('editCustomerForm')?.addEventListener('submit', handleSaveEditForm);
+    document.getElementById('closeEditModalBtn')?.addEventListener('click', hideEditModal);
+    document.getElementById('cancelEditBtn')?.addEventListener('click', hideEditModal);
     document.querySelectorAll('[data-modal-close]').forEach(btn => btn.addEventListener('click', () => ui.hideModal(btn.dataset.modalClose)));
-
-    // Table Header Sorting (Event Delegation)
-    const tableHeader = document.querySelector('#excelTable thead');
-    tableHeader?.addEventListener('click', event => {
-        const headerCell = event.target.closest('th[data-sortable]'); // Find closest sortable header
-        if (headerCell) {
-            handleSort(headerCell.dataset.sortable); // Call sort handler with the field name
-        }
-    });
+    document.querySelector('#excelTable thead')?.addEventListener('click', event => { const headerCell = event.target.closest('th[data-sortable]'); if (headerCell) handleSort(headerCell.dataset.sortable); });
 }
 
-/**
- * Handles clicks on table header cells to change sorting column and direction.
- */
+/** Handles table header sort clicks. */
 function handleSort(column) {
     if (!column) return;
-    if (state.sort.column === column) {
-        // Toggle direction if clicking the same column
-        state.sort.direction = state.sort.direction === 'asc' ? 'desc' : 'asc';
-    } else {
-        // Switch to new column, default to descending
-        state.sort.column = column;
-        state.sort.direction = 'desc';
-    }
-    // No need to reset pagination when sorting
-    updateVisibleData(); // Re-render the table with new sorting
+    if (state.sort.column === column) { state.sort.direction = state.sort.direction === 'asc' ? 'desc' : 'asc'; }
+    else { state.sort.column = column; state.sort.direction = 'desc'; }
+    updateVisibleData();
 }
 
-/**
- * Handles changes in the custom date range input fields.
- */
+/** Handles custom date range changes. */
 function handleCustomDateChange() {
-    let start = document.getElementById('startDateFilter').value;
-    let end = document.getElementById('endDateFilter').value;
-
-    // Only proceed if both dates are set
+    let start = document.getElementById('startDateFilter').value; let end = document.getElementById('endDateFilter').value;
     if (start && end) {
-        if (start <= end) { // Basic validation: start <= end
-            state.dateFilter = { startDate: start, endDate: end, preset: 'custom' };
-            state.pagination.currentPage = 1; // Reset page
-            // Update UI to show custom is active
+        if (start <= end) {
+            state.dateFilter = { startDate: start, endDate: end, preset: 'custom' }; state.pagination.currentPage = 1;
             document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('clearDateFilter').classList.remove('active'); // Deactivate 'All'
-            updateVisibleData();
-        } else {
-            // Show error if start date is after end date
-            ui.showStatus('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', true);
-        }
-    } else if (!start && !end && state.dateFilter.preset !== 'all') {
-         // If user manually clears both dates, revert to 'all' preset
-         setDateFilterPreset('all');
-    }
-    // If only one date is set, do nothing - wait for the other date or for debounce timer
+            document.getElementById('clearDateFilter').classList.remove('active'); updateVisibleData();
+        } else { ui.showStatus('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', true); }
+    } else if (!start && !end && state.dateFilter.preset !== 'all') { setDateFilterPreset('all'); }
 }
 
-/**
- * Determines the allowed next statuses based on the current status (for Sales role).
- */
+/** Determines allowed next statuses for Sales role in Quick Update. */
 function getAllowedNextStatuses(currentStatus) {
-    const special = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"]; // Terminal/Looping statuses
-    if (!currentStatus || currentStatus.trim() === '') return ["status 1", ...special]; // Initial state
-
+    const special = ["ไม่สนใจ", "ปิดการขาย", "ตามต่อ"];
+    if (!currentStatus || currentStatus.trim() === '') return ["status 1", ...special];
     switch (currentStatus) {
-        case "status 1": return ["status 2", ...special];
-        case "status 2": return ["status 3", ...special];
-        case "status 3": return ["status 4", ...special];
-        case "status 4": return [...special]; // From status 4, can only go to special states
-        default: // If already in a special status
-            return [...special]; // Can stay or switch between special statuses
+        case "status 1": return ["status 2", ...special]; case "status 2": return ["status 3", ...special];
+        case "status 3": return ["status 4", ...special]; case "status 4": return [...special];
+        default: return [...special];
     }
 }
 
-/**
- * Shows the quick status update modal and populates it with relevant data.
- */
+/** Shows Quick Status Update modal. */
 function showUpdateStatusModal(customer) {
     if (!customer) return;
     const select = document.getElementById('modalStatusSelect');
     const notesTextArea = document.getElementById('modalNotesText');
-    if (!select || !notesTextArea) return; // Ensure elements exist
-
+    if (!select || !notesTextArea) return;
     const userRole = (state.currentUser?.role || 'sales').toLowerCase();
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
-    // Determine allowed statuses based on role and current status
     let allowedStatuses = isAdmin ? DROPDOWN_OPTIONS.status_1 : getAllowedNextStatuses(customer.status_1);
-
-    // Populate dropdown
-    select.innerHTML = '<option value="">-- เลือกสถานะ --</option>'; // Clear and add default
-    allowedStatuses.forEach(opt => {
-        const optionEl = document.createElement('option');
-        optionEl.value = opt;
-        optionEl.textContent = opt;
-        select.appendChild(optionEl);
-    });
-
-    // Pre-fill notes if available
+    select.innerHTML = '<option value="">-- เลือกสถานะ --</option>';
+    allowedStatuses.forEach(opt => { const optionEl = document.createElement('option'); optionEl.value = opt; optionEl.textContent = opt; select.appendChild(optionEl); });
     notesTextArea.value = customer.reason || '';
-
-    // Show modal with customer context
-    ui.showModal('statusUpdateModal', {
-        customerId: customer.id,
-        customerName: customer.name || customer.lead_code || 'N/A'
-    });
+    ui.showModal('statusUpdateModal', { customerId: customer.id, customerName: customer.name || customer.lead_code || 'N/A' });
 }
 
-/**
- * Shows the edit customer modal and populates the form using ui.buildEditForm.
- */
+/** Shows Edit Customer modal. */
 function showEditModal(customerId) {
-    // Find the full customer data from the local state
     const customer = state.customers.find(c => String(c.id) === String(customerId));
-    if (!customer) {
-        ui.showStatus('ไม่พบข้อมูลลูกค้า (ID: ' + customerId + ')', true);
-        return;
-    }
-    state.editingCustomerId = customerId; // Store the ID of the customer being edited
-    // Build the form dynamically based on customer data and user role
+    if (!customer) { ui.showStatus('ไม่พบข้อมูลลูกค้า (ID: ' + customerId + ')', true); return; }
+    state.editingCustomerId = customerId;
     ui.buildEditForm(customer, state.currentUser, SALES_EDITABLE_FIELDS, state.salesList, DROPDOWN_OPTIONS);
-    // Display the modal
-    const modal = document.getElementById('editCustomerModal');
-    if (modal) modal.classList.add('show');
+    document.getElementById('editCustomerModal')?.classList.add('show');
 }
 
-/**
- * Hides the edit customer modal and clears its form content.
- */
+/** Hides Edit Customer modal. */
 function hideEditModal() {
-    state.editingCustomerId = null; // Clear the currently editing ID
-    const modal = document.getElementById('editCustomerModal');
-    if (modal) modal.classList.remove('show'); // Hide the modal overlay
-    const form = document.getElementById('editCustomerForm');
-    if (form) form.innerHTML = ''; // Clear the dynamically generated form
+    state.editingCustomerId = null;
+    document.getElementById('editCustomerModal')?.classList.remove('show');
+    const form = document.getElementById('editCustomerForm'); if (form) form.innerHTML = '';
 }
 
 /**
  * Handles saving data submitted from the Edit Customer modal.
+ * [FIXED] Excludes status_1/reason from update. Checks combined conditions for closing includes "online".
  */
 async function handleSaveEditForm(event) {
-    event.preventDefault(); // Prevent standard form submission
-    if (!state.editingCustomerId) {
-        console.warn("Save aborted: No editingCustomerId set.");
-        return;
-    }
+    event.preventDefault();
+    if (!state.editingCustomerId) { console.warn("Save aborted: No editingCustomerId set."); return; }
 
     const form = event.target;
     const formData = new FormData(form);
-    const updatedDataFromForm = {}; // Data read directly from the form (enabled fields only)
-    for (const [key, value] of formData.entries()) {
-        updatedDataFromForm[key] = typeof value === 'string' ? value.trim() : value;
-    }
-    console.log("Data read from form (includes only enabled fields):", updatedDataFromForm);
+    const updatedDataFromForm = {};
+    for (const [key, value] of formData.entries()) { updatedDataFromForm[key] = typeof value === 'string' ? value.trim() : value; }
+    console.log("Data read from Edit form:", updatedDataFromForm);
 
-    // Get original customer data to preserve fields Sales cannot edit
     const originalCustomer = state.customers.find(c => String(c.id) === String(state.editingCustomerId));
-    if (!originalCustomer) {
-        ui.showStatus('Error: ไม่พบข้อมูลลูกค้าเดิม', true);
-        return;
-    }
+    if (!originalCustomer) { ui.showStatus('Error: ไม่พบข้อมูลลูกค้าเดิม', true); return; }
 
-    // Determine user role
     const userRole = (state.currentUser?.role || 'sales').toLowerCase();
     const isAdmin = userRole === 'admin' || userRole === 'administrator';
     const isSales = !isAdmin;
-
-    // --- Data Preparation: Start with original data, then overlay editable fields ---
-    // Create a mutable copy of the original data to modify
     let dataToSend = { ...originalCustomer };
 
-    // Iterate over fields defined in FIELD_MAPPING to decide what to potentially update
-    Object.values(ui.FIELD_MAPPING).forEach(config => {
-        const key = config.field;
-        if (!key) return; // Skip fields without a 'field' property (like '#', 'จัดการ')
-
-        // Check if the current user role is allowed to edit this field
-        const isSalesEditable = SALES_EDITABLE_FIELDS.includes(key); // Check against the defined list for Sales
+    Object.keys(updatedDataFromForm).forEach(key => {
+        const fieldConfig = Object.values(ui.FIELD_MAPPING).find(config => config.field === key);
+        if (!fieldConfig?.field) return;
+        const isSalesEditable = SALES_EDITABLE_FIELDS.includes(key); // SALES_EDITABLE_FIELDS updated
         const canEditField = isAdmin || (isSales && isSalesEditable);
-
-        // Check if this field was present in the form data (meaning it was enabled)
-        if (updatedDataFromForm.hasOwnProperty(key)) {
-            if (canEditField) {
-                 // If editable by current role, normalize and use the value from the form
-                 if (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key)) {
-                     dataToSend[key] = normalizeDateStringToYYYYMMDD(updatedDataFromForm[key]);
-                 } else {
-                     dataToSend[key] = updatedDataFromForm[key];
-                 }
-            } else {
-                 // This case should ideally not happen if UI disables fields correctly, but as a safeguard:
-                 // If a field from the form is NOT editable by the current role, keep the original value.
-                 console.warn(`User role '${userRole}' submitted non-editable field '${key}'. Preserving original value.`);
-                 // dataToSend[key] already holds the original value from the initial spread ({...originalCustomer})
-            }
-        } else if (!canEditField && dataToSend.hasOwnProperty(key)) {
-             // If the field was NOT in form data (disabled) AND is NOT editable by the current role,
-             // ensure the original value is kept (already handled by initial spread).
-             // This correctly preserves 'date' when Sales saves.
-        } else if (isAdmin && !updatedDataFromForm.hasOwnProperty(key) && dataToSend.hasOwnProperty(key)){
-             // Edge case: If Admin somehow clears a disabled field (shouldn't happen),
-             // should we allow saving null? For now, preserve original.
-             console.warn(`Admin submission missing field '${key}'. Preserving original value.`);
-        }
+        if (canEditField) {
+            if (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key)) { dataToSend[key] = normalizeDateStringToYYYYMMDD(updatedDataFromForm[key]); }
+            else { dataToSend[key] = updatedDataFromForm[key]; }
+        } else { console.warn(`Edit Modal: User role '${userRole}' submitted non-editable field '${key}'. Preserving original.`); }
     });
-    // --- End Data Preparation ---
 
+    if (!dataToSend.date && isAdmin) { ui.showStatus('กรุณากรอก "วัน/เดือน/ปี"', true); return; }
 
-    // --- Validation: Check required 'date' field ONLY for Admins ---
-    // Use dataToSend.date for validation as it contains the final value
-    if (!dataToSend.date && isAdmin) {
-        ui.showStatus('กรุณากรอก "วัน/เดือน/ปี"', true);
-        const dateInput = form.querySelector('[name="date"]');
-        if (dateInput) dateInput.focus();
-        return; // Stop submission ONLY if Admin and date is empty or invalid
+    // --- [START] แก้ไขเงื่อนไขปิดการขาย และเติมวันที่อัตโนมัติ (รวม online) ---
+    const currentStatus1 = originalCustomer.status_1; // Status Sale ไม่ได้มาจากฟอร์มแล้ว ต้องใช้ตัวเดิม
+    // เงื่อนไขสำหรับการเติมวันที่อัตโนมัติ: Status Sale เดิมเป็น 'ปิดการขาย', Last Status ใหม่เป็น 100% หรือ online, มี ยอดปิด, และยังไม่มีวันที่ปิด
+    const isClosingConditionMet = currentStatus1 === 'ปิดการขาย' &&
+                                  (dataToSend.last_status === '100%' || dataToSend.last_status === 'online') && // Changed condition
+                                  dataToSend.closed_amount &&
+                                  !dataToSend.closed_date; // เช็คว่ายังไม่มีวันที่ปิด
+
+    // Auto-populate closed_date if closing conditions are met and date is empty
+    if (isClosingConditionMet) {
+        dataToSend.closed_date = new Date().toISOString().split('T')[0];
+        console.log(`Auto-populating closed_date via Edit Modal (combined conditions): ${dataToSend.closed_date}`);
     }
-    // --- End Validation ---
 
-    // --- Deal Closing Logic ---
-    const isNowClosing = dataToSend.status_1 === 'ปิดการขาย' && dataToSend.last_status === '100%' && dataToSend.closed_amount;
-    // Auto-populate closed_date only if it's currently empty and conditions are met
-    if (isNowClosing && !dataToSend.closed_date) {
-        dataToSend.closed_date = new Date().toISOString().split('T')[0]; // Use current date
-        console.log(`Auto-populating closed_date: ${dataToSend.closed_date}`);
-    }
-    // Check if user is attempting to close (any closing field is set)
-    const isClosingAttempt = dataToSend.last_status === '100%' || dataToSend.status_1 === 'ปิดการขาย' || dataToSend.closed_amount;
-    if (isClosingAttempt) {
-        // Verify all required closing fields are present
-        const isClosingComplete = dataToSend.last_status === '100%' && dataToSend.status_1 === 'ปิดการขาย' && dataToSend.closed_amount;
+    // Check if user is attempting to set closing fields in THIS form (Last Status หรือ ยอดปิด)
+    const isClosingAttemptViaEdit = dataToSend.last_status === '100%' || dataToSend.last_status === 'online' || dataToSend.closed_amount; // Changed condition
+
+    if (isClosingAttemptViaEdit) {
+        // Verify all required closing fields are present (ใช้ currentStatus1 จาก original data และ dataToSend จากฟอร์ม)
+        const isClosingComplete = (dataToSend.last_status === '100%' || dataToSend.last_status === 'online') && // Changed condition
+                                  currentStatus1 === 'ปิดการขาย' && // Status Sale ต้องเป็น "ปิดการขาย" อยู่แล้ว (แก้ผ่าน Quick Update)
+                                  dataToSend.closed_amount; // ต้องมียอดปิดจากฟอร์มนี้
         if (!isClosingComplete) {
-            ui.showStatus('การปิดการขายต้องกรอก: Last Status (100%), Status Sale (ปิดการขาย), และ ยอดที่ปิดได้ ให้ครบถ้วน', true);
-            return; // Stop save if closing info is incomplete
+            // ปรับปรุงข้อความ Error ให้ชัดเจนขึ้น
+            ui.showStatus('การปิดการขายจากหน้านี้ ต้องมี: Last Status (100% หรือ online), ยอดที่ปิดได้. (Status Sale ต้องเป็น "ปิดการขาย" ซึ่งต้องทำผ่านปุ่ม "อัปเดต" ก่อน)', true);
+            return; // หยุดการบันทึกถ้าข้อมูลปิดการขายไม่ครบ
         }
     }
-    // --- End Deal Closing Logic ---
+    // --- [END] แก้ไข ---
+
+    // Exclude status_1 and reason from the update payload from Edit Modal
+    delete dataToSend.status_1;
+    delete dataToSend.reason;
 
     // Clean up internal properties before sending
-    delete dataToSend.id;
-    delete dataToSend.created_at;
-    delete dataToSend.updated_at;
+    delete dataToSend.id; delete dataToSend.created_at; delete dataToSend.updated_at;
 
-    console.log("Data being sent to API:", dataToSend); // Log the final data object
+    console.log("Data being sent to API from Edit Modal (excluding status_1, reason):", dataToSend);
 
-    ui.showLoading(true); // Show loading indicator during API call
+    ui.showLoading(true);
     try {
-        // --- API Call to Update Customer ---
         const updatedCustomerResponse = await api.updateCustomer(state.editingCustomerId, dataToSend);
-
-        // --- Post-API Data Handling ---
-        // Merge original with response, then re-normalize dates for local state consistency
+        // Merge original (for status_1/reason) with response (for other fields)
         const finalUpdatedCustomer = { ...originalCustomer, ...updatedCustomerResponse };
+
+        // Re-normalize dates
         finalUpdatedCustomer.date = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.date);
         finalUpdatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.old_appointment);
         finalUpdatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.appointment_date);
         finalUpdatedCustomer.closed_date = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.closed_date);
-        finalUpdatedCustomer.id = originalCustomer.id; // Ensure ID remains correct
+        finalUpdatedCustomer.id = originalCustomer.id;
 
-        // --- History Logging (Sales Role Only) ---
+        // History Logging (Sales Role Only) - Log changes ONLY for fields sent in dataToSend
         if (userRole === 'sales') {
             const historyPromises = [];
-            // Compare originalCustomer with the final state after update (finalUpdatedCustomer)
             for (const key in finalUpdatedCustomer) {
-                if (key === 'id' || key === 'created_at' || key === 'updated_at') continue; // Skip internal keys
-
+                if (key === 'id' || key === 'created_at' || key === 'updated_at' || key === 'status_1' || key === 'reason') continue;
                 const fieldConfig = Object.values(ui.FIELD_MAPPING).find(config => config.field === key);
-                if (fieldConfig) { // Only log fields that are part of our defined mapping
-                    const originalValue = originalCustomer[key] ?? '';
-                    const newValue = finalUpdatedCustomer[key] ?? '';
-                    if (String(originalValue) !== String(newValue)) { // Log only actual changes
+                // Check if the key was actually part of the update payload (dataToSend)
+                if (fieldConfig && dataToSend.hasOwnProperty(key)) {
+                    const originalValue = originalCustomer[key] ?? ''; const newValue = finalUpdatedCustomer[key] ?? '';
+                    if (String(originalValue) !== String(newValue)) {
                         const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h]?.field === key) || key;
                         const isDateField = ['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key);
                         const originalFormatted = isDateField ? formatDateToDMY(originalValue) : originalValue;
                         const newFormatted = isDateField ? formatDateToDMY(newValue) : newValue;
-                        const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}'`;
+                        const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}' (ผ่านหน้าแก้ไข)`;
                         historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
                     }
                 }
@@ -887,274 +674,144 @@ async function handleSaveEditForm(event) {
             if (historyPromises.length > 0) { await Promise.allSettled(historyPromises); }
         }
 
-        // --- Update Local State (using immutable pattern) ---
+        // Update Local State
         const index = state.customers.findIndex(c => String(c.id) === String(state.editingCustomerId));
-        if (index !== -1) {
-             state.customers = [
-                 ...state.customers.slice(0, index),
-                 finalUpdatedCustomer, // Use the final, merged & normalized data
-                 ...state.customers.slice(index + 1),
-             ];
-        } else {
-            console.warn("Updated customer not found in local state after save. Adding instead.");
-            state.customers.push(finalUpdatedCustomer); // Fallback: Add if missing
-        }
+        if (index !== -1) { state.customers = [...state.customers.slice(0, index), finalUpdatedCustomer, ...state.customers.slice(index + 1)]; }
+        else { console.warn("Updated customer not found in local state after save. Adding instead."); state.customers.push(finalUpdatedCustomer); }
 
-        // --- Final UI Updates ---
-        hideEditModal(); // Close the modal on successful save
-        updateVisibleData(); // Refresh the table to show changes
-        ui.showStatus('บันทึกข้อมูลสำเร็จ', false); // Show success message
-
+        hideEditModal(); updateVisibleData(); ui.showStatus('บันทึกข้อมูลสำเร็จ', false);
     } catch (error) {
-        // Handle API errors during save
-        console.error('Save failed:', error);
-        ui.showStatus(`บันทึกข้อมูลไม่สำเร็จ: ${error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'}`, true);
-    } finally {
-        ui.showLoading(false); // Hide loading indicator regardless of success/failure
-    }
+        console.error('Save failed:', error); ui.showStatus(`บันทึกข้อมูลไม่สำเร็จ: ${error.message || 'Unknown error'}`, true);
+    } finally { ui.showLoading(false); }
 }
 
-
-/**
- * Handles the logout process.
- */
+/** Handles logout. */
 async function handleLogout() {
-    if (confirm('ต้องการออกจากระบบหรือไม่?')) {
-        await api.signOut(); // Call API to sign out
-        window.location.replace('login.html'); // Redirect to login page
-    }
+    if (confirm('ต้องการออกจากระบบหรือไม่?')) { await api.signOut(); window.location.replace('login.html'); }
 }
 
-/**
- * Handles adding a new customer, prompting for lead code if needed.
- */
+/** Handles adding a new customer. */
 async function handleAddCustomer() {
-    // Prompt user for lead code (optional)
-    const leadCodeInput = prompt(
-        "กรุณาระบุ 'ลำดับที่' (Lead Code) สำหรับลูกค้าใหม่:\n\n(หากต้องการให้ระบบรันเลขอัตโนมัติ ให้เว้นว่างไว้)",
-        "" // Default value is empty string
-    );
-    // If user cancels the prompt, do nothing
+    const leadCodeInput = prompt("กรุณาระบุ 'ลำดับที่' (Lead Code) สำหรับลูกค้าใหม่:\n\n(หากต้องการให้ระบบรันเลขอัตโนมัติ ให้เว้นว่างไว้)", "");
     if (leadCodeInput === null) return;
-
     ui.showLoading(true);
     try {
-        // Call API to add customer, passing the manual lead code (or empty string for auto)
+        // Assuming api.addCustomer can handle the leadCodeInput correctly
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', leadCodeInput);
-
         if (newCustomer) {
-            // Log the creation event in history
-            // Ensure currentUser.id is passed correctly, provide a fallback if necessary
             await api.addStatusUpdate(newCustomer.id, 'สร้างลูกค้าใหม่', `สร้างโดย ${state.currentUser?.username || 'System'}`, state.currentUser?.id || null);
-
-            // Set default call time
-            const now = new Date();
-            newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            // Ensure dates are normalized (date should be set by API, others default to null)
-            newCustomer.date = normalizeDateStringToYYYYMMDD(newCustomer.date);
-            newCustomer.old_appointment = null;
-            newCustomer.appointment_date = null;
-            newCustomer.closed_date = null;
-
-            // Add new customer to the beginning of the local array for immediate visibility
-            state.customers.unshift(newCustomer);
-            updateVisibleData(); // Refresh the UI
-            showEditModal(newCustomer.id); // Open edit modal for the new customer
+            const now = new Date(); newCustomer.call_time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            newCustomer.date = normalizeDateStringToYYYYMMDD(newCustomer.date); newCustomer.old_appointment = null; newCustomer.appointment_date = null; newCustomer.closed_date = null;
+            state.customers.unshift(newCustomer); updateVisibleData(); showEditModal(newCustomer.id);
             ui.showStatus('เพิ่มลูกค้าใหม่สำเร็จ กรุณากรอกข้อมูล', false);
-        } else {
-            // Handle case where API call succeeds but returns no data (shouldn't happen with .single())
-            throw new Error("API did not return new customer data.");
-        }
+        } else { throw new Error("API did not return new customer data."); }
     } catch (error) {
-        // Handle errors during customer creation (e.g., duplicate lead code)
-        console.error("Error adding customer:", error);
-        ui.showStatus(`เพิ่มลูกค้าไม่สำเร็จ: ${error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'}`, true);
-    } finally {
-        ui.showLoading(false);
-    }
+        console.error("Error adding customer:", error); ui.showStatus(`เพิ่มลูกค้าไม่สำเร็จ: ${error.message || 'Unknown error'}`, true);
+    } finally { ui.showLoading(false); }
 }
 
-/**
- * Handles clicks within the table body, delegating actions based on button clicked.
- */
+/** Handles table clicks (delegation). */
 function handleTableClick(event) {
-    const button = event.target.closest('button[data-action]'); // Find the clicked button
-    if (!button || button.disabled) return; // Ignore if not a button or disabled
-
-    const action = button.dataset.action; // Get action type (edit, update, history)
-    const row = button.closest('tr[data-id]'); // Get the table row
-    const id = row?.dataset.id; // Get customer ID from row
-    if (!id) return; // Exit if no ID found
-
-    // Find customer data in local state
-    const customer = state.customers.find(c => String(c.id) === String(id));
-    if (!customer) { ui.showStatus('ไม่พบข้อมูลลูกค้าสำหรับ ID นี้', true); return; }
-
-    // Dispatch action
-    if (action === 'edit-customer') showEditModal(id);
-    if (action === 'update-status') showUpdateStatusModal(customer);
-    if (action === 'view-history') handleViewHistory(id, customer.name || customer.lead_code); // Pass name or lead code for display
+    const button = event.target.closest('button[data-action]'); if (!button || button.disabled) return;
+    const action = button.dataset.action; const row = button.closest('tr[data-id]'); const id = row?.dataset.id; if (!id) return;
+    const customer = state.customers.find(c => String(c.id) === String(id)); if (!customer) { ui.showStatus('ไม่พบข้อมูลลูกค้าสำหรับ ID นี้', true); return; }
+    if (action === 'edit-customer') showEditModal(id); if (action === 'update-status') showUpdateStatusModal(customer); if (action === 'view-history') handleViewHistory(id, customer.name || customer.lead_code);
 }
 
-/**
- * Fetches and displays the status history for a customer in a modal.
- */
+/** Handles viewing history. */
 async function handleViewHistory(customerId, customerName) {
-    ui.showModal('historyModal', { customerName: customerName || 'N/A' }); // Show modal with name
-    const timelineContainer = document.getElementById('historyTimelineContainer');
-    if (timelineContainer) timelineContainer.innerHTML = '<p>กำลังโหลดประวัติ...</p>'; // Indicate loading
-    ui.showLoading(true); // Show global loading overlay as well
-    try {
-        const historyData = await api.fetchStatusHistory(customerId); // Fetch history via API
-        ui.renderHistoryTimeline(historyData); // Render the fetched data
-    } catch (error) {
-        console.error("Error fetching history:", error);
-        ui.showStatus('ไม่สามารถโหลดประวัติได้: ' + error.message, true);
-        if(timelineContainer) timelineContainer.innerHTML = `<p style="color: red;">เกิดข้อผิดพลาดในการโหลดประวัติ: ${error.message}</p>`; // Show error inside modal
-    } finally {
-        ui.showLoading(false);
-    }
+    ui.showModal('historyModal', { customerName: customerName || 'N/A' });
+    const timelineContainer = document.getElementById('historyTimelineContainer'); if (timelineContainer) timelineContainer.innerHTML = '<p>กำลังโหลดประวัติ...</p>';
+    ui.showLoading(true);
+    try { const historyData = await api.fetchStatusHistory(customerId); ui.renderHistoryTimeline(historyData); }
+    catch (error) { console.error("Error fetching history:", error); ui.showStatus('ไม่สามารถโหลดประวัติได้: ' + error.message, true); if(timelineContainer) timelineContainer.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`; }
+    finally { ui.showLoading(false); }
 }
 
 /**
- * Handles submission of the quick status update modal.
+ * Handles submission of Quick Status Update modal.
+ * [FIXED] Updated condition for auto-populating closed_date includes "online".
  */
 async function handleSubmitStatusUpdate() {
-    // Get values from modal inputs safely
     const customerId = document.getElementById('modalCustomerId')?.value;
     const newStatus = document.getElementById('modalStatusSelect')?.value;
     const notes = document.getElementById('modalNotesText')?.value.trim();
 
-    // Basic validation
     if (!customerId) { ui.showStatus('ไม่พบ ID ลูกค้า', true); return; }
     if (!newStatus) { ui.showStatus('กรุณาเลือกสถานะ', true); return; }
-
-    // Require notes for status 1-4
     const requiresReason = ["status 1", "status 2", "status 3", "status 4"].includes(newStatus);
-    if (requiresReason && !notes) {
-        ui.showStatus('สำหรับ Status 1-4 กรุณากรอกเหตุผล/บันทึกเพิ่มเติม', true);
-        return;
-    }
+    if (requiresReason && !notes) { ui.showStatus('สำหรับ Status 1-4 กรุณากรอกเหตุผล/บันทึกเพิ่มเติม', true); return; }
 
     ui.showLoading(true);
     try {
-        // Prepare data to update customer record
         const updateData = { status_1: newStatus, reason: notes };
-        const customer = state.customers.find(c => String(c.id) === String(customerId)); // Get current customer data
+        const customer = state.customers.find(c => String(c.id) === String(customerId));
 
-        // Attempt to auto-populate closed_date if closing via quick update and conditions met
-        if (newStatus === 'ปิดการขาย' && customer && customer.last_status === '100%' && customer.closed_amount && !customer.closed_date) {
+        // --- [START] แก้ไขเงื่อนไขปิดการขาย และเติมวันที่อัตโนมัติ (รวม online) ---
+        // Auto-populate closed_date if closing conditions are met via Quick Update and date is empty
+        // เงื่อนไข: Status ใหม่คือ 'ปิดการขาย', ลูกค้าคนนั้นมีข้อมูล, Last Status เป็น 100% หรือ online, มียอดปิด, และยังไม่มีวันที่ปิด
+        const isClosingViaQuickUpdate = newStatus === 'ปิดการขาย' &&
+                                        customer &&
+                                        (customer.last_status === '100%' || customer.last_status === 'online') && // Changed condition
+                                        customer.closed_amount &&
+                                        !customer.closed_date; // เช็คว่ายังไม่มีวันที่ปิด
+
+        if (isClosingViaQuickUpdate) {
             updateData.closed_date = new Date().toISOString().split('T')[0];
-            console.log(`Auto-populating closed_date via status update: ${updateData.closed_date}`);
+            console.log(`Auto-populating closed_date via Quick Update: ${updateData.closed_date}`);
         }
+        // --- [END] แก้ไข ---
 
-        // Perform actions: Log history first, then update customer
         await api.addStatusUpdate(customerId, newStatus, notes, state.currentUser.id);
         const updatedCustomer = await api.updateCustomer(customerId, updateData);
 
-        // Normalize dates from response
         updatedCustomer.date = normalizeDateStringToYYYYMMDD(updatedCustomer.date);
         updatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(updatedCustomer.old_appointment);
         updatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(updatedCustomer.appointment_date);
         updatedCustomer.closed_date = normalizeDateStringToYYYYMMDD(updatedCustomer.closed_date);
 
-        // Update local state immutably
         const index = state.customers.findIndex(c => String(c.id) === String(customerId));
-        if (index !== -1) {
-             state.customers = [
-                 ...state.customers.slice(0, index),
-                 updatedCustomer,
-                 ...state.customers.slice(index + 1),
-             ];
-        } else { state.customers.push(updatedCustomer); } // Fallback
+        if (index !== -1) { state.customers = [...state.customers.slice(0, index), updatedCustomer, ...state.customers.slice(index + 1)]; }
+        else { state.customers.push(updatedCustomer); }
 
-        updateVisibleData(); // Refresh UI
-        ui.hideModal('statusUpdateModal'); // Close modal
-        ui.showStatus('อัปเดตสถานะสำเร็จ', false);
+        updateVisibleData(); ui.hideModal('statusUpdateModal'); ui.showStatus('อัปเดตสถานะสำเร็จ', false);
     } catch (error) {
-        console.error("Error submitting status update:", error);
-        ui.showStatus("เกิดข้อผิดพลาดในการอัปเดต: " + error.message, true);
-    } finally {
-        ui.showLoading(false);
-    }
+        console.error("Error submitting status update:", error); ui.showStatus("เกิดข้อผิดพลาดในการอัปเดต: " + error.message, true);
+    } finally { ui.showLoading(false); }
 }
 
-/**
- * Handles right-click event on table rows to show the custom context menu (for Admins).
- */
+/** Handles context menu display. */
 function handleContextMenu(event) {
-    const row = event.target.closest('tr[data-id]'); // Find the row element
-    if (!row?.dataset?.id) return; // Exit if not on a valid row
-
-    // Check user role - only Admins see context menu
-    const userRole = (state.currentUser?.role || 'sales').toLowerCase();
-    if (userRole !== 'admin' && userRole !== 'administrator') return;
-
-    event.preventDefault(); // Prevent default browser right-click menu
-    state.contextMenuRowId = row.dataset.id; // Store the ID of the right-clicked row
-    ui.showContextMenu(event); // Display the custom context menu
+    const row = event.target.closest('tr[data-id]'); if (!row?.dataset?.id) return;
+    const userRole = (state.currentUser?.role || 'sales').toLowerCase(); if (userRole !== 'admin' && userRole !== 'administrator') return;
+    event.preventDefault(); state.contextMenuRowId = row.dataset.id; ui.showContextMenu(event);
 }
 
-/**
- * Handles clicks on items within the custom context menu.
- */
+/** Handles context menu item clicks. */
 async function handleContextMenuItemClick(event) {
-    const menuItem = event.target.closest('.context-menu-item[data-action]'); // Find the clicked menu item
-    if (!menuItem) return; // Exit if click wasn't on an action item
-
-    const action = menuItem.dataset.action; // Get the action (e.g., 'delete')
-    const customerId = state.contextMenuRowId; // Get the stored customer ID
-    if (!action || !customerId) return; // Exit if action or ID is missing
-
-    ui.hideContextMenu(); // Hide menu immediately
-
-    // Handle 'delete' action
+    const menuItem = event.target.closest('.context-menu-item[data-action]'); if (!menuItem) return;
+    const action = menuItem.dataset.action; const customerId = state.contextMenuRowId; if (!action || !customerId) return;
+    ui.hideContextMenu();
     if (action === 'delete') {
-        // Find customer info for confirmation message
         const customerToDelete = state.customers.find(c => String(c.id) === String(customerId));
         const customerDisplayName = customerToDelete?.name || customerToDelete?.lead_code || `ID: ${customerId}`;
-        // Confirm deletion with the user
         if (confirm(`คุณต้องการลบลูกค้า "${customerDisplayName}" ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`)) {
             ui.showLoading(true);
             try {
-                await api.deleteCustomer(customerId); // Call API to delete
-
-                // Remove customer from local state AFTER successful API call
+                await api.deleteCustomer(customerId);
                 state.customers = state.customers.filter(c => String(c.id) !== String(customerId));
-
-                // Adjust pagination if the current page becomes empty after deletion
-                // Important: Calculate based on FILTERED list length *before* updateVisibleData recalculates it
-                const pageSize = state.pagination.pageSize;
-                // Find how many items were in the filtered list before this deletion
-                const totalFilteredRecordsBeforeDelete = state.filteredCustomers.length;
-                // Check if the item deleted was the last one on the current page
+                const pageSize = state.pagination.pageSize; const totalFilteredRecordsBeforeDelete = state.filteredCustomers.length;
                 const wasLastItemOnPage = (totalFilteredRecordsBeforeDelete % pageSize === 1 || pageSize === 1) && state.pagination.currentPage === Math.ceil(totalFilteredRecordsBeforeDelete / pageSize);
-
-                if (wasLastItemOnPage && state.pagination.currentPage > 1) {
-                    // If deleting the last item on a page (and it's not page 1), go to previous page
-                    state.pagination.currentPage--;
-                    console.log(`Adjusting page down to ${state.pagination.currentPage} after delete.`);
-                }
-                // --- End Pagination Adjustment ---
-
-                updateVisibleData(); // Refresh the table UI
-                ui.showStatus('ลบข้อมูลสำเร็จ', false);
-            } catch (error) {
-                console.error("Error deleting customer:", error);
-                ui.showStatus('ลบข้อมูลไม่สำเร็จ: ' + error.message, true);
-            } finally {
-                ui.showLoading(false);
-            }
+                if (wasLastItemOnPage && state.pagination.currentPage > 1) { state.pagination.currentPage--; }
+                updateVisibleData(); ui.showStatus('ลบข้อมูลสำเร็จ', false);
+            } catch (error) { console.error("Error deleting customer:", error); ui.showStatus('ลบข้อมูลไม่สำเร็จ: ' + error.message, true); }
+            finally { ui.showLoading(false); }
         }
     }
-    // Add logic for other context menu actions here (e.g., copy row data)
-
-    state.contextMenuRowId = null; // Clear the stored ID after action is handled
+    state.contextMenuRowId = null;
 }
 
-/**
- * Entry point: Runs when the DOM is fully loaded and parsed.
- */
+/** Entry point. */
 document.addEventListener('DOMContentLoaded', () => {
     // Check if essential global objects/functions exist
     if (window.supabase?.createClient && typeof ui === 'object' && typeof api === 'object') {
