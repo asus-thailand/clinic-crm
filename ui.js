@@ -123,7 +123,7 @@ ui.updateSortIndicator = function(column, direction) {
 
 
 // ================================================================================
-// SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED) - *** แก้ไขแล้ว ***
+// SINGLE SOURCE OF TRUTH: FIELD MAPPING (REFACTORED) - *** ตรวจสอบแล้ว ถูกต้อง ***
 // ================================================================================
 
 const FIELD_MAPPING = {
@@ -140,14 +140,10 @@ const FIELD_MAPPING = {
     'เซลล์':               { field: 'sales', section: 'admin' },
     'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' },
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
-    'Status Sale':      { field: 'status_1', section: 'sales' }, // <-- แสดง (ถูกต้อง)
+    'Status Sale':      { field: 'status_1', section: 'sales' }, // <-- แสดงในตาราง (ถูกต้อง)
     'Last Status':      { field: 'last_status', section: 'sales' },
-
-    // --- [START] แก้ไขตรงนี้ *** ---
-    'เหตุผล':              { field: 'reason', section: 'sales' }, // <-- **แสดง** คอลัมน์ เหตุผล
-    'ETC':                { field: 'etc', section: 'sales', isHeader: false }, // <-- **ซ่อน** คอลัมน์ ETC
-    // --- [END] แก้ไข *** ---
-
+    'เหตุผล':              { field: 'reason', section: 'sales' }, // <-- แสดงในตาราง (ถูกต้อง)
+    'ETC':                { field: 'etc', section: 'sales', isHeader: false }, // <-- ซ่อนในตาราง (ถูกต้อง)
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
     'DR.':                { field: 'dr', section: 'sales' },
@@ -323,21 +319,26 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     salesContent.className = 'modal-section-content';
     salesSection.appendChild(salesContent);
 
-    const dealClosingFields = ['last_status', 'status_1', 'closed_amount', 'closed_date'];
+    const dealClosingFields = ['last_status', /* 'status_1' removed */ 'closed_amount', 'closed_date']; // เอา status_1 ออกจาก list นี้ด้วย
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         const field = config.field;
         if (!field) return;
 
-        // ไม่สร้าง input สำหรับ field ที่ถูกซ่อน (เช่น ETC)
-        // if (config.isHeader === false) return; <-- ไม่ควรเช็ค isHeader ตรงนี้ เพราะ form ต้องสร้าง field ทั้งหมดที่มี (แต่บางอันอาจ disable)
+        // --- [START] แก้ไข: ไม่ต้องสร้าง Input สำหรับ status_1 และ reason ใน Edit Modal ---
+        if (field === 'status_1' || field === 'reason') {
+            return; // ข้ามไปเลย ไม่ต้องสร้าง element
+        }
+        // --- [END] แก้ไข ---
+
 
         const value = customer[field] ?? '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const userRole = (currentUser?.role || 'sales').toLowerCase();
         const isAdmin = userRole === 'admin' || userRole === 'administrator';
         const isSalesUser = userRole === 'sales';
-        const allSalesEditableFields = [...salesEditableFields, 'status_1', 'reason', 'closed_date'];
+        // เอา status_1 และ reason ออกจาก list ที่ Sales แก้ได้ใน Edit Modal ด้วย (เพราะเราเอามันออกจาก Form แล้ว)
+        const allSalesEditableFields = [...salesEditableFields, /*'status_1', 'reason',*/ 'closed_date'];
         const isEditableBySales = isSalesUser && allSalesEditableFields.includes(field);
         const isEditable = (isAdmin || isEditableBySales);
 
@@ -357,12 +358,12 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         formGroup.appendChild(label);
 
         let inputElement;
+        // Comment out or remove the 'reason' specific logic as it's skipped above
+        /*
         if (field === 'reason') {
-            inputElement = document.createElement('textarea');
-            inputElement.name = field;
-            inputElement.value = value;
-            if (!isEditable) inputElement.disabled = true;
-        } else if (options) {
+            // ... logic removed ...
+        } else */
+        if (options) { // Logic for dropdowns remains
             inputElement = document.createElement('select');
             inputElement.name = field;
             if (!isEditable) inputElement.disabled = true;
@@ -377,7 +378,7 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
                 if (opt === value) optionEl.selected = true;
                 inputElement.appendChild(optionEl);
             });
-        } else {
+        } else { // Logic for text/date inputs remains
             inputElement = document.createElement('input');
             const fieldType = (['date', 'appointment_date', 'old_appointment', 'closed_date'].includes(field)) ? 'date' : 'text';
             inputElement.type = fieldType;
@@ -385,7 +386,6 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
             inputElement.value = value;
             if (!isEditable) inputElement.disabled = true;
 
-            // [NEW] Add 'required' attribute specifically to the 'date' field input
             if (field === 'date') {
                 inputElement.required = true;
             }
@@ -403,26 +403,28 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     form.appendChild(adminSection);
     form.appendChild(salesSection);
 
-    // --- Add highlighting logic ---
+    // --- Add highlighting logic (ปรับปรุง) ---
     const lastStatusInput = form.querySelector('[name="last_status"]');
-    const status1Input = form.querySelector('[name="status_1"]');
+    // const status1Input = form.querySelector('[name="status_1"]'); // เอาออก
     const closedAmountInput = form.querySelector('[name="closed_amount"]');
     const closedDateInput = form.querySelector('[name="closed_date"]');
 
     const highlightFields = () => {
-        const isClosingAttempt = (lastStatusInput?.value === '100%') || (status1Input?.value === 'ปิดการขาย') || (closedAmountInput?.value && closedAmountInput.value.trim() !== '');
+        // เอาเงื่อนไข status1Input ออก
+        const isClosingAttempt = (lastStatusInput?.value === '100%') || (/*status1Input?.value === 'ปิดการขาย' ||*/ (closedAmountInput?.value && closedAmountInput.value.trim() !== ''));
         dealClosingFields.forEach(fieldName => {
             const group = form.querySelector(`[data-field-group="${fieldName}"]`);
             if (group) { group.classList.toggle('highlight-deal-closing', isClosingAttempt); }
         });
     };
-    [lastStatusInput, status1Input, closedAmountInput, closedDateInput].forEach(input => {
+    // เอา status1Input ออกจาก event listeners
+    [lastStatusInput, /*status1Input,*/ closedAmountInput, closedDateInput].forEach(input => {
         if (input) {
             input.addEventListener('change', highlightFields);
             input.addEventListener('input', highlightFields);
         }
     });
-    highlightFields();
+    highlightFields(); // เรียกใช้ครั้งแรก
 
     const modalTitle = document.getElementById('editModalTitle');
     if (modalTitle) modalTitle.textContent = `แก้ไข: ${customer.name || customer.lead_code || 'ลูกค้าใหม่'}`;
