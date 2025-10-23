@@ -13,16 +13,22 @@ const STALE_CASE_CRITICAL_DAYS = 21;
 // ================================================================================
 
 /**
- * [NEW] ตัดข้อความ (Truncate Text)
+ * [NEW & FIXED] ตัดข้อความ (Truncate Text)
  * หากข้อความยาวเกิน maxLength, จะตัดข้อความและเติม "..." ต่อท้าย
  * @param {string} text ข้อความที่ต้องการตัด
  * @param {number} maxLength ความยาวสูงสุดที่อนุญาต
- * @returns {string} ข้อความที่ถูกตัดแล้ว
+ * @returns {string} ข้อความที่ถูกตัดแล้ว (หรือข้อความเดิมถ้าไม่ยาวเกิน หรือเป็น falsy)
  */
 function truncateText(text, maxLength) {
-    if (typeof text !== 'string' || text.length <= maxLength) {
+    // 1. จัดการกับค่าที่ไม่ใช่ string หรือค่าว่าง (null, undefined, "")
+    if (typeof text !== 'string' || !text) {
+        return text; // คืนค่าเดิม (เช่น null, "", undefined)
+    }
+    // 2. จัดการกับข้อความที่ไม่ต้องตัด
+    if (text.length <= maxLength) {
         return text;
     }
+    // 3. ตัดข้อความ
     return text.substring(0, maxLength) + "...";
 }
 
@@ -500,17 +506,21 @@ ui.renderHistoryTimeline = function(historyData) {
 
         const timestamp = item.created_at ? new Date(item.created_at).toLocaleString('th-TH') : 'Invalid Date';
 
-        // --- [START] แก้ไขตาม Requirement: ตัดข้อความและเพิ่ม Tooltip ---
+        // --- [START] แก้ไขตาม Requirement: ตัดข้อความและเพิ่ม Tooltip (FIXED) ---
         
-        // 1. ดึงข้อความต้นฉบับ (Fallback ถ้าไม่มี)
-        const notesText = item.notes || 'ไม่มีบันทึกเพิ่มเติม';
+        // 1. ดึงข้อความต้นฉบับ (ซึ่งอาจเป็น null, undefined, หรือ "")
+        const notesText = item.notes;
 
-        // 2. สร้างข้อความแบบย่อ (Truncated) โดยใช้ฟังก์ชันใหม่
-        const truncatedNotes = truncateText(notesText, 80); // ใช 80 ตามที่คุณระบุ
+        // 2. สร้างข้อความเต็ม (Full) พร้อม Fallback
+        const fullNotes = notesText || 'ไม่มีบันทึกเพิ่มเติม';
+        
+        // 3. สร้างข้อความย่อ (Truncated) โดยใช้ Fallback *หลังจาก* ตัดคำ
+        //    (truncateText จะคืนค่า falsy ถ้า notesText เป็น falsy)
+        const truncatedNotes = truncateText(notesText, 80) || 'ไม่มีบันทึกเพิ่มเติม';
 
-        // 3. Escape ทั้งสองเวอร์ชันเพื่อความปลอดภัย
-        const safeTruncatedNote = escapeHtml(truncatedNotes);
-        const safeFullNote = escapeHtml(notesText); // Escape ข้อความเต็มสำหรับ 'title'
+        // 4. Escape ทั้งสองเวอร์ชันเพื่อความปลอดภัย
+        const safeTruncatedNote = escapeHtml(truncatedNotes); // ข้อความย่อสำหรับแสดงผล
+        const safeFullNote = escapeHtml(fullNotes);       // ข้อความเต็มสำหรับ Tooltip
 
         // --- [END] แก้ไขตาม Requirement ---
 
