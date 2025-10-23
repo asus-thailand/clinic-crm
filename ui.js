@@ -13,26 +13,6 @@ const STALE_CASE_CRITICAL_DAYS = 21;
 // ================================================================================
 
 /**
- * [NEW & FIXED] ตัดข้อความ (Truncate Text)
- * หากข้อความยาวเกิน maxLength, จะตัดข้อความและเติม "..." ต่อท้าย
- * @param {string} text ข้อความที่ต้องการตัด
- * @param {number} maxLength ความยาวสูงสุดที่อนุญาต
- * @returns {string} ข้อความที่ถูกตัดแล้ว (หรือข้อความเดิมถ้าไม่ยาวเกิน หรือเป็น falsy)
- */
-function truncateText(text, maxLength) {
-    // 1. จัดการกับค่าที่ไม่ใช่ string หรือค่าว่าง (null, undefined, "")
-    if (typeof text !== 'string' || !text) {
-        return text; // คืนค่าเดิม (เช่น null, "", undefined)
-    }
-    // 2. จัดการกับข้อความที่ไม่ต้องตัด
-    if (text.length <= maxLength) {
-        return text;
-    }
-    // 3. ตัดข้อความ
-    return text.substring(0, maxLength) + "...";
-}
-
-/**
  * Parses a date string (YYYY-MM-DD) into a UTC Date object.
  * Returns null if the string is invalid.
  */
@@ -142,12 +122,8 @@ const FIELD_MAPPING = {
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
-    
-    // --- [นี่คือการแก้ไขที่ถูกต้อง จากครั้งก่อน] ---
-    'เหตุผล':              { field: 'reason', section: 'sales' }, // แสดงคอลัมน์นี้
-    'ETC':                { field: 'etc', section: 'sales', isHeader: false }, // ซ่อนคอลัมน์นี้
-    // --- [สิ้นสุดการแก้ไข] ---
-
+    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
+    'ETC':                { field: 'etc', section: 'sales' },
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
     'DR.':                { field: 'dr', section: 'sales' },
@@ -277,7 +253,7 @@ function createRowElement(row, index, page, pageSize) {
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         if (!config.field && header !== 'จัดการ') return;
-        if (config.isHeader === false) return; // นี่คือจุดที่จะกรอง "ETC" ออก
+        if (config.isHeader === false) return;
 
         if (header === 'จัดการ') {
             tr.appendChild(createActionsCell(row, window.state?.currentUser));
@@ -510,34 +486,12 @@ ui.renderHistoryTimeline = function(historyData) {
 
         const timestamp = item.created_at ? new Date(item.created_at).toLocaleString('th-TH') : 'Invalid Date';
 
-        // --- [START] แก้ไขตาม Requirement: ตัดข้อความและเพิ่ม Tooltip (FIXED) ---
-        
-        // 1. ดึงข้อความต้นฉบับ (ซึ่งอาจเป็น null, undefined, หรือ "")
-        const notesText = item.notes;
-
-        // 2. สร้างข้อความเต็ม (Full) พร้อม Fallback
-        const fullNotes = notesText || 'ไม่มีบันทึกเพิ่มเติม';
-        
-        // 3. สร้างข้อความย่อ (Truncated) โดยใช้ Fallback *หลังจาก* ตัดคำ
-        //    (truncateText จะคืนค่า falsy ถ้า notesText เป็น falsy)
-        const truncatedNotes = truncateText(notesText, 80) || 'ไม่มีบันทึกเพิ่มเติม';
-
-        // 4. Escape ทั้งสองเวอร์ชันเพื่อความปลอดภัย
-        const safeTruncatedNote = escapeHtml(truncatedNotes); // ข้อความย่อสำหรับแสดงผล
-        const safeFullNote = escapeHtml(fullNotes);       // ข้อความเต็มสำหรับ Tooltip
-
-        // --- [END] แก้ไขตาม Requirement ---
-
         return `
             <div class="timeline-item ${roleClass}">
                 <div class="timeline-icon">✓</div>
                 <div class="timeline-content">
                     <div class="timeline-status">${escapeHtml(item.status)}</div>
-                    
-                    <div class="timeline-notes" title="${safeFullNote}">
-                        ${safeTruncatedNote}
-                    </div>
-                    
+                    <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
                     <div class="timeline-footer">
                         โดย: ${escapeHtml(userDisplay)} | ${timestamp}
                     </div>
