@@ -1,5 +1,6 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL VERSION with CSV Import & Updated Dropdowns)
+// [FIXED] handleProcessCSV lead_code logic updated by Senior Developer
 // ================================================================================
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -413,7 +414,8 @@ function handleImportClick() {
 }
 
 /**
- * Handles processing the selected CSV file for bulk import.
+ * [BUG FIXED] Handles processing the selected CSV file for bulk import.
+ * Now dynamically determines the starting lead_code and respects lead_code in the CSV.
  */
 async function handleProcessCSV() {
     const csvFileInput = document.getElementById('csvFile');
@@ -442,7 +444,10 @@ async function handleProcessCSV() {
         const missingHeaders = requiredHeaders.filter(req => !headers.includes(req));
         if (missingHeaders.length > 0) throw new Error(`ไฟล์ CSV ขาด Header ที่จำเป็น: ${missingHeaders.join(', ')}`);
 
-        let csvLeadCodeCounter = 1236; // Start lead code sequence specifically for this import
+        // [BUG FIX] Fetch latest lead code *once* instead of using hardcoded 1236
+        const latestLeadCodeInDB = await api.getLatestLeadCode();
+        let csvLeadCodeCounter = latestLeadCodeInDB + 1; // Start counter from next available
+
         const customersToInsert = [];
         const todayStr = new Date().toISOString().split('T')[0]; // Default date if missing
 
@@ -488,8 +493,13 @@ async function handleProcessCSV() {
             customer.channel = customer.channel || 'ไม่ระบุ';
             customer.sales = customer.sales || state.currentUser?.username || 'N/A'; // Assign to current user if missing
             customer.date = customer.date || todayStr; // Use today if date missing
-            customer.lead_code = csvLeadCodeCounter.toString(); // Assign sequential lead code for this import
-            csvLeadCodeCounter++;
+
+            // [BUG FIX] Only assign auto-incremented lead_code IF
+            // one wasn't provided in the CSV file (i.e., customer.lead_code is still falsy)
+            if (!customer.lead_code) {
+                customer.lead_code = csvLeadCodeCounter.toString(); // Assign sequential lead code
+                csvLeadCodeCounter++; // Only increment when we use the auto-counter
+            }
 
             customersToInsert.push(customer);
         }
@@ -878,7 +888,7 @@ async function handleSaveEditForm(event) {
                         const header = Object.keys(ui.FIELD_MAPPING).find(h => ui.FIELD_MAPPING[h]?.field === key) || key;
                         const isDateField = ['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key);
                         const originalFormatted = isDateField ? formatDateToDMY(originalValue) : originalValue;
-                        const newFormatted = isDateField ? formatDateToDMY(newValue) : newValue;
+                        const newFormatted = isDateField ? formatDateToDMY(newValue) : originalValue;
                         const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}'`;
                         historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
                     }
@@ -939,7 +949,7 @@ async function handleAddCustomer() {
 
     ui.showLoading(true);
     try {
-        // Call API to add customer, passing the manual lead code (or empty string for auto)
+        // [FIXED] Call API to add customer, passing the manual lead code (or empty string for auto)
         const newCustomer = await api.addCustomer(state.currentUser?.username || 'N/A', leadCodeInput);
 
         if (newCustomer) {
@@ -966,7 +976,7 @@ async function handleAddCustomer() {
             throw new Error("API did not return new customer data.");
         }
     } catch (error) {
-        // Handle errors during customer creation (e.g., duplicate lead code)
+        // Handle errors during customer creation (e.g., duplicate lead code from manual input)
         console.error("Error adding customer:", error);
         ui.showStatus(`เพิ่มลูกค้าไม่สำเร็จ: ${error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ'}`, true);
     } finally {
