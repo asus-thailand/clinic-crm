@@ -1,6 +1,7 @@
 // ================================================================================
 // API Layer - Handles all communication with the Supabase backend.
 // (FINAL VERSION 100% - UNMINIFIED with CSV Bulk Insert)
+// [FIXED] addCustomer logic updated by Senior Developer
 // ================================================================================
 
 const api = {};
@@ -107,17 +108,30 @@ api.getLatestLeadCode = async function() {
 
 
 /**
- * Adds a new customer record with an auto-incremented lead code.
- * @param {string} salesUsername The username of the sales person creating the customer.
+ * [BUG FIXED] Adds a new customer record.
+ * Accepts an optional manualLeadCode. If not provided, it auto-increments.
+ * @param {string} salesUsername The username of the sales person.
+ * @param {string|null} manualLeadCode The manually entered lead code (or null/empty for auto).
  * @returns {Promise<object>} The newly created customer object.
  */
-api.addCustomer = async function(salesUsername) {
-    // Use the helper function to get the next lead code
-    const latestCode = await api.getLatestLeadCode();
-    const nextLeadCode = latestCode + 1;
+api.addCustomer = async function(salesUsername, manualLeadCode = null) {
+    let leadCodeToUse;
+
+    // 1. Check if a manual lead code was provided
+    const providedLeadCode = manualLeadCode ? manualLeadCode.trim() : null;
+
+    if (providedLeadCode) {
+        leadCodeToUse = providedLeadCode;
+        // We rely on the database's unique constraint to catch duplicates.
+    } else {
+        // 2. If no manual code, auto-increment
+        const latestCode = await api.getLatestLeadCode();
+        const nextLeadCode = latestCode + 1;
+        leadCodeToUse = nextLeadCode.toString();
+    }
 
     const newCustomerData = {
-        lead_code: nextLeadCode.toString(),
+        lead_code: leadCodeToUse,
         sales: salesUsername,
         date: new Date().toISOString().split('T')[0]
     };
@@ -128,7 +142,13 @@ api.addCustomer = async function(salesUsername) {
         .select()
         .single();
 
-    if (error) throw new Error('ไม่สามารถเพิ่มลูกค้าใหม่ได้: ' + error.message);
+    if (error) {
+        // Handle duplicate lead_code error specifically
+        if (error.message.includes('unique constraint') && error.message.includes('lead_code')) {
+            throw new Error(`Lead Code '${leadCodeToUse}' ถูกใช้งานแล้ว`);
+        }
+        throw new Error('ไม่สามารถเพิ่มลูกค้าใหม่ได้: ' + error.message);
+    }
     return data;
 };
 
