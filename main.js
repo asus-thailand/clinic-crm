@@ -1,6 +1,7 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL VERSION with CSV Import & Updated Dropdowns)
 // [FIXED] handleProcessCSV lead_code logic updated by Senior Developer
+// [MODIFIED] Deal closing logic now includes 'ONLINE' status by Senior Developer
 // ================================================================================
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -98,7 +99,7 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             // Validate the constructed YYYY-MM-DD string as a UTC date
             const date = new Date(formattedDate + 'T00:00:00Z');
             if (!isNaN(date.getTime()) && date.toISOString().startsWith(formattedDate)) {
-                 return formattedDate;
+                 return dateStr;
             }
         }
     }
@@ -332,9 +333,10 @@ function updateDashboardStats() {
     const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
     if(todayCustomersEl) todayCustomersEl.textContent = dataSet.filter(c => c.date === today).length;
     if(pendingCustomersEl) pendingCustomersEl.textContent = dataSet.filter(c => c.status_1 === 'ตามต่อ').length;
-    // Count closed deals based on specific criteria
+    
+    // [MODIFIED] Count closed deals based on new criteria (100% OR ONLINE)
     if(closedDealsEl) closedDealsEl.textContent = dataSet.filter(
-        c => c.status_1 === 'ปิดการขาย' && c.last_status === '100%' && c.closed_amount
+        c => c.status_1 === 'ปิดการขาย' && (c.last_status === '100%' || c.last_status === 'ONLINE') && c.closed_amount
     ).length;
 }
 
@@ -833,20 +835,20 @@ async function handleSaveEditForm(event) {
     }
     // --- End Validation ---
 
-    // --- Deal Closing Logic ---
-    const isNowClosing = dataToSend.status_1 === 'ปิดการขาย' && dataToSend.last_status === '100%' && dataToSend.closed_amount;
+    // --- [MODIFIED] Deal Closing Logic (includes 'ONLINE') ---
+    const isNowClosing = dataToSend.status_1 === 'ปิดการขาย' && (dataToSend.last_status === '100%' || dataToSend.last_status === 'ONLINE') && dataToSend.closed_amount;
     // Auto-populate closed_date only if it's currently empty and conditions are met
     if (isNowClosing && !dataToSend.closed_date) {
         dataToSend.closed_date = new Date().toISOString().split('T')[0]; // Use current date
         console.log(`Auto-populating closed_date: ${dataToSend.closed_date}`);
     }
     // Check if user is attempting to close (any closing field is set)
-    const isClosingAttempt = dataToSend.last_status === '100%' || dataToSend.status_1 === 'ปิดการขาย' || dataToSend.closed_amount;
+    const isClosingAttempt = (dataToSend.last_status === '100%' || dataToSend.last_status === 'ONLINE') || dataToSend.status_1 === 'ปิดการขาย' || dataToSend.closed_amount;
     if (isClosingAttempt) {
         // Verify all required closing fields are present
-        const isClosingComplete = dataToSend.last_status === '100%' && dataToSend.status_1 === 'ปิดการขาย' && dataToSend.closed_amount;
+        const isClosingComplete = (dataToSend.last_status === '100%' || dataToSend.last_status === 'ONLINE') && dataToSend.status_1 === 'ปิดการขาย' && dataToSend.closed_amount;
         if (!isClosingComplete) {
-            ui.showStatus('การปิดการขายต้องกรอก: Last Status (100%), Status Sale (ปิดการขาย), และ ยอดที่ปิดได้ ให้ครบถ้วน', true);
+            ui.showStatus('การปิดการขายต้องกรอก: Last Status (100% หรือ ONLINE), Status Sale (ปิดการขาย), และ ยอดที่ปิดได้ ให้ครบถ้วน', true);
             return; // Stop save if closing info is incomplete
         }
     }
@@ -1052,8 +1054,8 @@ async function handleSubmitStatusUpdate() {
         const updateData = { status_1: newStatus, reason: notes };
         const customer = state.customers.find(c => String(c.id) === String(customerId)); // Get current customer data
 
-        // Attempt to auto-populate closed_date if closing via quick update and conditions met
-        if (newStatus === 'ปิดการขาย' && customer && customer.last_status === '100%' && customer.closed_amount && !customer.closed_date) {
+        // [MODIFIED] Attempt to auto-populate closed_date if closing via quick update and conditions met (100% OR ONLINE)
+        if (newStatus === 'ปิดการขาย' && customer && (customer.last_status === '100%' || customer.last_status === 'ONLINE') && customer.closed_amount && !customer.closed_date) {
             updateData.closed_date = new Date().toISOString().split('T')[0];
             console.log(`Auto-populating closed_date via status update: ${updateData.closed_date}`);
         }
