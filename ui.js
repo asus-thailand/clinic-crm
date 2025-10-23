@@ -142,8 +142,14 @@ const FIELD_MAPPING = {
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
     'Status Sale':      { field: 'status_1', section: 'sales' },
     'Last Status':      { field: 'last_status', section: 'sales' },
-    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
-    'ETC':                { field: 'etc', section: 'sales' },
+
+    // --- [START] แก้ไขตรงนี้ครับ ---
+    // 1. "เหตุผล" (reason): ลบ isHeader: false ออก เพื่อให้มันแสดงในตาราง
+    'เหตุผล':              { field: 'reason', section: 'sales' },
+    // 2. "ETC" (etc): เพิ่ม isHeader: false เข้าไป เพื่อซ่อนมันจากตาราง
+    'ETC':                { field: 'etc', section: 'sales', isHeader: false },
+    // --- [END] แก้ไข ---
+
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
     'DR.':                { field: 'dr', section: 'sales' },
@@ -273,12 +279,12 @@ function createRowElement(row, index, page, pageSize) {
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         if (!config.field && header !== 'จัดการ') return;
-        if (config.isHeader === false) return;
+        if (config.isHeader === false) return; // <-- บรรทัดนี้จะกรอง 'ETC' ออกไป
 
         if (header === 'จัดการ') {
             tr.appendChild(createActionsCell(row, window.state?.currentUser));
         } else if (config.field) {
-            tr.appendChild(createCell(row, config.field));
+            tr.appendChild(createCell(row, config.field)); // <-- และจะสร้าง cell 'reason'
         }
     });
     return tr;
