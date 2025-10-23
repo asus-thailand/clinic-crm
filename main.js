@@ -54,9 +54,8 @@ const DROPDOWN_OPTIONS = {
 };
 
 // Fields editable by Sales role (in addition to status_1 and reason handled separately)
-// *** หมายเหตุ: status_1 และ reason จะถูกจัดการผ่าน Quick Update Modal เป็นหลัก ***
 const SALES_EDITABLE_FIELDS = [
-    'update_access', 'last_status', /* 'reason' removed from direct edit */
+    'update_access', 'last_status', 'reason', // Reason implicitly editable with status_1
     'etc', 'hn_customer', 'old_appointment', 'dr', 'closed_amount', 'appointment_date',
     'closed_date' // Added closed_date
 ];
@@ -278,7 +277,7 @@ function updateVisibleData() {
         filtered = filtered.filter(customer => {
             const searchableText = `${customer.name || ''} ${customer.phone || ''} ${customer.lead_code || ''}`.toLowerCase();
             const matchesSearch = !search || searchableText.includes(lowerCaseSearch);
-            const matchesStatus = !status || (customer.last_status || '').trim() === status; // Filter uses last_status
+            const matchesStatus = !status || (customer.last_status || '').trim() === status;
             const matchesSales = !sales || customer.sales === sales;
             const matchesChannel = !channel || customer.channel === channel;
             const matchesProcedure = !procedure || customer.procedure === procedure;
@@ -745,7 +744,6 @@ function hideEditModal() {
 
 /**
  * Handles saving data submitted from the Edit Customer modal.
- * [FIXED] This version explicitly removes status_1 and reason before sending update.
  */
 async function handleSaveEditForm(event) {
     event.preventDefault(); // Prevent standard form submission
@@ -760,9 +758,9 @@ async function handleSaveEditForm(event) {
     for (const [key, value] of formData.entries()) {
         updatedDataFromForm[key] = typeof value === 'string' ? value.trim() : value;
     }
-    console.log("Data read from Edit form:", updatedDataFromForm);
+    console.log("Data read from form (includes only enabled fields):", updatedDataFromForm);
 
-    // Get original customer data to preserve fields Sales cannot edit AND for comparison
+    // Get original customer data to preserve fields Sales cannot edit
     const originalCustomer = state.customers.find(c => String(c.id) === String(state.editingCustomerId));
     if (!originalCustomer) {
         ui.showStatus('Error: ไม่พบข้อมูลลูกค้าเดิม', true);
@@ -775,90 +773,90 @@ async function handleSaveEditForm(event) {
     const isSales = !isAdmin;
 
     // --- Data Preparation: Start with original data, then overlay editable fields ---
+    // Create a mutable copy of the original data to modify
     let dataToSend = { ...originalCustomer };
 
-    // Update dataToSend only with fields present in the form and editable by the user
-    Object.keys(updatedDataFromForm).forEach(key => {
-        const fieldConfig = Object.values(ui.FIELD_MAPPING).find(config => config.field === key);
-        if (!fieldConfig?.field) return; // Skip if not a mapped field
+    // Iterate over fields defined in FIELD_MAPPING to decide what to potentially update
+    Object.values(ui.FIELD_MAPPING).forEach(config => {
+        const key = config.field;
+        if (!key) return; // Skip fields without a 'field' property (like '#', 'จัดการ')
 
-        // Check edit permission based on role (using the modified SALES_EDITABLE_FIELDS)
-        const isSalesEditable = SALES_EDITABLE_FIELDS.includes(key);
+        // Check if the current user role is allowed to edit this field
+        const isSalesEditable = SALES_EDITABLE_FIELDS.includes(key); // Check against the defined list for Sales
         const canEditField = isAdmin || (isSales && isSalesEditable);
 
-        if (canEditField) {
-            // Normalize and use the value from the form
-            if (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key)) {
-                dataToSend[key] = normalizeDateStringToYYYYMMDD(updatedDataFromForm[key]);
+        // Check if this field was present in the form data (meaning it was enabled)
+        if (updatedDataFromForm.hasOwnProperty(key)) {
+            if (canEditField) {
+                 // If editable by current role, normalize and use the value from the form
+                 if (['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key)) {
+                     dataToSend[key] = normalizeDateStringToYYYYMMDD(updatedDataFromForm[key]);
+                 } else {
+                     dataToSend[key] = updatedDataFromForm[key];
+                 }
             } else {
-                dataToSend[key] = updatedDataFromForm[key];
+                 // This case should ideally not happen if UI disables fields correctly, but as a safeguard:
+                 // If a field from the form is NOT editable by the current role, keep the original value.
+                 console.warn(`User role '${userRole}' submitted non-editable field '${key}'. Preserving original value.`);
+                 // dataToSend[key] already holds the original value from the initial spread ({...originalCustomer})
             }
-        } else {
-            console.warn(`User role '${userRole}' submitted non-editable field '${key}' via Edit Modal. Preserving original value.`);
+        } else if (!canEditField && dataToSend.hasOwnProperty(key)) {
+             // If the field was NOT in form data (disabled) AND is NOT editable by the current role,
+             // ensure the original value is kept (already handled by initial spread).
+             // This correctly preserves 'date' when Sales saves.
+        } else if (isAdmin && !updatedDataFromForm.hasOwnProperty(key) && dataToSend.hasOwnProperty(key)){
+             // Edge case: If Admin somehow clears a disabled field (shouldn't happen),
+             // should we allow saving null? For now, preserve original.
+             console.warn(`Admin submission missing field '${key}'. Preserving original value.`);
         }
     });
     // --- End Data Preparation ---
 
 
     // --- Validation: Check required 'date' field ONLY for Admins ---
+    // Use dataToSend.date for validation as it contains the final value
     if (!dataToSend.date && isAdmin) {
         ui.showStatus('กรุณากรอก "วัน/เดือน/ปี"', true);
         const dateInput = form.querySelector('[name="date"]');
         if (dateInput) dateInput.focus();
-        return;
+        return; // Stop submission ONLY if Admin and date is empty or invalid
     }
     // --- End Validation ---
 
-    // --- Deal Closing Logic (using dataToSend) ---
-    // Note: status_1 is not updated here, relies on Quick Update
-    const isNowClosing = /* dataToSend.status_1 === 'ปิดการขาย' && */ dataToSend.last_status === '100%' && dataToSend.closed_amount;
+    // --- Deal Closing Logic ---
+    const isNowClosing = dataToSend.status_1 === 'ปิดการขาย' && dataToSend.last_status === '100%' && dataToSend.closed_amount;
+    // Auto-populate closed_date only if it's currently empty and conditions are met
     if (isNowClosing && !dataToSend.closed_date) {
-        dataToSend.closed_date = new Date().toISOString().split('T')[0];
-        console.log(`Auto-populating closed_date via Edit Modal: ${dataToSend.closed_date}`);
+        dataToSend.closed_date = new Date().toISOString().split('T')[0]; // Use current date
+        console.log(`Auto-populating closed_date: ${dataToSend.closed_date}`);
     }
-
-    // Check if user is attempting to close (any closing field is set in THIS form)
-    // Removed status_1 check here as it's not in the form
-    const isClosingAttempt = dataToSend.last_status === '100%' || dataToSend.closed_amount;
+    // Check if user is attempting to close (any closing field is set)
+    const isClosingAttempt = dataToSend.last_status === '100%' || dataToSend.status_1 === 'ปิดการขาย' || dataToSend.closed_amount;
     if (isClosingAttempt) {
-        // Find the LATEST status_1 from the original data (as it's not in the form)
-        const currentStatus1 = originalCustomer.status_1;
-        // Verify all required closing fields are present (using currentStatus1)
-        const isClosingComplete = dataToSend.last_status === '100%' && currentStatus1 === 'ปิดการขาย' && dataToSend.closed_amount;
+        // Verify all required closing fields are present
+        const isClosingComplete = dataToSend.last_status === '100%' && dataToSend.status_1 === 'ปิดการขาย' && dataToSend.closed_amount;
         if (!isClosingComplete) {
-            ui.showStatus('การปิดการขายจากหน้านี้ ต้องมี: Last Status (100%), ยอดที่ปิดได้. (Status Sale ต้องเป็น "ปิดการขาย" ซึ่งต้องทำผ่านปุ่ม "อัปเดต")', true);
-            return; // Stop save if closing info is incomplete based on combined data
+            ui.showStatus('การปิดการขายต้องกรอก: Last Status (100%), Status Sale (ปิดการขาย), และ ยอดที่ปิดได้ ให้ครบถ้วน', true);
+            return; // Stop save if closing info is incomplete
         }
     }
     // --- End Deal Closing Logic ---
-
-    // --- [START] *** แก้ไขสำคัญ: เอา status_1 และ reason ออกก่อนส่ง API *** ---
-    // เพื่อป้องกันการเขียนทับค่าที่อัปเดตผ่าน Quick Update Modal
-    delete dataToSend.status_1;
-    delete dataToSend.reason;
-    // --- [END] *** แก้ไขสำคัญ *** ---
 
     // Clean up internal properties before sending
     delete dataToSend.id;
     delete dataToSend.created_at;
     delete dataToSend.updated_at;
 
+    console.log("Data being sent to API:", dataToSend); // Log the final data object
 
-    console.log("Data being sent to API from Edit Modal (excluding status_1, reason):", dataToSend);
-
-    ui.showLoading(true);
+    ui.showLoading(true); // Show loading indicator during API call
     try {
         // --- API Call to Update Customer ---
-        // Will only update fields present in dataToSend
         const updatedCustomerResponse = await api.updateCustomer(state.editingCustomerId, dataToSend);
 
         // --- Post-API Data Handling ---
-        // Merge original customer data (which has the correct status_1/reason)
-        // with the response data (which contains updates for other fields).
-        // The response from updateCustomer might not return ALL fields, so merging is safer.
+        // Merge original with response, then re-normalize dates for local state consistency
         const finalUpdatedCustomer = { ...originalCustomer, ...updatedCustomerResponse };
-
-        // Re-normalize dates for local state consistency
         finalUpdatedCustomer.date = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.date);
         finalUpdatedCustomer.old_appointment = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.old_appointment);
         finalUpdatedCustomer.appointment_date = normalizeDateStringToYYYYMMDD(finalUpdatedCustomer.appointment_date);
@@ -866,17 +864,14 @@ async function handleSaveEditForm(event) {
         finalUpdatedCustomer.id = originalCustomer.id; // Ensure ID remains correct
 
         // --- History Logging (Sales Role Only) ---
-        // Log changes ONLY for fields that were actually editable and potentially sent in dataToSend
         if (userRole === 'sales') {
             const historyPromises = [];
             // Compare originalCustomer with the final state after update (finalUpdatedCustomer)
             for (const key in finalUpdatedCustomer) {
-                // Skip internal keys AND the fields we explicitly excluded from the update
-                if (key === 'id' || key === 'created_at' || key === 'updated_at' || key === 'status_1' || key === 'reason') continue;
+                if (key === 'id' || key === 'created_at' || key === 'updated_at') continue; // Skip internal keys
 
                 const fieldConfig = Object.values(ui.FIELD_MAPPING).find(config => config.field === key);
-                // Only log fields that were potentially part of dataToSend
-                if (fieldConfig && dataToSend.hasOwnProperty(key)) {
+                if (fieldConfig) { // Only log fields that are part of our defined mapping
                     const originalValue = originalCustomer[key] ?? '';
                     const newValue = finalUpdatedCustomer[key] ?? '';
                     if (String(originalValue) !== String(newValue)) { // Log only actual changes
@@ -884,7 +879,7 @@ async function handleSaveEditForm(event) {
                         const isDateField = ['date', 'old_appointment', 'appointment_date', 'closed_date'].includes(key);
                         const originalFormatted = isDateField ? formatDateToDMY(originalValue) : originalValue;
                         const newFormatted = isDateField ? formatDateToDMY(newValue) : newValue;
-                        const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}' (ผ่านหน้าแก้ไข)`;
+                        const logNote = `แก้ไข '${header}' จาก '${originalFormatted || 'ว่าง'}' เป็น '${newFormatted || 'ว่าง'}'`;
                         historyPromises.push(api.addStatusUpdate(state.editingCustomerId, 'แก้ไขข้อมูล', logNote, state.currentUser.id));
                     }
                 }
@@ -1179,5 +1174,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
-
-}
