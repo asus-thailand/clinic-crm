@@ -1,5 +1,6 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - UI LAYER (COMPLETE FIXED VERSION 100%)
+// [MODIFIED] Row highlighting logic now includes 'ONLINE' status by Senior Developer
 // ================================================================================
 
 const ui = {};
@@ -244,7 +245,8 @@ function createRowElement(row, index, page, pageSize) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
-    if (row.status_1 === 'ปิดการขาย' && row.last_status === '100%' && row.closed_amount) {
+    // [MODIFIED] Add 'row-deal-closed' class if conditions are met (100% OR ONLINE)
+    if (row.status_1 === 'ปิดการขาย' && (row.last_status === '100%' || row.last_status === 'ONLINE') && row.closed_amount) {
         tr.classList.add('row-deal-closed');
     }
 
@@ -410,8 +412,8 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
     const closedDateInput = form.querySelector('[name="closed_date"]');
 
     const highlightFields = () => {
-        // เอาเงื่อนไข status1Input ออก
-        const isClosingAttempt = (lastStatusInput?.value === '100%') || (/*status1Input?.value === 'ปิดการขาย' ||*/ (closedAmountInput?.value && closedAmountInput.value.trim() !== ''));
+        // [MODIFIED] เอาเงื่อนไข status1Input ออก และเพิ่ม 'ONLINE'
+        const isClosingAttempt = (lastStatusInput?.value === '100%' || lastStatusInput?.value === 'ONLINE') || (/*status1Input?.value === 'ปิดการขาย' ||*/ (closedAmountInput?.value && closedAmountInput.value.trim() !== ''));
         dealClosingFields.forEach(fieldName => {
             const group = form.querySelector(`[data-field-group="${fieldName}"]`);
             if (group) { group.classList.toggle('highlight-deal-closing', isClosingAttempt); }
