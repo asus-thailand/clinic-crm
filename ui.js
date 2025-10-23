@@ -486,12 +486,27 @@ ui.renderHistoryTimeline = function(historyData) {
 
         const timestamp = item.created_at ? new Date(item.created_at).toLocaleString('th-TH') : 'Invalid Date';
 
+        // --- [START] แก้ไขตาม Requirement: ตัดข้อความ Note ที่ยาวเกินไป ---
+        const MAX_LENGTH = 65; // กำหนดความยาวสูงสุดของข้อความ
+        const rawNote = item.notes || 'ไม่มีบันทึกเพิ่มเติม';
+        let displayNote;
+
+        if (rawNote.length > MAX_LENGTH) {
+            displayNote = rawNote.substring(0, MAX_LENGTH) + "...";
+        } else {
+            displayNote = rawNote;
+        }
+        
+        // ใช้ displayNote ที่ตัดแล้วมา escapeHtml
+        const safeNote = escapeHtml(displayNote);
+        // --- [END] แก้ไขตาม Requirement ---
+
         return `
             <div class="timeline-item ${roleClass}">
                 <div class="timeline-icon">✓</div>
                 <div class="timeline-content">
                     <div class="timeline-status">${escapeHtml(item.status)}</div>
-                    <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
+                    <div class="timeline-notes">${safeNote}</div>
                     <div class="timeline-footer">
                         โดย: ${escapeHtml(userDisplay)} | ${timestamp}
                     </div>
