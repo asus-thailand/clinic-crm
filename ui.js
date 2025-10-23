@@ -13,6 +13,20 @@ const STALE_CASE_CRITICAL_DAYS = 21;
 // ================================================================================
 
 /**
+ * [NEW] ตัดข้อความ (Truncate Text)
+ * หากข้อความยาวเกิน maxLength, จะตัดข้อความและเติม "..." ต่อท้าย
+ * @param {string} text ข้อความที่ต้องการตัด
+ * @param {number} maxLength ความยาวสูงสุดที่อนุญาต
+ * @returns {string} ข้อความที่ถูกตัดแล้ว
+ */
+function truncateText(text, maxLength) {
+    if (typeof text !== 'string' || text.length <= maxLength) {
+        return text;
+    }
+    return text.substring(0, maxLength) + "...";
+}
+
+/**
  * Parses a date string (YYYY-MM-DD) into a UTC Date object.
  * Returns null if the string is invalid.
  */
@@ -486,19 +500,18 @@ ui.renderHistoryTimeline = function(historyData) {
 
         const timestamp = item.created_at ? new Date(item.created_at).toLocaleString('th-TH') : 'Invalid Date';
 
-        // --- [START] แก้ไขตาม Requirement: ตัดข้อความ Note ที่ยาวเกินไป ---
-        const MAX_LENGTH = 65; // กำหนดความยาวสูงสุดของข้อความ
-        const rawNote = item.notes || 'ไม่มีบันทึกเพิ่มเติม';
-        let displayNote;
-
-        if (rawNote.length > MAX_LENGTH) {
-            displayNote = rawNote.substring(0, MAX_LENGTH) + "...";
-        } else {
-            displayNote = rawNote;
-        }
+        // --- [START] แก้ไขตาม Requirement: ตัดข้อความและเพิ่ม Tooltip ---
         
-        // ใช้ displayNote ที่ตัดแล้วมา escapeHtml
-        const safeNote = escapeHtml(displayNote);
+        // 1. ดึงข้อความต้นฉบับ (Fallback ถ้าไม่มี)
+        const notesText = item.notes || 'ไม่มีบันทึกเพิ่มเติม';
+
+        // 2. สร้างข้อความแบบย่อ (Truncated) โดยใช้ฟังก์ชันใหม่
+        const truncatedNotes = truncateText(notesText, 80); // ใช 80 ตามที่คุณระบุ
+
+        // 3. Escape ทั้งสองเวอร์ชันเพื่อความปลอดภัย
+        const safeTruncatedNote = escapeHtml(truncatedNotes);
+        const safeFullNote = escapeHtml(notesText); // Escape ข้อความเต็มสำหรับ 'title'
+
         // --- [END] แก้ไขตาม Requirement ---
 
         return `
@@ -506,7 +519,11 @@ ui.renderHistoryTimeline = function(historyData) {
                 <div class="timeline-icon">✓</div>
                 <div class="timeline-content">
                     <div class="timeline-status">${escapeHtml(item.status)}</div>
-                    <div class="timeline-notes">${safeNote}</div>
+                    
+                    <div class="timeline-notes" title="${safeFullNote}">
+                        ${safeTruncatedNote}
+                    </div>
+                    
                     <div class="timeline-footer">
                         โดย: ${escapeHtml(userDisplay)} | ${timestamp}
                     </div>
