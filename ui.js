@@ -13,6 +13,26 @@ const STALE_CASE_CRITICAL_DAYS = 21;
 // ================================================================================
 
 /**
+ * [NEW & FIXED] ตัดข้อความ (Truncate Text)
+ * หากข้อความยาวเกิน maxLength, จะตัดข้อความและเติม "..." ต่อท้าย
+ * @param {string} text ข้อความที่ต้องการตัด
+ * @param {number} maxLength ความยาวสูงสุดที่อนุญาต
+ * @returns {string} ข้อความที่ถูกตัดแล้ว (หรือข้อความเดิมถ้าไม่ยาวเกิน หรือเป็น falsy)
+ */
+function truncateText(text, maxLength) {
+    // 1. จัดการกับค่าที่ไม่ใช่ string หรือค่าว่าง (null, undefined, "")
+    if (typeof text !== 'string' || !text) {
+        return text; // คืนค่าเดิม (เช่น null, "", undefined)
+    }
+    // 2. จัดการกับข้อความที่ไม่ต้องตัด
+    if (text.length <= maxLength) {
+        return text;
+    }
+    // 3. ตัดข้อความ
+    return text.substring(0, maxLength) + "...";
+}
+
+/**
  * Parses a date string (YYYY-MM-DD) into a UTC Date object.
  * Returns null if the string is invalid.
  */
@@ -109,7 +129,7 @@ ui.updateSortIndicator = function(column, direction) {
 const FIELD_MAPPING = {
     '#':                  { field: null, section: 'special' },
     'วัน/เดือน/ปี':     { field: 'date', section: 'admin', sortable: true },
-    'ลำดับที่':           { field: 'lead_code', section: 'admin', sortable: true }, // Added sortable
+    'ลำดับที่':           { field: 'lead_code', section: 'admin', sortable: true },
     'ชื่อลูกค้า':         { field: 'name', section: 'admin' },
     'เบอร์ติดต่อ':       { field: 'phone', section: 'admin' },
     'ช่องทางสื่อ':       { field: 'channel', section: 'admin' },
@@ -120,10 +140,14 @@ const FIELD_MAPPING = {
     'เซลล์':               { field: 'sales', section: 'admin' },
     'เวลาลงข้อมูล':       { field: 'call_time', section: 'admin' },
     'อัพเดทการเข้าถึง':  { field: 'update_access', section: 'sales' },
-    'Status Sale':      { field: 'status_1', section: 'sales' },
+    'Status Sale':      { field: 'status_1', section: 'sales' }, // <-- แสดง (ถูกต้อง)
     'Last Status':      { field: 'last_status', section: 'sales' },
-    'เหตุผล':              { field: 'reason', section: 'sales', isHeader: false },
-    'ETC':                { field: 'etc', section: 'sales' },
+
+    // --- [START] แก้ไขตรงนี้ครับ ---
+    'เหตุผล':              { field: 'reason', section: 'sales' }, // <-- ทำให้แสดง โดยลบ isHeader: false
+    'ETC':                { field: 'etc', section: 'sales', isHeader: false }, // <-- ทำให้ซ่อน โดยเพิ่ม isHeader: false
+    // --- [END] แก้ไข ---
+
     'HN ลูกค้า':          { field: 'hn_customer', section: 'sales' },
     'วันที่นัด CS':       { field: 'old_appointment', section: 'sales' },
     'DR.':                { field: 'dr', section: 'sales' },
@@ -144,7 +168,7 @@ ui.renderTableHeaders = function() {
     if (!thead) return;
     const tr = document.createElement('tr');
     Object.entries(FIELD_MAPPING).forEach(([headerText, config]) => {
-        if (config.isHeader === false) return;
+        if (config.isHeader === false) return; // <-- ETC จะถูกกรองออกตรงนี้
 
         const th = document.createElement('th');
         if (config.sortable) {
@@ -253,12 +277,12 @@ function createRowElement(row, index, page, pageSize) {
 
     Object.entries(FIELD_MAPPING).forEach(([header, config]) => {
         if (!config.field && header !== 'จัดการ') return;
-        if (config.isHeader === false) return;
+        if (config.isHeader === false) return; // <-- ETC จะถูกกรองออกตรงนี้
 
         if (header === 'จัดการ') {
             tr.appendChild(createActionsCell(row, window.state?.currentUser));
         } else if (config.field) {
-            tr.appendChild(createCell(row, config.field));
+            tr.appendChild(createCell(row, config.field)); // <-- ส่วนนี้จะสร้าง Cell ของ Status Sale และ เหตุผล
         }
     });
     return tr;
@@ -305,6 +329,9 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         const field = config.field;
         if (!field) return;
 
+        // ไม่สร้าง input สำหรับ field ที่ถูกซ่อน (เช่น ETC)
+        // if (config.isHeader === false) return; <-- ไม่ควรเช็ค isHeader ตรงนี้ เพราะ form ต้องสร้าง field ทั้งหมดที่มี (แต่บางอันอาจ disable)
+
         const value = customer[field] ?? '';
         const options = (field === 'sales') ? salesList : dropdownOptions[field];
         const userRole = (currentUser?.role || 'sales').toLowerCase();
@@ -317,6 +344,12 @@ ui.buildEditForm = function(customer, currentUser, salesEditableFields, salesLis
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
         formGroup.dataset.fieldGroup = field;
+
+        // ซ่อน form group ของ field ที่เราไม่ต้องการให้เห็นใน modal (เช่น ETC)
+        if (config.isHeader === false) {
+             formGroup.style.display = 'none'; // ซ่อน div ของ ETC ไปเลย
+        }
+
 
         const label = document.createElement('label');
         label.htmlFor = field;
@@ -486,12 +519,22 @@ ui.renderHistoryTimeline = function(historyData) {
 
         const timestamp = item.created_at ? new Date(item.created_at).toLocaleString('th-TH') : 'Invalid Date';
 
+        // --- ใช้โค้ดตัดคำและ Tooltip ที่แก้ล่าสุด ---
+        const notesText = item.notes;
+        const fullNotes = notesText || 'ไม่มีบันทึกเพิ่มเติม';
+        const truncatedNotes = truncateText(notesText, 80) || 'ไม่มีบันทึกเพิ่มเติม';
+        const safeTruncatedNote = escapeHtml(truncatedNotes);
+        const safeFullNote = escapeHtml(fullNotes);
+        // --- จบส่วนตัดคำ ---
+
         return `
             <div class="timeline-item ${roleClass}">
                 <div class="timeline-icon">✓</div>
                 <div class="timeline-content">
                     <div class="timeline-status">${escapeHtml(item.status)}</div>
-                    <div class="timeline-notes">${escapeHtml(item.notes || 'ไม่มีบันทึกเพิ่มเติม')}</div>
+                    <div class="timeline-notes" title="${safeFullNote}">
+                        ${safeTruncatedNote}
+                    </div>
                     <div class="timeline-footer">
                         โดย: ${escapeHtml(userDisplay)} | ${timestamp}
                     </div>
