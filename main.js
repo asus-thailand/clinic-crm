@@ -2,6 +2,7 @@
 // BEAUTY CLINIC CRM - MAIN ORCHESTRATOR (FINAL VERSION with CSV Import & Updated Dropdowns)
 // [FIXED] handleProcessCSV lead_code logic updated by Senior Developer
 // [MODIFIED] Deal closing logic now includes 'ONLINE' status by Senior Developer
+// [FIXED] normalizeDateStringToYYYYMMDD now correctly returns formattedDate for BE years
 // ================================================================================
 
 window.addEventListener('unhandledrejection', (event) => {
@@ -99,7 +100,8 @@ function normalizeDateStringToYYYYMMDD(dateStr) {
             // Validate the constructed YYYY-MM-DD string as a UTC date
             const date = new Date(formattedDate + 'T00:00:00Z');
             if (!isNaN(date.getTime()) && date.toISOString().startsWith(formattedDate)) {
-                 return dateStr;
+                 // [BUG FIXED] คืนค่าที่แปลงเป็น YYYY-MM-DD แล้ว
+                 return formattedDate;
             }
         }
     }
