@@ -1,16 +1,16 @@
 // ================================================================================
 // Sales Performance Dashboard - V2 SCRIPT
 // [MODIFIED] Added Interactive "What-If" Financial Table (Section 6)
-// This table links directly to the Scenario Planner (Section 7)
+// [MODIFIED] Now calls window.apiV2.getSalesReportV2() from api-v2.js to fetch data
 // ================================================================================
 
 // -- GLOBAL STATE --
 const state = {
     currentUser: null,
-    reportData: null, // จะเก็บข้อมูลทั้งหมดที่ได้จาก API
+    reportData: null, // Stores all data received from API V2
     
-    // [NEW] ข้อมูลเริ่มต้นสำหรับตารางการเงิน (จากไฟล์ HTML ตัวอย่าง)
-    // เราจะใช้ข้อมูลนี้ก่อนที่ API จริงจะพร้อม
+    // [FALLBACK DATA] Initial data for the financial table (from HTML example)
+    // Used if API V2 doesn't return data or before it loads.
     financialData: [
         { month: 'ก.ค.', budget: 194969, inbox: 1002, lead: 68, revenue: 1296726 },
         { month: 'ส.ค.', budget: 191843, inbox: 1060, lead: 73, revenue: 1631638 },
@@ -45,28 +45,33 @@ function displayError(error) {
 // ================================================================================
 
 /**
- * คำนวณ CPL และ ROAS ของแถวที่ระบุ (Row)
+ * Recalculates CPL and ROAS for a specific table row.
  */
 function recalculateFinancialRow(rowElement) {
-    const budget = parseFloat(rowElement.querySelector('.input-budget').value) || 0;
-    const lead = parseFloat(rowElement.querySelector('.input-lead').value) || 0;
-    const revenue = parseFloat(rowElement.querySelector('.input-revenue').value) || 0;
+    const budget = parseFloat(rowElement.querySelector('.input-budget')?.value) || 0;
+    const lead = parseFloat(rowElement.querySelector('.input-lead')?.value) || 0;
+    const revenue = parseFloat(rowElement.querySelector('.input-revenue')?.value) || 0;
 
     const cpl = (lead > 0) ? (budget / lead) : 0;
     const roas = (budget > 0) ? (revenue / budget) : 0;
 
-    rowElement.querySelector('.cell-cpl').textContent = formatCurrency(cpl);
-    rowElement.querySelector('.cell-roas').textContent = `${roas.toFixed(2)}x`;
+    const cplCell = rowElement.querySelector('.cell-cpl');
+    const roasCell = rowElement.querySelector('.cell-roas');
+
+    if (cplCell) cplCell.textContent = formatCurrency(cpl);
+    if (roasCell) roasCell.textContent = `${roas.toFixed(2)}x`;
     
-    // ส่งสัญญาณว่ามีการเปลี่ยนแปลง
+    // Signal that recalculation happened
     return true; 
 }
 
 /**
- * [NEW] คำนวณผลรวมทั้งหมดใน Footer และอัปเดต Planner
+ * [NEW] Calculates totals for the financial table footer and updates the planner.
  */
 function updateFinancialTotals() {
     const tableBody = document.getElementById('financial-table-body');
+    if (!tableBody) return; // Exit if table body not found
+    
     const rows = tableBody.querySelectorAll('tr');
     
     let totalBudget = 0;
@@ -75,50 +80,63 @@ function updateFinancialTotals() {
     let totalRevenue = 0;
 
     rows.forEach(row => {
-        totalBudget += parseFloat(row.querySelector('.input-budget').value) || 0;
-        totalInbox += parseFloat(row.querySelector('.input-inbox').value) || 0;
-        totalLead += parseFloat(row.querySelector('.input-lead').value) || 0;
-        totalRevenue += parseFloat(row.querySelector('.input-revenue').value) || 0;
+        totalBudget += parseFloat(row.querySelector('.input-budget')?.value) || 0;
+        totalInbox += parseFloat(row.querySelector('.input-inbox')?.value) || 0;
+        totalLead += parseFloat(row.querySelector('.input-lead')?.value) || 0;
+        totalRevenue += parseFloat(row.querySelector('.input-revenue')?.value) || 0;
     });
 
     const totalCPL = (totalLead > 0) ? (totalBudget / totalLead) : 0;
     const totalROAS = (totalBudget > 0) ? (totalRevenue / totalBudget) : 0;
 
-    // 1. อัปเดตตาราง Footer (Section 6)
-    document.getElementById('total-budget').textContent = formatCurrency(totalBudget);
-    document.getElementById('total-inbox').textContent = formatNumber(totalInbox);
-    document.getElementById('total-lead').textContent = formatNumber(totalLead);
-    document.getElementById('total-revenue').textContent = formatCurrency(totalRevenue);
-    document.getElementById('total-cpl').textContent = formatCurrency(totalCPL);
-    document.getElementById('total-roas').textContent = `${totalROAS.toFixed(2)}x`;
+    // 1. Update Table Footer (Section 6)
+    const totalBudgetEl = document.getElementById('total-budget');
+    const totalInboxEl = document.getElementById('total-inbox');
+    const totalLeadEl = document.getElementById('total-lead');
+    const totalRevenueEl = document.getElementById('total-revenue');
+    const totalCplEl = document.getElementById('total-cpl');
+    const totalRoasEl = document.getElementById('total-roas');
 
-    // 2. อัปเดต Stat Cards (Section 6)
-    document.getElementById('financial-budget').textContent = formatCurrency(totalBudget);
-    document.getElementById('financial-revenue').textContent = formatCurrency(totalRevenue);
-    document.getElementById('financial-roas').textContent = `${totalROAS.toFixed(2)}x`;
+    if (totalBudgetEl) totalBudgetEl.textContent = formatCurrency(totalBudget);
+    if (totalInboxEl) totalInboxEl.textContent = formatNumber(totalInbox);
+    if (totalLeadEl) totalLeadEl.textContent = formatNumber(totalLead);
+    if (totalRevenueEl) totalRevenueEl.textContent = formatCurrency(totalRevenue);
+    if (totalCplEl) totalCplEl.textContent = formatCurrency(totalCPL);
+    if (totalRoasEl) totalRoasEl.textContent = `${totalROAS.toFixed(2)}x`;
 
-    // 3. [THE LINK] เชื่อมข้อมูลใหม่ไปยัง Planner (Section 7)
+    // 2. Update Stat Cards (Section 6)
+    const financialBudgetEl = document.getElementById('financial-budget');
+    const financialRevenueEl = document.getElementById('financial-revenue');
+    const financialRoasEl = document.getElementById('financial-roas');
+
+    if (financialBudgetEl) financialBudgetEl.textContent = formatCurrency(totalBudget);
+    if (financialRevenueEl) financialRevenueEl.textContent = formatCurrency(totalRevenue);
+    if (financialRoasEl) financialRoasEl.textContent = `${totalROAS.toFixed(2)}x`;
+
+    // 3. [THE LINK] Update Planner (Section 7) with new totals
     const plannerInboxEl = document.getElementById('inboxes');
     if (plannerInboxEl) {
         plannerInboxEl.value = totalInbox;
     }
     
-    // 4. อัปเดต Note ใน Planner
+    // 4. Update Planner Notes
     const plannerNotes = document.getElementById('planner-notes');
     if (plannerNotes) {
-        // ดึงค่า % จาก Planner มาแสดงผล
-        const inboxToLeadPercent = (totalInbox > 0) ? (totalLead / totalInbox * 100).toFixed(1) : 0;
-        document.getElementById('inboxToLead').value = inboxToLeadPercent;
-        document.getElementById('inboxToLeadValue').textContent = `${inboxToLeadPercent}%`;
+        // Update Inbox -> Lead % in Planner based on new totals
+        const inboxToLeadPercent = (totalInbox > 0) ? (totalLead / totalInbox * 100) : 0;
+        const inboxToLeadEl = document.getElementById('inboxToLead');
+        const inboxToLeadValueEl = document.getElementById('inboxToLeadValue');
+        if (inboxToLeadEl) inboxToLeadEl.value = inboxToLeadPercent.toFixed(1);
+        if (inboxToLeadValueEl) inboxToLeadValueEl.textContent = `${inboxToLeadPercent.toFixed(1)}%`;
 
-        // (สมมติว่า 'sales' มาจาก Lead * 28.6% ตามค่าเริ่มต้น Planner)
-        const leadToSalePercent = parseFloat(document.getElementById('leadToSale').value) || 28.6;
+        // Calculate estimated sales based on Planner's Lead -> Sale %
+        const leadToSalePercent = parseFloat(document.getElementById('leadToSale')?.value) || 28.6;
         const totalSales = Math.round(totalLead * (leadToSalePercent / 100));
         
         plannerNotes.textContent = `* อิงจากผลรวมในตาราง: Inbox ${formatNumber(totalInbox)} → Lead ${formatNumber(totalLead)} → Sale ${formatNumber(totalSales)}`;
     }
 
-    // 5. สั่งให้ Planner คำนวณแนวโน้มใหม่
+    // 5. Trigger Planner recalculation
     if (typeof calcPlanner === 'function') {
         calcPlanner();
     }
@@ -126,36 +144,67 @@ function updateFinancialTotals() {
 
 
 /**
- * [MODIFIED] สร้างตารางการเงินแบบ Interactive
+ * [MODIFIED] Renders the interactive financial table.
  */
-function renderFinancials(financialData) {
+function renderFinancials(financialPerformanceData) { 
     const tableBody = document.getElementById('financial-table-body');
     const tableFooter = document.getElementById('financial-table-footer');
-    
-    if (!financialData || financialData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7">ไม่มีข้อมูลรายเดือน</td></tr>';
+
+    // Ensure elements exist
+    if (!tableBody || !tableFooter) {
+        console.error("Financial table body or footer element not found.");
         return;
     }
     
-    tableBody.innerHTML = ''; // Clear loading
+    // Use monthly_breakdown from the API response, or fallback to state.financialData
+    const financialData = financialPerformanceData?.monthly_breakdown || state.financialData; 
+    
+    if (!financialData || financialData.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7">ไม่มีข้อมูลรายเดือน</td></tr>';
+        // Render footer structure with zeros/placeholders
+         tableFooter.innerHTML = `
+            <tr>
+                <td>Total</td>
+                <td id="total-budget">฿0</td>
+                <td id="total-inbox">0</td>
+                <td id="total-lead">0</td>
+                <td id="total-revenue">฿0</td>
+                <td id="total-cpl">-</td>
+                <td id="total-roas" class="good">0.00x</td>
+            </tr>
+        `;
+        // Update stats cards with zeros too
+        const financialBudgetEl = document.getElementById('financial-budget');
+        const financialRevenueEl = document.getElementById('financial-revenue');
+        const financialRoasEl = document.getElementById('financial-roas');
+        if (financialBudgetEl) financialBudgetEl.textContent = formatCurrency(0);
+        if (financialRevenueEl) financialRevenueEl.textContent = formatCurrency(0);
+        if (financialRoasEl) financialRoasEl.textContent = `0.00x`;
+
+        console.warn("No monthly financial data found to render.");
+        return; // Exit if no monthly data
+    }
+    
+    tableBody.innerHTML = ''; // Clear loading message
     
     financialData.forEach(month => {
         const tr = document.createElement('tr');
+        // Use Math.round for currency values read from API
         tr.innerHTML = `
-            <td>${month.month}</td>
-            <td><input type="number" class="input-budget" value="${month.budget}"></td>
-            <td><input type="number" class="input-inbox" value="${month.inbox}"></td>
-            <td><input type="number" class="input-lead" value="${month.lead}"></td>
-            <td><input type="number" class="input-revenue" value="${month.revenue}"></td>
+            <td>${month.month || 'N/A'}</td> 
+            <td><input type="number" class="input-budget" value="${Math.round(month.budget || 0)}"></td>
+            <td><input type="number" class="input-inbox" value="${month.inbox || 0}"></td>
+            <td><input type="number" class="input-lead" value="${month.lead || 0}"></td>
+            <td><input type="number" class="input-revenue" value="${Math.round(month.revenue || 0)}"></td>
             <td class="cell-calc cell-cpl">...</td>
             <td class="cell-calc cell-roas">...</td>
         `;
         tableBody.appendChild(tr);
-        // คำนวณค่า CPL/ROAS เริ่มต้น
+        // Calculate initial CPL/ROAS for the row
         recalculateFinancialRow(tr);
     });
     
-    // สร้าง Footer
+    // Create Footer Structure
     tableFooter.innerHTML = `
         <tr>
             <td>Total</td>
@@ -168,126 +217,242 @@ function renderFinancials(financialData) {
         </tr>
     `;
     
-    // คำนวณ Total เริ่มต้น
+    // Calculate initial Totals
     updateFinancialTotals();
     
-    // [NEW] เพิ่ม Event Listener ที่ "tbody" (Event Delegation)
-    // เมื่อมีการพิมพ์ใน <input> ใดๆ ใน tbody...
+    // Add Event Listener using Event Delegation on the tbody
     tableBody.addEventListener('input', (event) => {
-        if (event.target.tagName === 'INPUT') {
+        // Check if the event was triggered by an INPUT element
+        if (event.target && event.target.tagName === 'INPUT') {
             const row = event.target.closest('tr');
-            recalculateFinancialRow(row); // คำนวณแถวที่เปลี่ยน
-            updateFinancialTotals(); // คำนวณผลรวมใหม่ทั้งหมด
+            if (row) {
+                recalculateFinancialRow(row); // Recalculate the changed row
+                updateFinancialTotals(); // Recalculate all totals and update planner
+            }
         }
     });
 }
 
 
 // ================================================================================
-// DATA RENDERING FUNCTIONS (V1 - Static)
+// DATA RENDERING FUNCTIONS (V1 - Static Placeholders / API Driven)
 // ================================================================================
 
-// เติมข้อมูลใน Funnel (จาก HTML ตัวอย่าง)
-function renderFunnel() {
-    document.getElementById('funnel-inboxes').textContent = formatNumber(3234);
-    document.getElementById('funnel-leads').textContent = formatNumber(279);
-    document.getElementById('funnel-sales').textContent = formatNumber(86);
+// Renders Funnel data
+function renderFunnel(funnelData) {
+    const inboxesEl = document.getElementById('funnel-inboxes');
+    const leadsEl = document.getElementById('funnel-leads');
+    const salesEl = document.getElementById('funnel-sales');
+
+    if (inboxesEl) inboxesEl.textContent = formatNumber(funnelData?.inboxes || 0);
+    if (leadsEl) leadsEl.textContent = formatNumber(funnelData?.qualified_leads || 0);
+    if (salesEl) salesEl.textContent = formatNumber(funnelData?.closed_sales || 0);
 }
 
-// เติมข้อมูลทีม Performance (จาก HTML ตัวอย่าง)
-function renderTeamPerformance() {
+// Renders Team Performance cards
+function renderTeamPerformance(teamData) {
     const container = document.getElementById('team-performance-grid');
-    container.innerHTML = ''; // Clear loading
-    
-    const teamData = [
-        { name: "💻 ทีมออนไลน์ (Online Team)", main_metric: "฿1,810,726", main_metric_label: "ยอดขายรวม (Total Revenue)", color: "#764ba2", analysis: "เป็นด่านหน้าที่สำคัญที่สุดในการสร้าง Lead และปิดการขายเบื้องต้น มีจำนวนเคสที่ปิดได้มากที่สุด (40 เคส) แต่มีขนาดของเคสเฉลี่ย (฿45,268) น้อยกว่าทีมหน้าร้าน", metrics: [ { label: "ยอดหลัก (เคสรีวิว x 40)", value: "฿1,599,960" }, { label: "มูลค่าเพิ่มจากหน้าร้าน", value: "฿210,766" } ] },
-        { name: "🏆 MAM (The Opener)", main_metric: "69.0%", main_metric_label: "ประสิทธิภาพการปิดการขาย (Closing Rate)", color: "#48bb78", analysis: "มีประสิทธิภาพสูงสุดในการเปลี่ยน Lead ให้เป็นนัดหมาย (Opener) สร้างโอกาสเข้าพบลูกค้าได้ดีที่สุด", metrics: [ { label: "ประสิทธิภาพการนัด", value: "29.0%" } ] },
-        { name: "💰 AU (The Closer)", main_metric: "85.0%", main_metric_label: "ประสิทธิภาพการปิดการขาย (Closing Rate)", color: "#667eea", analysis: "คือสุดยอดนักปิดการขาย (Closer) เมื่อได้เข้าพบลูกค้าแล้ว มีโอกาสปิดดีลได้สูงที่สุด", metrics: [ { label: "ประสิทธิภาพการนัด", value: "22.0%" } ] },
-        { name: "📈 GOLF (Opportunity for Growth)", main_metric: "47.4%", main_metric_label: "ประสิทธิภาพการปิดการขาย (Closing Rate)", color: "#f56565", analysis: "จุดที่ต้องพัฒนาคือขั้นตอนการให้คำปรึกษาและปิดการขายในระหว่างการนัดหมาย", metrics: [ { label: "ประสิทธิภาพการนัด", value: "21.3%" } ] }
-    ];
+    if (!container) {
+        console.error("Team performance container not found.");
+        return;
+    }
 
+    if (!teamData || teamData.length === 0) {
+        container.innerHTML = '<div class="stat-card"><p>ไม่มีข้อมูลทีม</p></div>';
+        return;
+    }
+    container.innerHTML = ''; // Clear loading message
+    
     teamData.forEach(team => {
         const card = document.createElement('div');
         card.className = 'stat-card';
         card.style.borderTop = `5px solid ${team.color || '#ccc'}`;
         
         let metricsHtml = '';
-        if(team.metrics) {
+        // Ensure metrics is an array before trying to iterate
+        if(team.metrics && Array.isArray(team.metrics)) { 
             team.metrics.forEach(metric => {
-                metricsHtml += `<div class="metric-item"><span>- ${metric.label}</span> <span>${metric.value}</span></div>`;
+                metricsHtml += `<div class="metric-item"><span>- ${metric.label || 'Metric'}</span> <span>${metric.value || '-'}</span></div>`;
             });
         }
 
         card.innerHTML = `
-            <h3>${team.name}</h3>
-            <div class="stat-value" style="color:${team.color || '#333'};">${team.main_metric}</div>
-            <div class="stat-label">${team.main_metric_label}</div>
+            <h3>${team.name || 'Unknown Team'}</h3>
+            <div class="stat-value" style="color:${team.color || '#333'};">${team.main_metric || 'N/A'}</div>
+            <div class="stat-label">${team.main_metric_label || 'Metric'}</div>
             ${metricsHtml}
-            <p class="stat-subtext"><strong>Analysis:</strong> ${team.analysis}</p>
+            <p class="stat-subtext"><strong>Analysis:</strong> ${team.analysis || 'No analysis available.'}</p>
         `;
         container.appendChild(card);
     });
 }
 
-// เติมคำแนะนำ
-function renderRecommendations() {
+// Renders Recommendations list
+function renderRecommendations(recommendations) {
     const list = document.getElementById('recommendations-list');
-    list.innerHTML = `
-        <li><strong>Individual Coaching for GOLF:</strong> ให้ AU สอนเทคนิคการปิดการขาย และให้ MAM สอนเทคนิคการสร้างนัดหมาย</li>
-        <li><strong>สร้างเกณฑ์คัดกรองลูกค้า (Lead Qualification):</strong> ONLINE ควรส่งต่อลูกค้ากำลังซื้อสูงให้ AU หรือ MAM โดยตรง</li>
-        <li><strong>สร้าง Lead Cycle เพื่อวัดผลและปรับปรุงประสิทธิภาพ:</strong> ทำความเข้าใจระยะเวลาในแต่ละขั้นตอนของกระบวนการขาย และหาทางปรับปรุงให้สั้นลง</li>
-    `;
+    if (!list) return;
+
+    if (!recommendations || recommendations.length === 0) {
+         list.innerHTML = '<li>ไม่มีคำแนะนำในขณะนี้</li>';
+         return;
+    }
+    // Ensure recommendations is an array before mapping
+    list.innerHTML = Array.isArray(recommendations) 
+        ? recommendations.map(rec => `<li>${rec || ''}</li>`).join('')
+        : '<li>ข้อมูลคำแนะนำไม่ถูกต้อง</li>';
 }
 
-// เติม KPI
-function renderKPIs() {
-    document.getElementById('kpi-inbox-lead').textContent = "เป้าหมาย 30%";
-    document.getElementById('kpi-lead-appt').textContent = "เป้าหมาย 90%";
-    document.getElementById('kpi-revenue-goal').textContent = "฿6.5M";
+// Renders KPIs using Planner Base data
+function renderKPIs(plannerBaseData) {
+    const inboxToLead = plannerBaseData?.inboxToLead_percent || 0;
+    // Assuming Lead -> Appt is related to Lead -> Sale for now (placeholder logic)
+    const leadToAppt = plannerBaseData?.leadToSale_percent || 0; 
+    const target = plannerBaseData?.target || 6500000; // Use default if missing
+
+    const kpiInboxLeadEl = document.getElementById('kpi-inbox-lead');
+    const kpiLeadApptEl = document.getElementById('kpi-lead-appt');
+    const kpiRevenueGoalEl = document.getElementById('kpi-revenue-goal');
+
+    if (kpiInboxLeadEl) kpiInboxLeadEl.textContent = `เป้าหมาย ${inboxToLead.toFixed(1)}%`;
+    if (kpiLeadApptEl) kpiLeadApptEl.textContent = `เป้าหมาย ${leadToAppt.toFixed(1)}%`; // Placeholder logic
+    if (kpiRevenueGoalEl) kpiRevenueGoalEl.textContent = formatCurrency(target);
+}
+
+// Populates the planner with initial data from API V2
+function populatePlanner(plannerBaseData) {
+    if (!plannerBaseData) {
+        console.warn("Planner base data missing from API response. Using default values.");
+        // Use default values if API data is missing
+        plannerBaseData = { 
+            target: 6500000, 
+            inboxes: 3234, 
+            inboxToLead_percent: 8.6, 
+            leadToSale_percent: 28.6, 
+            avg_ticket_size: 54368, 
+            leads: 276, // Calculated from defaults
+            sales: 79  // Calculated from defaults
+        };
+    }
+    
+    // Store base data for the Reset button
+    window.plannerBase = plannerBaseData; 
+
+    // Get references to Planner elements (ensure they exist)
+    const targetEl = document.getElementById('target');
+    const inboxesEl = document.getElementById('inboxes');
+    const inboxToLeadEl = document.getElementById('inboxToLead');
+    const leadToSaleEl = document.getElementById('leadToSale');
+    const ticketEl = document.getElementById('ticket');
+    const inboxToLeadValueEl = document.getElementById('inboxToLeadValue');
+    const plannerNotesEl = document.getElementById('planner-notes');
+
+    // Populate elements if they exist
+    if (targetEl) targetEl.value = plannerBaseData.target || 6500000;
+    if (inboxesEl) inboxesEl.value = plannerBaseData.inboxes || 0;
+    if (inboxToLeadEl) inboxToLeadEl.value = plannerBaseData.inboxToLead_percent || 0;
+    if (leadToSaleEl) leadToSaleEl.value = plannerBaseData.leadToSale_percent || 0;
+    if (ticketEl) ticketEl.value = plannerBaseData.avg_ticket_size || 0;
+    
+    if (inboxToLeadValueEl) inboxToLeadValueEl.textContent = `${(plannerBaseData.inboxToLead_percent || 0).toFixed(1)}%`;
+    
+     if (plannerNotesEl) {
+         plannerNotesEl.textContent = `* ค่าเริ่มต้นอิงจากผล Q3: Inbox ${formatNumber(plannerBaseData.inboxes || 0)} → Lead ${formatNumber(plannerBaseData.leads || 0)} → Sale ${formatNumber(plannerBaseData.sales || 0)}`;
+     }
+
+    // Initial calculation is now triggered by updateFinancialTotals after financials render
+    // calcPlanner(); 
 }
 
 
 // -- CORE LOGIC --
+/**
+ * Fetches data from API V2 and renders the entire report.
+ */
 async function fetchAndRenderReport() {
     if (!state.currentUser) {
         console.error("No user found. Aborting fetch.");
+        displayError(new Error("User session not found. Please log in again."));
         return;
     }
-    
+     // Check if apiV2 object and its method are available
+     if (typeof window.apiV2 === 'undefined' || typeof window.apiV2.getSalesReportV2 !== 'function') {
+         console.error("api-v2.js not loaded correctly or apiV2 object/method not found.");
+         displayError(new Error("Report API (V2) failed to load. Please check console for errors."));
+         return;
+     }
+
     try {
-        // [NOTE] เรายังไม่ได้เรียก API จริง
-        // เราจะใช้ข้อมูล Static ที่มีใน state และ HTML ตัวอย่างไปก่อน
-        // const reportData = await api.getSalesReport(state.currentUser.id, null, null);
-        // state.reportData = reportData; 
+        console.log("Fetching Report V2 data...");
+        // Call the V2 API function via the globally available apiV2 object
+        const reportData = await window.apiV2.getSalesReportV2(state.currentUser.id, null, null);
+
+        // Basic check if data is an object, even if empty
+        if (!reportData || typeof reportData !== 'object') {
+            throw new Error("API V2 did not return valid data (expected an object).");
+        }
         
-        // [NEW] เรียกใช้ฟังก์ชัน Render ใหม่
-        renderFunnel();
-        renderTeamPerformance();
-        renderRecommendations();
-        renderKPIs();
+        console.log("Report V2 Data Received:", reportData); 
+        state.reportData = reportData; // Store fetched data
         
-        // [MODIFIED] เรียกใช้ฟังก์ชันสร้างตารางการเงินแบบ Interactive
-        // โดยส่งข้อมูลเริ่มต้น (state.financialData) เข้าไป
-        renderFinancials(state.financialData);
+        // Render sections using data from API V2, providing empty objects as fallbacks
+        renderFunnel(reportData.funnel_analysis || {});
+        renderTeamPerformance(reportData.team_performance || []);
+        renderRecommendations(reportData.recommendations || []);
+        renderKPIs(reportData.planner_base_data || {}); // Use planner base for KPIs
+        
+        // Render the interactive financial table using API data or fallback
+        renderFinancials(reportData.financial_performance || { monthly_breakdown: state.financialData }); 
+        
+        // Populate the planner using API data (this happens AFTER financials render and totals calc)
+        populatePlanner(reportData.planner_base_data || {});
 
     } catch (error) {
-        console.error("Failed to load report data:", error);
-        displayError(error);
+        console.error("Failed to load or render report V2 data:", error);
+        displayError(error); // Show user-friendly error message
     }
 }
 
 // -- INITIALIZATION --
 async function initializeApp() {
-    // [MOCK] จำลองว่ามี User เพื่อให้หน้าเว็บทำงานได้
-    // const { data: { user } } = await window.supabaseClient.auth.getUser();
-    const user = { id: 'mock-user' };
+    // Ensure supabaseClient is ready before proceeding
+    await new Promise(resolve => {
+         let checks = 0;
+         const interval = setInterval(() => {
+             checks++;
+             if (window.supabaseClient || checks > 50) { // Timeout after ~2.5s
+                 clearInterval(interval);
+                 resolve();
+             }
+         }, 50);
+    });
+    
+    if (!window.supabaseClient) {
+         console.error("Supabase client failed to initialize.");
+         displayError(new Error("Failed to connect to backend service."));
+         return;
+    }
+
+    // Get actual user session
+    const { data: { session }, error: sessionError } = await window.supabaseClient.auth.getSession();
+    
+    if (sessionError) {
+         console.error("Error getting user session:", sessionError);
+         displayError(new Error("Error verifying user session."));
+         return;
+    }
+    
+    const user = session?.user;
     
     if (user) {
         state.currentUser = user;
-        // ดึงข้อมูลและ Render ทันที
+        console.log("User session found:", user.id);
+        // Fetch and render data immediately
         fetchAndRenderReport();
     } else {
-        displayError(new Error("ไม่พบข้อมูลผู้ใช้, กรุณาล็อกอินใหม่อีกครั้ง"));
+        console.error("User not logged in, should have been redirected.");
+        // Redirect logic is in HTML, but display error as fallback.
+        displayError(new Error("User authentication failed. Please log in again."));
+        // Optionally redirect: window.location.replace('./login.html');
     }
 }
 
@@ -299,13 +464,15 @@ document.addEventListener('DOMContentLoaded', initializeApp);
 // SCENARIO PLANNER LOGIC (SECTION 7)
 // ================================================================================
 
-// (เก็บค่าเริ่มต้นไว้ใน window object เพื่อให้ปุ่ม Reset ใช้งานได้)
+// Default base values, will be overwritten by API data via populatePlanner
 window.plannerBase = { 
+    target: 6500000, 
     inboxes: 3234, 
     inboxToLead_percent: 8.6, 
     leadToSale_percent: 28.6, 
-    avg_ticket_size: 54368, 
-    target: 6500000 
+    avg_ticket_size: 54368,
+    leads: 276, 
+    sales: 79 
 };
 
 // References to Planner elements
@@ -322,28 +489,35 @@ const gapOut = document.getElementById('gapOut');
 const insightEl = document.getElementById('insight');
 
 /**
- * [MODIFIED] เปลี่ยนชื่อฟังก์ชันเป็น 'calcPlanner' เพื่อไม่ให้ซ้ำ
+ * Calculates and updates the Scenario Planner results based on current inputs.
  */
 function calcPlanner() {
-    const target = Number(targetEl.value) || 0;
-    const inboxes = Number(inboxesEl.value) || 0;
-    const inboxToLead = Number(inboxToLeadEl.value) || 0;
-    const leadToSale = Number(leadToSaleEl.value) || 0;
-    const ticket = Number(ticketEl.value) || 0;
+    // Ensure elements exist before accessing value to prevent errors
+    const target = Number(targetEl?.value) || 0;
+    const inboxes = Number(inboxesEl?.value) || 0;
+    const inboxToLead = Number(inboxToLeadEl?.value) || 0;
+    const leadToSale = Number(leadToSaleEl?.value) || 0;
+    const ticket = Number(ticketEl?.value) || 0;
 
     const leads = Math.round((inboxes * inboxToLead) / 100);
     const sales = Math.round((leads * leadToSale) / 100);
     const revenue = sales * ticket;
     const gap = revenue - target;
 
-    leadsOut.textContent = leads.toLocaleString();
-    salesOut.textContent = sales.toLocaleString();
-    revenueOut.textContent = formatCurrency(revenue);
-    gapOut.textContent = (gap >= 0 ? '+ ' : '') + formatCurrency(gap);
+    // Update UI elements only if they exist
+    if (leadsOut) leadsOut.textContent = leads.toLocaleString();
+    if (salesOut) salesOut.textContent = sales.toLocaleString();
+    if (revenueOut) revenueOut.textContent = formatCurrency(revenue);
+    if (gapOut) gapOut.textContent = (gap >= 0 ? '+ ' : '') + formatCurrency(gap);
 
-    gapOut.parentElement.classList.remove('positive', 'negative');
-    gapOut.parentElement.classList.add(gap >= 0 ? 'positive' : 'negative');
+    // Update gap card style (positive/negative)
+    const gapCard = gapOut?.parentElement;
+    if (gapCard) {
+        gapCard.classList.remove('positive', 'negative');
+        gapCard.classList.add(gap >= 0 ? 'positive' : 'negative');
+    }
 
+    // Generate insight text
     let insight = '';
     if (gap >= 0) {
         const revenueOver = formatCurrency(gap);
@@ -351,48 +525,63 @@ function calcPlanner() {
     } else {
         const missing = Math.abs(gap);
         const neededSales = (ticket > 0) ? Math.ceil(missing / ticket) : 0;
+        // Ensure leadToSale is not zero before dividing
         const neededLeads = (leadToSale > 0) ? Math.ceil(neededSales / (leadToSale / 100)) : 0;
+        // Ensure inboxes is not zero before dividing
         const targetConversion = (inboxes > 0) ? (neededLeads * 100) / inboxes : 0;
         
         insight = `ยังขาด <span class="planner-highlight">${formatCurrency(missing)}</span> ต้องเพิ่มอีกประมาณ <span class="planner-highlight">${neededSales}</span> เคสเพื่อถึงเป้า <br><br>
         เพื่อบรรลุเป้า คุณต้องเพิ่ม Conversion Rate ของ Inbox→Lead เป็น <span class="planner-highlight">${targetConversion.toFixed(1)}%</span> หรือเพิ่ม <span class="planner-highlight">${neededLeads}</span> Leads`;
     }
-    insightEl.innerHTML = insight;
+    // Update insight element if it exists
+    if (insightEl) insightEl.innerHTML = insight;
 }
 
 // --- Event Listeners for Planner (Section 7) ---
-inboxToLeadEl.addEventListener('input', () => {
-    inboxToLeadValue.textContent = `${inboxToLeadEl.value}%`;
-    calcPlanner(); // คำนวณ Planner
-    // [NEW] ถ้าแก้ % ใน Planner ให้ตารางการเงิน (Section 6) อัปเดต Note
-    updateFinancialTotals();
-});
+// Add listeners only if the elements exist
 
-// [NEW] ทำให้ช่อง Input อื่นๆ ของ Planner อัปเดต Real-time ด้วย
-inboxesEl.addEventListener('input', calcPlanner);
-leadToSaleEl.addEventListener('input', calcPlanner);
-ticketEl.addEventListener('input', calcPlanner);
-targetEl.addEventListener('input', calcPlanner);
+if (inboxToLeadEl && inboxToLeadValue) {
+    inboxToLeadEl.addEventListener('input', () => {
+        inboxToLeadValue.textContent = `${inboxToLeadEl.value}%`;
+        calcPlanner(); // Recalculate Planner
+        // If % in Planner changes, update the note in Planner based on Financial table totals
+        updateFinancialTotals(); 
+    });
+}
 
-// ปุ่มคำนวณ (เผื่อไว้)
-document.getElementById('calcBtn').addEventListener('click', calcPlanner);
+// Add listeners for other planner inputs to trigger recalculation
+if (inboxesEl) inboxesEl.addEventListener('input', calcPlanner);
+if (leadToSaleEl) leadToSaleEl.addEventListener('input', calcPlanner);
+if (ticketEl) ticketEl.addEventListener('input', calcPlanner);
+if (targetEl) targetEl.addEventListener('input', calcPlanner);
 
-// ปุ่ม Reset
-document.getElementById('resetBtn').addEventListener('click', () => {
-    // ใช้ค่า Base ที่ดึงมาจาก API (ถ้ามี) หรือค่า Default
-    const base = window.plannerBase; 
-    
-    targetEl.value = base.target;
-    inboxesEl.value = base.inboxes;
-    inboxToLeadEl.value = base.inboxToLead_percent;
-    leadToSaleEl.value = base.leadToSale_percent;
-    ticketEl.value = base.avg_ticket_size;
-    inboxToLeadValue.textContent = `${base.inboxToLead_percent}%`;
-    
-    // [MODIFIED] เมื่อ Reset Planner ให้ Reset ตารางการเงินกลับไปค่าเริ่มต้นด้วย
-    renderFinancials(state.financialData); // ซึ่งจะ re-calc และ re-link planner อัตโนมัติ
-});
+// Calculate button (optional, as inputs trigger real-time updates)
+const calcBtn = document.getElementById('calcBtn');
+if (calcBtn) calcBtn.addEventListener('click', calcPlanner);
 
-// เรียกใช้ครั้งแรก (แม้ว่าข้อมูลจาก API จะยังไม่มา)
-// (เราจะย้ายการเรียกครั้งแรกไปไว้ใน `renderFinancials` เพื่อให้แน่ใจว่า Total ถูกต้องก่อน)
-// calcPlanner();
+// Reset button
+const resetBtn = document.getElementById('resetBtn');
+if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+        // Use base values stored in window.plannerBase (either default or from API)
+        const base = window.plannerBase || {}; 
+        
+        // Reset Planner inputs to base values
+        if (targetEl) targetEl.value = base.target || 6500000;
+        if (inboxesEl) inboxesEl.value = base.inboxes || 0;
+        if (inboxToLeadEl) inboxToLeadEl.value = base.inboxToLead_percent || 0;
+        if (leadToSaleEl) leadToSaleEl.value = base.leadToSale_percent || 0;
+        if (ticketEl) ticketEl.value = base.avg_ticket_size || 0;
+        if (inboxToLeadValue) inboxToLeadValue.textContent = `${(base.inboxToLead_percent || 0).toFixed(1)}%`;
+        
+        // Resetting Planner should also reset the Financial table back to the initial API/fallback values
+        // Re-fetch the initial financial data from state.reportData or state.financialData
+        const initialFinancialData = state.reportData?.financial_performance?.monthly_breakdown || state.financialData;
+        
+        // Re-render the financial table with the initial data.
+        // This function call will automatically trigger updateFinancialTotals and calcPlanner.
+        renderFinancials({ monthly_breakdown: initialFinancialData }); 
+    });
+}
+
+// Initial calculation is triggered within the fetchAndRenderReport -> renderFinancials -> updateFinancialTotals chain.
