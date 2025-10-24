@@ -380,4 +380,66 @@ body {
     .excel-table thead th:nth-child(4) {
         z-index: 101;
     }
+
+    /* === [START] MOBILE RESPONSIVE FIXES === */
+    
+    /* 4. แก้ไข Header (โลโก้ + ปุ่ม) ให้เรียงซ้อนกัน */
+    .header-content {
+        flex-direction: column; /* เรียงแนวตั้ง */
+        align-items: flex-start; /* ชิดซ้าย */
+        gap: 15px; /* เพิ่มระยะห่าง */
+    }
+
+    .user-info {
+        flex-wrap: wrap; /* ห่อปุ่ม เมื่อล้น */
+        gap: 8px; /* ระยะห่างระหว่างปุ่ม */
+    }
+
+    /* 5. แก้ไข Toolbar (ฟิลเตอร์ + ปุ่ม) ให้เรียงซ้อนกัน */
+    .toolbar {
+        flex-direction: column; /* เรียงแนวตั้ง */
+        align-items: stretch; /* ยืดเต็มความกว้าง */
+        gap: 10px;
+    }
+
+    .toolbar-left, .toolbar-right {
+        flex-direction: column; /* เรียงแนวตั้ง */
+        width: 100%;
+        gap: 10px;
+    }
+
+    /* 6. ทำให้ช่องค้นหา, Dropdown, และกล่องวันที่ เต็มความกว้าง */
+    .search-container, 
+    .search-input, 
+    .filter-select {
+        width: 100%;
+    }
+
+    .date-filter-container {
+        flex-direction: column; /* เรียงปุ่มวันที่และช่องวันที่แนวตั้ง */
+        align-items: stretch;
+        width: 100%;
+    }
+    
+    .date-input {
+        width: 100%; /* ช่องวันที่เต็มความกว้าง */
+    }
+
+    /* 7. แก้ไขปุ่ม "เพิ่มลูกค้า" และ "รีเฟรช" */
+    .action-buttons {
+        width: 100%;
+        flex-direction: column; /* เรียงแนวตั้ง */
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* 8. ปรับความสูงตารางสำหรับมือถือ (เนื่องจาก Header และ Toolbar สูงขึ้น) */
+    .table-wrapper {
+        max-height: calc(100vh - 500px); /* ให้พื้นที่น้อยลง เพราะเมนูด้านบนกินที่เยอะขึ้น */
+    }
+
+    /* === [END] MOBILE RESPONSIVE FIXES === */
 }
