@@ -41,7 +41,7 @@ const DROPDOWN_OPTIONS = {
         "เว็บไซต์",
         "AGENCY",
         "IG",
-        "Tiktok ", // Note: Trailing space
+        "Tiktok",
         "FMBC"
     ],
     procedure: [
@@ -1188,3 +1188,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
