@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Performance Analysis Report Q3 2025</title>
+    
+    <link rel="stylesheet" href="./report-2.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
+    <script>
+        (async () => {
+            await new Promise(resolve => setTimeout(resolve, 50));
+            if (window.supabaseClient) {
+                const { data: { session } } = await window.supabaseClient.auth.getSession();
+                if (!session) {
+                    window.location.replace('./login.html');
+                }
+            } else {
+                console.error("Supabase client not initialized for auth check.");
+            }
+        })();
+    </script>
+</head>
+<body>
+    
+    <div class="container">
+        <div class="header">
+            <h1>Sales Performance Analysis Report Q3 2025</h1>
+            <p>Strategic Sales Performance & Deep Dive Analysis</p>
+            <a href="./index.html" class="back-link">กลับหน้าหลัก (CRM)</a>
+        </div>
+
+        <div class="content-wrapper">
+            <div class="content">
+
+                <div class="section">
+                    <h2 class="section-title">1. Executive Summary (Overall Performance)</h2>
+                    <div class="insight-box note">
+                        <div class="insight-title">หมายเหตุสำคัญ (Important Note)</div>
+                        <div class="insight-text">
+                            รายงานฉบับนี้ประกอบด้วยการวิเคราะห์ข้อมูล 2 ชุด: <br>
+                            1. <strong>Overall Performance (ส่วนที่ 1-5):</strong> คือข้อมูลภาพรวมทั้งหมดที่รวบรวมจากทุกส่วนงาน<br>
+                            2. <strong>Main Campaign Deep Dive (ส่วนที่ 6-7):</strong> คือข้อมูลที่เจาะจงเฉพาะแคมเปญหลักซึ่งสามารถวัดผลด้านการตลาดและการเงินได้โดยตรง ตัวเลขใน 2 ส่วนนี้อาจมีความแตกต่างกัน
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Inboxes</div><div class="stat-value" id="funnel-inboxes">...</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Qualified Leads</div><div class="stat-value" id="funnel-leads">...</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Closed Sales</div><div class="stat-value" id="funnel-sales">...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">3. Performance Deep Dive (Overall)</h2>
+                    <div class="stats-grid" style="grid-template-columns: 1fr 1fr; gap: 25px;" id="team-performance-grid">
+                         <div class="stat-card" style="border-top: 5px solid #ccc;">
+                            <h3>Loading Teams...</h3>
+                         </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">4. Strategic Recommendations</h2>
+                    <div class="plan-box quick-win">
+                        <h4>⚡ Quick Wins</h4>
+                        <ul id="recommendations-list">
+                            <li>Loading recommendations...</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">5. Q4 Funnel KPIs & Targets</h2>
+                     <div class="stats-grid">
+                        <div class="stat-card"><div class="stat-label">KPI: Inbox → Lead</div><div class="stat-value" id="kpi-inbox-lead">...</div></div>
+                        <div class="stat-card"><div class="stat-label">KPI: Lead → Appointment</div><div class="stat-value" id="kpi-lead-appt">...</div></div>
+                        <div class="stat-card highlight"><div class="stat-label">Goal: Total Revenue</div><div class="stat-value" id="kpi-revenue-goal">...</div></div>
+                    </div>
+                </div>
+                
+                <hr style="border: none; border-top: 2px dashed #ddd; margin: 60px 0;">
+
+                <div class="section">
+                    <h2 class="section-title">6. Financial & Marketing Performance (Main Campaign)</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card"><div class="stat-label">Total Ad Budget</div><div class="stat-value" id="financial-budget">...</div></div>
+                        <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value" id="financial-revenue">...</div></div>
+                        <div class="stat-card"><div class="stat-label">ROAS</div><div class="stat-value roas" id="financial-roas">...</div></div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>เดือน</th>
+                                    <th>งบประมาณ (฿)</th>
+                                    <th>Inbox</th>
+                                    <th>Lead</th>
+                                    <th>ยอดขาย (฿)</th>
+                                    <th>CPL (฿)</th>
+                                    <th>ROAS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financial-table-body">
+                                <tr><td colspan="7">Loading interactive data...</td></tr>
+                            </tbody>
+                            <tfoot id="financial-table-footer">
+                                </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">7. Q4 Scenario Planner</h2>
+                    <main class="planner-main">
+                        <section class="panel">
+                            <h3>กำหนดเป้าหมายและปรับตัวแปร</h3>
+                            <div class="row">
+                                <label>เป้าหมายยอดขาย (฿)</label>
+                                <input id="target" type="number" value="6500000" placeholder="6,500,000">
+                            </div>
+                            <div class="row">
+                                <label>จำนวน Inbox</label>
+                                <input id="inboxes" type="number" value="3234">
+                            </div>
+                            <div class="row">
+                                <label>Inbox → Lead (%)</label>
+                                <input id="inboxToLead" type="range" min="1" max="50" step="0.1" value="8.6">
+                            </div>
+                            <div class="slider-info">
+                                <span id="inboxToLeadValue">8.6%</span>
+                                <span>ช่วงค่าเฉลี่ย: 8.6% - 13.6%</span>
+                            </div>
+                            <div class="row" style="margin-top:16px;">
+                                <label>Lead → Sale (%)</label>
+                                <input id="leadToSale" type="number" value="28.6" step="0.1">
+                            </div>
+                            <div class="row">
+                                <label>ค่าเฉลี่ยต่อเคส (฿)</label>
+                                <input id="ticket" type="number" value="54368">
+                            </div>
+                            <div class="actions">
+                                <button id="calcBtn">คำนวณ</button>
+                                <button id="resetBtn" class="secondary">รีเซ็ต</button>
+                            </div>
+                            <div class="notes" id="planner-notes">
+                                * ค่าเริ่มต้นอิงจากผลจริง Q3
+                            </div>
+                        </section>
+
+                        <aside class="panel">
+                            <h3>ผลการจำลอง (Forecast)</h3>
+                            <div class="result-grid">
+                                <div class="card"><h4>จำนวน Leads</h4><p id="leadsOut">—</p></div>
+                                <div class="card"><h4>จำนวนเคสปิดได้</h4><p id="salesOut">—</p></div>
+                                <div class="card"><h4>ยอดขายรวม (Revenue)</h4><p id="revenueOut">—</p></div>
+                                <div class="card"><h4>ส่วนต่างจากเป้า</h4><p id="gapOut">—</p></div>
+                            </div>
+                            <div class="planner-insight-box">
+                                <h4>Insights & Strategic Recommendations</h4>
+                                <p id="insight">—</p>
+                            </div>
+                        </aside>
+                    </main>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="./api.js"></script>
+    <script src="./report-2.js"></script>
+</body>
+</html>
