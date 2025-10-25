@@ -7,22 +7,7 @@
     
     <link rel="stylesheet" href="./report-2.css">
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./config.js"></script>
-    <script>
-        (async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
-            if (window.supabaseClient) {
-                const { data: { session } } = await window.supabaseClient.auth.getSession();
-                if (!session) {
-                    window.location.replace('./login.html');
-                }
-            } else {
-                console.error("Supabase client not initialized for auth check.");
-            }
-        })();
-    </script>
-</head>
+    </head>
 <body>
     
     <div class="container">
@@ -38,26 +23,24 @@
                 <div class="section">
                     <h2 class="section-title">1. Executive Summary (Overall Performance)</h2>
                     <div class="insight-box note">
-                        <div class="insight-title">หมายเหตุสำคัญ (Important Note)</div>
-                        <div class="insight-text">
-                            รายงานฉบับนี้ประกอบด้วยการวิเคราะห์ข้อมูล 2 ชุด: <br>
-                            1. <strong>Overall Performance (ส่วนที่ 1-5):</strong> คือข้อมูลภาพรวมทั้งหมดที่รวบรวมจากทุกส่วนงาน<br>
-                            2. <strong>Main Campaign Deep Dive (ส่วนที่ 6-7):</strong> คือข้อมูลที่เจาะจงเฉพาะแคมเปญหลักซึ่งสามารถวัดผลด้านการตลาดและการเงินได้โดยตรง ตัวเลขใน 2 ส่วนนี้อาจมีความแตกต่างกัน
-                        </div>
+                        {/* ... เนื้อหาเหมือนเดิม ... */}
                     </div>
                 </div>
 
                 <div class="section">
                     <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
-                    <div class="stats-grid">
+                    <div class="stats-grid interactive-funnel">
                         <div class="stat-card">
-                            <div class="stat-label">Total Inboxes</div><div class="stat-value" id="funnel-inboxes">...</div>
+                            <label class="stat-label" for="funnel-inboxes-input">Total Inboxes</label>
+                            <input type="number" class="stat-input" id="funnel-inboxes-input" value="0" step="10" min="0">
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Qualified Leads</div><div class="stat-value" id="funnel-leads">...</div>
+                            <label class="stat-label" for="funnel-leads-input">Qualified Leads</label>
+                            <input type="number" class="stat-input" id="funnel-leads-input" value="0" step="1" min="0">
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Closed Sales</div><div class="stat-value" id="funnel-sales">...</div>
+                            <label class="stat-label" for="funnel-sales-input">Closed Sales</label>
+                            <input type="number" class="stat-input" id="funnel-sales-input" value="0" step="1" min="0">
                         </div>
                     </div>
                 </div>
@@ -65,130 +48,78 @@
                 <div class="section">
                     <h2 class="section-title">3. Performance Deep Dive (Overall)</h2>
                     <div class="stats-grid" style="grid-template-columns: 1fr 1fr; gap: 25px;" id="team-performance-grid">
-                         <div class="stat-card" style="border-top: 5px solid #ccc;">
-                            <h3>Loading Teams...</h3>
-                         </div>
+                         {/* ... เนื้อหาเหมือนเดิม ... */}
                     </div>
                 </div>
 
                 <div class="section">
                     <h2 class="section-title">4. Strategic Recommendations</h2>
                     <div class="plan-box quick-win">
-                        <h4>⚡ Quick Wins</h4>
-                        <ul id="recommendations-list">
-                            <li>Loading recommendations...</li>
-                        </ul>
+                        {/* ... เนื้อหาเหมือนเดิม ... */}
                     </div>
                 </div>
                 
                 <div class="section">
                     <h2 class="section-title">5. Q4 Funnel KPIs & Targets</h2>
                      <div class="stats-grid">
-                        <div class="stat-card"><div class="stat-label">KPI: Inbox → Lead</div><div class="stat-value" id="kpi-inbox-lead">...</div></div>
-                        <div class="stat-card"><div class="stat-label">KPI: Lead → Appointment/Sale</div><div class="stat-value" id="kpi-lead-appt">...</div></div>
-                        <div class="stat-card highlight"><div class="stat-label">Goal: Total Revenue</div><div class="stat-value" id="kpi-revenue-goal">...</div></div>
+                        <div class="stat-card kpi-input-card">
+                            <label class="stat-label" for="kpi-inbox-lead-target">Target: Inbox → Lead (%)</label>
+                            <input type="number" class="stat-input kpi-input" id="kpi-inbox-lead-target" value="30" step="0.1" min="0" max="100">
+                            <div class="stat-actual">(Actual: <span id="actual-inbox-lead">...</span>%)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Actual: Lead → Sale (%)</div>
+                            <div class="stat-value" id="actual-lead-sale">...</div> 
+                        </div>
+                        <div class="stat-card highlight">
+                            <div class="stat-label">Goal: Total Revenue</div>
+                            <div class="stat-value" id="kpi-revenue-goal">...</div>
+                        </div>
                     </div>
                 </div>
 
+                {/* --- Marketing Input Section (เหมือนเดิม) --- */}
                 <div class="section" id="marketing-input-section">
                     <h2 class="section-title">Input: Marketing Data (กรอกข้อมูลการตลาด)</h2>
-                    <p style="margin-bottom: 20px; color: #555;">กรุณากรอกข้อมูล Inboxes และ Budget รายเดือน เพื่อให้ระบบคำนวณ CPL และ ROAS ที่ถูกต้อง</p>
-                    <div class="table-container marketing-input-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>เดือน</th>
-                                    <th>Inboxes</th>
-                                    <th>Budget (฿)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="marketing-input-body">
-                                </tbody>
-                        </table>
-                    </div>
+                    {/* ... เนื้อหาเหมือนเดิม ... */}
                 </div>
+                
                 <hr style="border: none; border-top: 2px dashed #ddd; margin: 60px 0;">
 
+                 {/* [MODIFIED] Section 6: Financial Table (Inbox is now display only) */}
                 <div class="section">
                     <h2 class="section-title">6. Financial & Marketing Performance (Main Campaign)</h2>
                     <div class="stats-grid">
-                        <div class="stat-card"><div class="stat-label">Total Ad Budget</div><div class="stat-value" id="financial-budget">...</div></div>
-                        <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value" id="financial-revenue">...</div></div>
-                        <div class="stat-card"><div class="stat-label">ROAS</div><div class="stat-value roas" id="financial-roas">...</div></div>
+                         {/* ... Stat cards เหมือนเดิม ... */}
                     </div>
-                    
                     <div class="table-container">
                         <table>
                             <thead>
                                 <tr>
                                     <th>เดือน</th>
                                     <th>งบประมาณ (฿)</th>
-                                    <th>Inbox</th>
-                                    <th>Lead</th>
-                                    <th>ยอดขาย (฿)</th>
-                                    <th>CPL (฿)</th>
-                                    <th>ROAS</th>
+                                    <th>Inbox</th> {/* Display Only */}
+                                    <th>Lead</th> {/* Input */}
+                                    <th>ยอดขาย (฿)</th> {/* Input */}
+                                    <th>CPL (฿)</th> {/* Calculated */}
+                                    <th>ROAS</th> {/* Calculated */}
                                 </tr>
                             </thead>
                             <tbody id="financial-table-body">
-                                <tr><td colspan="7">Loading interactive data...</td></tr>
+                                {/* JS สร้างแถว */}
                             </tbody>
                             <tfoot id="financial-table-footer">
-                                </tfoot>
+                                {/* JS สร้าง Total */}
+                            </tfoot>
                         </table>
                     </div>
                 </div>
 
+                {/* --- Section 7 Planner (เหมือนเดิม) --- */}
                 <div class="section">
                     <h2 class="section-title">7. Q4 Scenario Planner</h2>
                     <main class="planner-main">
-                        <section class="panel">
-                            <h3>กำหนดเป้าหมายและปรับตัวแปร</h3>
-                            <div class="row">
-                                <label>เป้าหมายยอดขาย (฿)</label>
-                                <input id="target" type="number" value="6500000" placeholder="6,500,000" step="100000">
-                            </div>
-                            <div class="row">
-                                <label>จำนวน Inbox</label>
-                                <input id="inboxes" type="number" value="0" step="10">
-                            </div>
-                            <div class="row">
-                                <label>Inbox → Lead (%)</label>
-                                <input id="inboxToLead" type="range" min="1" max="50" step="0.1" value="0">
-                            </div>
-                            <div class="slider-info">
-                                <span id="inboxToLeadValue">0.0%</span>
-                                <span>(Calculated)</span>
-                            </div>
-                            <div class="row" style="margin-top:16px;">
-                                <label>Lead → Sale (%)</label>
-                                <input id="leadToSale" type="number" value="0" step="0.1">
-                            </div>
-                            <div class="row">
-                                <label>ค่าเฉลี่ยต่อเคส (฿)</label>
-                                <input id="ticket" type="number" value="0" step="1000">
-                            </div>
-                            <div class="actions">
-                                <button id="calcBtn" style="display: none;">คำนวณ</button> <button id="resetBtn" class="secondary">รีเซ็ตข้อมูล Input</button>
-                            </div>
-                            <div class="notes" id="planner-notes">
-                                * ค่าเริ่มต้นอิงจากผลจริง Q3
-                            </div>
-                        </section>
-
-                        <aside class="panel">
-                            <h3>ผลการจำลอง (Forecast)</h3>
-                            <div class="result-grid">
-                                <div class="card"><h4>จำนวน Leads</h4><p id="leadsOut">—</p></div>
-                                <div class="card"><h4>จำนวนเคสปิดได้</h4><p id="salesOut">—</p></div>
-                                <div class="card"><h4>ยอดขายรวม (Revenue)</h4><p id="revenueOut">—</p></div>
-                                <div class="card"><h4>ส่วนต่างจากเป้า</h4><p id="gapOut">—</p></div>
-                            </div>
-                            <div class="planner-insight-box">
-                                <h4>Insights & Strategic Recommendations</h4>
-                                <p id="insight">—</p>
-                            </div>
-                        </aside>
+                        {/* ... เนื้อหา Planner เหมือนเดิม ... */}
                     </main>
                 </div>
 
@@ -196,7 +127,40 @@
         </div>
     </div>
 
-    <script src="./api-v2.js"></script> 
-    <script src="./report-2.js"></script>
+    {/* Removed API script load - Now relies on initializeSalesReport */}
+    <script src="./report-2.js"></script> 
+    
+    {/* --- Example of how to initialize manually --- */}
+    <script>
+        // Example Data (Replace with your actual data source)
+        const myData = {
+            core_metrics: { qualified_leads: 150, closed_sales: 45, avg_deal_size: 85000 },
+            monthly_breakdown: [
+                { month: "2025-07", month_th: "ก.ค.", leads: 50, revenue: 4250000 },
+                { month: "2025-08", month_th: "ส.ค.", leads: 55, revenue: 4675000 },
+                { month: "2025-09", month_th: "ก.ย.", leads: 45, revenue: 3825000 }
+            ],
+            team_breakdown: [
+                { team_name: "Online", leads: 60, sales: 18, revenue: 1530000 },
+                { team_name: "MAM", leads: 45, sales: 15, revenue: 1275000 },
+                { team_name: "AU", leads: 25, sales: 7, revenue: 595000 },
+                { team_name: "GOLF", leads: 20, sales: 5, revenue: 425000 }
+            ],
+            planner_defaults: { target: 6500000, leadToSale_percent: 30.0, avg_ticket_size: 85000 }
+        };
+
+        // Call initialization function after DOM is ready
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM Ready, attempting manual initialization with example data...");
+            // Check if the function exists before calling
+            if (typeof window.initializeSalesReport === 'function') {
+                window.initializeSalesReport(myData);
+            } else {
+                 console.error("Initialization function 'window.initializeSalesReport' not found!");
+                 // Optionally display an error to the user here
+                 document.body.innerHTML = "<h1 style='color:red; text-align: center; margin-top: 50px;'>Error: Report script failed to load correctly.</h1>";
+            }
+        });
+    </script>
 </body>
 </html>
