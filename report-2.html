@@ -85,7 +85,53 @@
                 <div class="section">
                     <h2 class="section-title">7. Q4 Scenario Planner</h2>
                     <main class="planner-main">
-                        {/* ... เนื้อหา Planner เหมือนเดิม ... */}
+                        <section class="panel">
+                            <h3>กำหนดเป้าหมายและปรับตัวแปร</h3>
+                            <div class="row">
+                                <label>เป้าหมายยอดขาย (฿)</label>
+                                <input id="target" type="number" value="6500000" placeholder="6,500,000" step="100000">
+                            </div>
+                            <div class="row">
+                                <label>จำนวน Inbox</label>
+                                <input id="inboxes" type="number" value="0" step="10" readonly> </div>
+                            <div class="row">
+                                <label>Inbox → Lead (%)</label>
+                                <input id="inboxToLead" type="range" min="1" max="50" step="0.1" value="0">
+                            </div>
+                            <div class="slider-info">
+                                <span id="inboxToLeadValue">0.0%</span>
+                                <span>(Calculated)</span>
+                            </div>
+                            <div class="row" style="margin-top:16px;">
+                                <label>Lead → Sale (%)</label>
+                                <input id="leadToSale" type="number" value="0" step="0.1">
+                            </div>
+                            <div class="row">
+                                <label>ค่าเฉลี่ยต่อเคส (฿)</label>
+                                <input id="ticket" type="number" value="0" step="1000">
+                            </div>
+                            <div class="actions">
+                                <button id="calcBtn" style="display: none;">คำนวณ</button> 
+                                <button id="resetBtn" class="secondary">รีเซ็ตข้อมูล Input</button>
+                            </div>
+                            <div class="notes" id="planner-notes">
+                                * ค่าเริ่มต้นอิงจากผลจริง Q3
+                            </div>
+                        </section>
+
+                        <aside class="panel">
+                            <h3>ผลการจำลอง (Forecast)</h3>
+                            <div class="result-grid">
+                                <div class="card"><h4>จำนวน Leads</h4><p id="leadsOut">—</p></div>
+                                <div class="card"><h4>จำนวนเคสปิดได้</h4><p id="salesOut">—</p></div>
+                                <div class="card"><h4>ยอดขายรวม (Revenue)</h4><p id="revenueOut">—</p></div>
+                                <div class="card"><h4>ส่วนต่างจากเป้า</h4><p id="gapOut">—</p></div>
+                            </div>
+                            <div class="planner-insight-box">
+                                <h4>Insights & Strategic Recommendations</h4>
+                                <p id="insight">—</p>
+                            </div>
+                        </aside>
                     </main>
                 </div>
 
@@ -93,17 +139,48 @@
         </div>
     </div>
 
+    {/* Ensure report-2.js is loaded */}
     <script src="./report-2.js"></script> 
     
-    {/* --- Example Initialization Script (เหมือนเดิม) --- */}
+    {/* --- Example Initialization Script --- */}
     <script>
-        // Example Data 
-        const myData = { /* ... ข้อมูลตัวอย่าง ... */ };
+        // Example Data (API v3.2 format - includes avg_closing_days)
+        const myData = {
+            core_metrics: { 
+                qualified_leads: 81, // Example Actual Leads
+                closed_sales: 18,   // Example Actual Sales
+                total_revenue: 1685000, // Example Calculated Revenue
+                avg_deal_size: 93611, 
+                avg_closing_days: 15.3 // Example Avg Days
+            },
+            monthly_breakdown: [ // Example actual monthly leads/revenue
+                { month: "2025-07", month_th: "ก.ค.", leads: 25, revenue: 550000 },
+                { month: "2025-08", month_th: "ส.ค.", leads: 30, revenue: 650000 },
+                { month: "2025-09", month_th: "ก.ย.", leads: 26, revenue: 485000 }
+            ],
+            team_breakdown: [ // Example team data (including 'Online')
+                { team_name: "Online", leads: 30, sales: 5, revenue: 450000 },
+                { team_name: "MAM", leads: 20, sales: 6, revenue: 580000 },
+                { team_name: "AU", leads: 16, sales: 4, revenue: 355000 },
+                { team_name: "GOLF", leads: 15, sales: 3, revenue: 300000 }
+            ],
+            // Removed category/channel breakdown for now as per removal request
+            planner_defaults: { 
+                target: 6500000, 
+                leadToSale_percent: 22.2, // Example (18/81)
+                avg_ticket_size: 93611 
+            }
+        };
 
+        // Call initialization function after DOM is ready
         window.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM Ready, attempting manual initialization with example data (v3.4)...");
             if (typeof window.initializeSalesReport === 'function') {
-                window.initializeSalesReport(myData);
-            } else { /* ... error handling ... */ }
+                window.initializeSalesReport(myData); // Initialize with example data
+            } else { 
+                 console.error("Initialization function 'window.initializeSalesReport' not found!");
+                 document.body.innerHTML = "<h1 style='color:red; text-align: center; margin-top: 50px;'>Error: Report script (report-2.js) failed to load correctly.</h1>";
+            }
         });
     </script>
 </body>
