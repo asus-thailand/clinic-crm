@@ -21,78 +21,72 @@
             <div class="content">
 
                 <div class="section">
-                    <h2 class="section-title">1. Executive Summary (Overall Performance)</h2>
-                    <div class="insight-box note">
-                        {/* ... เนื้อหาเหมือนเดิม ... */}
-                    </div>
-                </div>
-
-                <div class="section">
                     <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
-                    <div class="stats-grid interactive-funnel">
-                        <div class="stat-card">
+                    <div class="stats-grid interactive-funnel funnel-section">
+                        {/* Overall Budget Input */}
+                        <div class="stat-card input-card">
+                            <label class="stat-label" for="funnel-budget-input">Overall Budget (Input)</label>
+                            <input type="number" class="stat-input" id="funnel-budget-input" value="0" step="1000" min="0">
+                        </div>
+                        {/* Total Inboxes Input */}
+                        <div class="stat-card input-card">
                             <label class="stat-label" for="funnel-inboxes-input">Total Inboxes (Input)</label>
                             <input type="number" class="stat-input" id="funnel-inboxes-input" value="0" step="10" min="0">
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Qualified Leads (Actual)</div>
-                            <div class="stat-value" id="funnel-leads">...</div> {/* Changed back to div */}
+                        {/* Qualified Leads Display (Actual vs Target) */}
+                        <div class="stat-card display-card leads-card">
+                            <div class="stat-label">Qualified Leads (Actual vs Target)</div>
+                            <div class="value-comparison">
+                                <span class="actual-value" id="funnel-leads-actual">...</span>
+                                <span class="separator">/</span>
+                                <span class="target-value" id="funnel-leads-target">...</span>
+                            </div>
+                            <div class="target-note">(Target based on <span id="funnel-target-kpi-display">30</span>% KPI)</div>
                         </div>
-                        <div class="stat-card">
+                        {/* Closed Sales Display (Actual) */}
+                        <div class="stat-card display-card sales-card">
                             <div class="stat-label">Closed Sales (Actual)</div>
-                            <div class="stat-value" id="funnel-sales">...</div> {/* Changed back to div */}
+                            <div class="stat-value" id="funnel-sales-actual">...</div>
+                        </div>
+                         {/* Overall CPL Display */}
+                        <div class="stat-card display-card cpl-card">
+                            <div class="stat-label">Overall Cost Per Lead</div>
+                            <div class="stat-value" id="funnel-overall-cpl">...</div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="section">
                     <h2 class="section-title">3. Performance Deep Dive (Overall)</h2>
-                    <div class="stats-grid" style="grid-template-columns: 1fr 1fr; gap: 25px;" id="team-performance-grid">
-                         {/* ... เนื้อหาเหมือนเดิม ... */}
+                    {/* Key Metrics Display */}
+                    <div class="performance-summary">
+                        <div class="summary-item">
+                             <span class="summary-label">KPI Lead → Appt Target:</span>
+                             <span class="summary-value target">90%</span>
+                        </div>
+                         <div class="summary-item">
+                             <span class="summary-label">Avg Closing Time:</span>
+                             <span class="summary-value" id="perf-avg-closing-days">...</span> วัน
+                        </div>
+                        <div class="summary-item">
+                             <span class="summary-label">Overall Closing Rate:</span>
+                             <span class="summary-value" id="perf-overall-closing-rate">...</span> %
+                        </div>
+                    </div>
+                    {/* Team Grid (will be filtered by JS) */}
+                    <div class="stats-grid team-grid" id="team-performance-grid">
+                         <div class="stat-card placeholder">
+                            <h3>Loading Team Data...</h3>
+                         </div>
                     </div>
                 </div>
 
+                {/* Section 7 Planner (Kept) */}
                 <div class="section">
-                    <h2 class="section-title">4. Strategic Recommendations</h2>
-                    <div class="plan-box quick-win">
-                         {/* ... เนื้อหาเหมือนเดิม ... */}
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <h2 class="section-title">5. Q4 Funnel KPIs & Targets</h2>
-                     <div class="stats-grid">
-                        <div class="stat-card kpi-input-card">
-                            <label class="stat-label" for="kpi-inbox-lead-target">Target: Inbox → Lead (%)</label>
-                            <input type="number" class="stat-input kpi-input" id="kpi-inbox-lead-target" value="30" step="0.1" min="0" max="100">
-                            <div class="stat-actual">(Actual: <span id="actual-inbox-lead">...</span>%)</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Actual: Lead → Sale (%)</div>
-                            <div class="stat-value" id="actual-lead-sale">...</div> 
-                        </div>
-                        <div class="stat-card highlight">
-                            <div class="stat-label">Goal: Total Revenue</div>
-                            <div class="stat-value" id="kpi-revenue-goal">...</div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* --- Marketing Input Section (เหมือนเดิม) --- */}
-                <div class="section" id="marketing-input-section">
-                     {/* ... เนื้อหาเหมือนเดิม ... */}
-                </div>
-                
-                <hr style="border: none; border-top: 2px dashed #ddd; margin: 60px 0;">
-
-                 {/* --- Section 6: Financial Table (เหมือนเดิม v1.2) --- */}
-                <div class="section">
-                     {/* ... เนื้อหาเหมือนเดิม ... */}
-                </div>
-
-                {/* --- Section 7 Planner (เหมือนเดิม) --- */}
-                <div class="section">
-                     {/* ... เนื้อหาเหมือนเดิม ... */}
+                    <h2 class="section-title">7. Q4 Scenario Planner</h2>
+                    <main class="planner-main">
+                        {/* ... เนื้อหา Planner เหมือนเดิม ... */}
+                    </main>
                 </div>
 
             </div>
@@ -101,12 +95,11 @@
 
     <script src="./report-2.js"></script> 
     
-    {/* --- Example Initialization Script (เหมือนเดิม v1.2) --- */}
+    {/* --- Example Initialization Script (เหมือนเดิม) --- */}
     <script>
         // Example Data 
         const myData = { /* ... ข้อมูลตัวอย่าง ... */ };
 
-        // Call initialization function 
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof window.initializeSalesReport === 'function') {
                 window.initializeSalesReport(myData);
