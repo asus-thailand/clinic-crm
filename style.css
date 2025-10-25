@@ -104,42 +104,15 @@ body {
 .search-container { flex-grow: 1; max-width: 400px; position: relative; }
 .search-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-color-secondary); }
 
-/* --- 5. Stats Dashboard (แก้ไขส่วนนี้) --- */
+/* --- 5. Stats Dashboard --- */
 .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 10px; }
 .stat-card { background: var(--bg-color-white); padding: 20px; border-radius: var(--border-radius-large); box-shadow: var(--shadow-light); border-left: 4px solid var(--info-color); transition: all 0.3s ease; }
 .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
 .stat-title { font-size: 14px; color: var(--text-color-secondary); margin-bottom: 8px; }
-
-/* [✅ NEW CSS RULE] ใช้ Flexbox จัดการ Value และ Change */
-.stat-main-content {
-    display: flex;          /* จัดเรียง Value และ Change แนวนอน */
-    align-items: baseline;  /* จัดให้แนวฐานของข้อความตรงกัน */
-    justify-content: space-between; /* เว้นระยะห่างระหว่าง Value กับ Change */
-    /* gap: 8px; */         /* หรือใช้ gap ถ้าต้องการระยะห่างคงที่ */
-    margin-top: 5px;      /* ระยะห่างจาก Title */
-    flex-wrap: nowrap;      /* บังคับไม่ให้ขึ้นบรรทัดใหม่เด็ดขาด */
-}
-
-/* [✅ UPDATED CSS RULE] ปรับ Value เล็กน้อย (ถ้าต้องการ) */
-.stat-value {
-    font-size: 26px; /* อาจจะลดขนาดลงเล็กน้อย จากเดิม 28px */
-    font-weight: 700;
-    color: var(--text-color-primary);
-    flex-shrink: 0; /* ป้องกันไม่ให้ตัวเลขถูกบีบ */
-}
-
-/* [✅ UPDATED CSS RULE] ป้องกันข้อความ Change ตกบรรทัด */
-.stat-change {
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap; /* สำคัญ: ป้องกันข้อความตกบรรทัด */
-    text-align: right;   /* จัดชิดขวา */
-    flex-shrink: 0;    /* ป้องกันไม่ให้ถูกบีบ */
-}
+.stat-value { font-size: 28px; font-weight: 700; color: var(--text-color-primary); }
+.stat-change { font-size: 12px; font-weight: 600; }
 .stat-up { color: var(--success-color); }
 .stat-down { color: var(--error-color); }
-/* --- จบส่วน Stats Dashboard --- */
-
 
 /* --- 6. Toolbar --- */
 .toolbar { background: var(--bg-color-white); border-bottom: 1px solid var(--border-color-light); padding: 15px 10px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; margin: 0 10px; }
@@ -407,4 +380,66 @@ body {
     .excel-table thead th:nth-child(4) {
         z-index: 101;
     }
+
+    /* === [START] MOBILE RESPONSIVE FIXES === */
+    
+    /* 4. แก้ไข Header (โลโก้ + ปุ่ม) ให้เรียงซ้อนกัน */
+    .header-content {
+        flex-direction: column; /* เรียงแนวตั้ง */
+        align-items: flex-start; /* ชิดซ้าย */
+        gap: 15px; /* เพิ่มระยะห่าง */
+    }
+
+    .user-info {
+        flex-wrap: wrap; /* ห่อปุ่ม เมื่อล้น */
+        gap: 8px; /* ระยะห่างระหว่างปุ่ม */
+    }
+
+    /* 5. แก้ไข Toolbar (ฟิลเตอร์ + ปุ่ม) ให้เรียงซ้อนกัน */
+    .toolbar {
+        flex-direction: column; /* เรียงแนวตั้ง */
+        align-items: stretch; /* ยืดเต็มความกว้าง */
+        gap: 10px;
+    }
+
+    .toolbar-left, .toolbar-right {
+        flex-direction: column; /* เรียงแนวตั้ง */
+        width: 100%;
+        gap: 10px;
+    }
+
+    /* 6. ทำให้ช่องค้นหา, Dropdown, และกล่องวันที่ เต็มความกว้าง */
+    .search-container, 
+    .search-input, 
+    .filter-select {
+        width: 100%;
+    }
+
+    .date-filter-container {
+        flex-direction: column; /* เรียงปุ่มวันที่และช่องวันที่แนวตั้ง */
+        align-items: stretch;
+        width: 100%;
+    }
+    
+    .date-input {
+        width: 100%; /* ช่องวันที่เต็มความกว้าง */
+    }
+
+    /* 7. แก้ไขปุ่ม "เพิ่มลูกค้า" และ "รีเฟรช" */
+    .action-buttons {
+        width: 100%;
+        flex-direction: column; /* เรียงแนวตั้ง */
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* 8. ปรับความสูงตารางสำหรับมือถือ (เนื่องจาก Header และ Toolbar สูงขึ้น) */
+    .table-wrapper {
+        max-height: calc(100vh - 500px); /* ให้พื้นที่น้อยลง เพราะเมนูด้านบนกินที่เยอะขึ้น */
+    }
+
+    /* === [END] MOBILE RESPONSIVE FIXES === */
 }
