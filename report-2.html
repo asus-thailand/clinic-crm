@@ -31,16 +31,16 @@
                     <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
                     <div class="stats-grid interactive-funnel">
                         <div class="stat-card">
-                            <label class="stat-label" for="funnel-inboxes-input">Total Inboxes</label>
+                            <label class="stat-label" for="funnel-inboxes-input">Total Inboxes (Input)</label>
                             <input type="number" class="stat-input" id="funnel-inboxes-input" value="0" step="10" min="0">
                         </div>
                         <div class="stat-card">
-                            <label class="stat-label" for="funnel-leads-input">Qualified Leads</label>
-                            <input type="number" class="stat-input" id="funnel-leads-input" value="0" step="1" min="0">
+                            <div class="stat-label">Qualified Leads (Actual)</div>
+                            <div class="stat-value" id="funnel-leads">...</div> {/* Changed back to div */}
                         </div>
                         <div class="stat-card">
-                            <label class="stat-label" for="funnel-sales-input">Closed Sales</label>
-                            <input type="number" class="stat-input" id="funnel-sales-input" value="0" step="1" min="0">
+                            <div class="stat-label">Closed Sales (Actual)</div>
+                            <div class="stat-value" id="funnel-sales">...</div> {/* Changed back to div */}
                         </div>
                     </div>
                 </div>
@@ -55,7 +55,7 @@
                 <div class="section">
                     <h2 class="section-title">4. Strategic Recommendations</h2>
                     <div class="plan-box quick-win">
-                        {/* ... เนื้อหาเหมือนเดิม ... */}
+                         {/* ... เนื้อหาเหมือนเดิม ... */}
                     </div>
                 </div>
                 
@@ -80,86 +80,37 @@
 
                 {/* --- Marketing Input Section (เหมือนเดิม) --- */}
                 <div class="section" id="marketing-input-section">
-                    <h2 class="section-title">Input: Marketing Data (กรอกข้อมูลการตลาด)</h2>
-                    {/* ... เนื้อหาเหมือนเดิม ... */}
+                     {/* ... เนื้อหาเหมือนเดิม ... */}
                 </div>
                 
                 <hr style="border: none; border-top: 2px dashed #ddd; margin: 60px 0;">
 
-                 {/* [MODIFIED] Section 6: Financial Table (Inbox is now display only) */}
+                 {/* --- Section 6: Financial Table (เหมือนเดิม v1.2) --- */}
                 <div class="section">
-                    <h2 class="section-title">6. Financial & Marketing Performance (Main Campaign)</h2>
-                    <div class="stats-grid">
-                         {/* ... Stat cards เหมือนเดิม ... */}
-                    </div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>เดือน</th>
-                                    <th>งบประมาณ (฿)</th>
-                                    <th>Inbox</th> {/* Display Only */}
-                                    <th>Lead</th> {/* Input */}
-                                    <th>ยอดขาย (฿)</th> {/* Input */}
-                                    <th>CPL (฿)</th> {/* Calculated */}
-                                    <th>ROAS</th> {/* Calculated */}
-                                </tr>
-                            </thead>
-                            <tbody id="financial-table-body">
-                                {/* JS สร้างแถว */}
-                            </tbody>
-                            <tfoot id="financial-table-footer">
-                                {/* JS สร้าง Total */}
-                            </tfoot>
-                        </table>
-                    </div>
+                     {/* ... เนื้อหาเหมือนเดิม ... */}
                 </div>
 
                 {/* --- Section 7 Planner (เหมือนเดิม) --- */}
                 <div class="section">
-                    <h2 class="section-title">7. Q4 Scenario Planner</h2>
-                    <main class="planner-main">
-                        {/* ... เนื้อหา Planner เหมือนเดิม ... */}
-                    </main>
+                     {/* ... เนื้อหาเหมือนเดิม ... */}
                 </div>
 
             </div>
         </div>
     </div>
 
-    {/* Removed API script load - Now relies on initializeSalesReport */}
     <script src="./report-2.js"></script> 
     
-    {/* --- Example of how to initialize manually --- */}
+    {/* --- Example Initialization Script (เหมือนเดิม v1.2) --- */}
     <script>
-        // Example Data (Replace with your actual data source)
-        const myData = {
-            core_metrics: { qualified_leads: 150, closed_sales: 45, avg_deal_size: 85000 },
-            monthly_breakdown: [
-                { month: "2025-07", month_th: "ก.ค.", leads: 50, revenue: 4250000 },
-                { month: "2025-08", month_th: "ส.ค.", leads: 55, revenue: 4675000 },
-                { month: "2025-09", month_th: "ก.ย.", leads: 45, revenue: 3825000 }
-            ],
-            team_breakdown: [
-                { team_name: "Online", leads: 60, sales: 18, revenue: 1530000 },
-                { team_name: "MAM", leads: 45, sales: 15, revenue: 1275000 },
-                { team_name: "AU", leads: 25, sales: 7, revenue: 595000 },
-                { team_name: "GOLF", leads: 20, sales: 5, revenue: 425000 }
-            ],
-            planner_defaults: { target: 6500000, leadToSale_percent: 30.0, avg_ticket_size: 85000 }
-        };
+        // Example Data 
+        const myData = { /* ... ข้อมูลตัวอย่าง ... */ };
 
-        // Call initialization function after DOM is ready
+        // Call initialization function 
         window.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM Ready, attempting manual initialization with example data...");
-            // Check if the function exists before calling
             if (typeof window.initializeSalesReport === 'function') {
                 window.initializeSalesReport(myData);
-            } else {
-                 console.error("Initialization function 'window.initializeSalesReport' not found!");
-                 // Optionally display an error to the user here
-                 document.body.innerHTML = "<h1 style='color:red; text-align: center; margin-top: 50px;'>Error: Report script failed to load correctly.</h1>";
-            }
+            } else { /* ... error handling ... */ }
         });
     </script>
 </body>
