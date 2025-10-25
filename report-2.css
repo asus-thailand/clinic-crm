@@ -1,159 +1,297 @@
 /* ================================================================================
    SALES PERFORMANCE REPORT V2 - STYLESHEET
-   Version 1.2
-   [MODIFIED] Added styles for new Funnel & Performance sections
+   Version 1.3 - Major UI Overhaul based on examples
+   - Incorporates gradients, cards, improved typography, and color scheme.
    ================================================================================ */
 
-* { /* ... เหมือนเดิม ... */ }
-body { /* ... เหมือนเดิม ... */ }
-.container { /* ... เหมือนเดิม ... */ }
-.header { /* ... เหมือนเดิม ... */ }
-.back-link { /* ... เหมือนเดิม ... */ }
-@keyframes gradientShift { /* ... เหมือนเดิม ... */ }
-.header h1 { /* ... เหมือนเดิม ... */ }
-.header p { /* ... เหมือนเดิม ... */ }
-.content-wrapper { /* ... เหมือนเดิม ... */ }
-.content { /* ... เหมือนเดิม ... */ }
-.section { /* ... เหมือนเดิม ... */ }
-@keyframes fadeInUp { /* ... เหมือนเดิม ... */ }
-.section-title { /* ... เหมือนเดิม ... */ }
-.section-title::before { /* ... เหมือนเดิม ... */ }
-h3 { /* ... เหมือนเดิม ... */ }
+/* --- Import Font --- */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap');
 
-/* --- [MODIFIED] Stat Grid & Cards --- */
+/* --- CSS Variables --- */
+:root {
+    --font-family-main: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    
+    --color-primary: #667eea;
+    --color-secondary: #764ba2;
+    --color-text-dark: #2d3436;
+    --color-text-light: #4a5568;
+    --color-text-subtle: #6c757d;
+    --color-white: #ffffff;
+    --color-border: #e2e8f0;
+    --color-bg-light: #f8f9fa;
+    --color-bg-card: var(--color-white); /* White cards */
+    --color-bg-input: #f7fafc; 
+    
+    --color-success: #48bb78;
+    --color-danger: #f56565;
+    --color-warning: #fdcb6e;
+    --color-info: #4299e1;
+
+    --gradient-header: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    --gradient-stat-card-hover: linear-gradient(135deg, #f5f7fa 0%, #e0e7f0 100%); /* Subtle gradient on hover */
+    --gradient-highlight-card: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); /* Example highlight */
+
+    --shadow-deep: 0 25px 70px rgba(0,0,0,0.2);
+    --shadow-medium: 0 15px 40px rgba(0,0,0,0.1);
+    --shadow-subtle: 0 8px 25px rgba(0,0,0,0.08);
+    --shadow-hover: 0 18px 50px rgba(0,0,0,0.15);
+    
+    --border-radius-large: 30px;
+    --border-radius-medium: 20px;
+    --border-radius-small: 12px;
+}
+
+/* --- Base & Global Styles --- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: var(--font-family-main);
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); /* Light background */
+    min-height: 100vh;
+    padding: 30px 15px;
+    line-height: 1.6;
+    color: var(--color-text-light);
+}
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: transparent; /* Container is transparent */
+    border-radius: 0; /* No radius on main container */
+    box-shadow: none; /* No shadow on main container */
+}
+
+/* --- Header --- */
+.header {
+    background: var(--gradient-header);
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease infinite;
+    color: var(--color-white);
+    padding: 50px 30px; /* Adjusted padding */
+    text-align: center;
+    border-radius: var(--border-radius-large);
+    box-shadow: var(--shadow-medium);
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+}
+@keyframes gradientShift { /* ... เหมือนเดิม ... */ }
+.header h1 { font-size: 2.8em; font-weight: 800; margin-bottom: 10px; text-shadow: 1px 1px 10px rgba(0,0,0,0.2); }
+.header p { font-size: 1.2em; opacity: 0.9; }
+.back-link { /* ... สไตล์เหมือนเดิม ... */ }
+
+/* --- Content Wrapper --- */
+.content-wrapper {
+    background: var(--color-bg-light); /* Lighter background for content area */
+    border-radius: var(--border-radius-large);
+    box-shadow: var(--shadow-medium);
+    overflow: hidden;
+}
+.content { padding: 40px; } /* Adjusted padding */
+
+/* --- Sections --- */
+.section { margin-bottom: 50px; animation: fadeInUp 0.6s ease-out; }
+@keyframes fadeInUp { /* ... เหมือนเดิม ... */ }
+.section-title {
+    font-size: 1.8em; /* Slightly smaller */
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--color-border);
+    display: flex; align-items: center; gap: 12px;
+}
+.section-title::before { /* Remove the gradient bar for cleaner look */
+    content: none; 
+}
+h3 { /* Used inside cards/panels */
+    color: var(--color-secondary); font-size: 1.3em; margin-top: 0; margin-bottom: 15px; font-weight: 600;
+}
+
+/* --- Stat Grid & Cards (General) --- */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Adjusted minmax slightly */
-    gap: 25px;
-    margin: 30px 0;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* Adjust minmax */
+    gap: 20px;
+    margin: 25px 0;
 }
-.stat-card { /* ... เหมือนเดิม ... */ }
-.stat-card h3 { /* ... เหมือนเดิม ... */ }
-.stat-card:hover { /* ... เหมือนเดิม ... */ }
-
-/* --- [MODIFIED] Funnel Section Styles --- */
-.interactive-funnel .stat-label { 
-    color: #718096; font-size: 0.9em; margin-bottom: 8px; /* Slightly smaller */
-    font-weight: 600; text-transform: uppercase; display: block; /* Ensure label is block */
-}
-.interactive-funnel .stat-input { /* Style for inputs in the funnel */
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    font-family: 'Segoe UI', 'Prompt', sans-serif;
-    font-size: 1.8em; /* Smaller than stat-value */
-    font-weight: 700;
-    text-align: center;
-    color: #4a5568;
-    background-color: #f8fafc;
+.stat-card {
+    background: var(--color-bg-card);
+    padding: 25px; /* Adjusted padding */
+    border-radius: var(--border-radius-medium);
+    box-shadow: var(--shadow-subtle);
+    border: 1px solid var(--color-border);
     transition: all 0.3s ease;
-    -moz-appearance: textfield; /* Hide arrows in Firefox */
+    position: relative;
+    overflow: hidden;
+}
+.stat-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); background: var(--gradient-stat-card-hover); }
+.stat-label { 
+    color: var(--color-text-subtle); font-size: 0.9em; margin-bottom: 10px; 
+    font-weight: 600; text-transform: uppercase; display: block; 
+}
+.stat-value { /* Default display value style */
+    color: var(--color-text-dark); font-size: 2.2em; font-weight: 700; 
+    margin: 5px 0; line-height: 1.2;
+}
+.stat-value.roas { /* Specific style for ROAS */
+    background: -webkit-linear-gradient(45deg, var(--color-primary), var(--color-secondary));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.stat-actual, .actual-value { font-weight: 700; color: var(--color-text-dark); }
+.target-value { font-weight: 600; color: var(--color-text-subtle); }
+
+/* --- [NEW] Funnel Section Styles (Sec 2) --- */
+.interactive-funnel .stat-card { padding: 20px; } /* Slightly less padding */
+.interactive-funnel .stat-input { /* Input field style */
+    width: 100%; padding: 10px 12px; border: 2px solid var(--color-border); border-radius: 8px;
+    font-family: var(--font-family-main); font-size: 1.6em; font-weight: 700; text-align: center;
+    color: var(--color-text-light); background-color: var(--color-bg-input); transition: all 0.3s ease;
+    -moz-appearance: textfield; 
 }
 .interactive-funnel .stat-input::-webkit-outer-spin-button,
-.interactive-funnel .stat-input::-webkit-inner-spin-button {
-    -webkit-appearance: none; /* Hide arrows in Chrome/Safari */
-    margin: 0;
-}
-.interactive-funnel .stat-input:focus {
-    background-color: white;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-    outline: none;
-}
-.interactive-funnel .display-card { /* Cards showing calculated/API data */
-    background: #f7fafc; /* Slightly different background */
-    border-color: #e2e8f0;
-}
-.interactive-funnel .display-card .stat-value { /* Actual numbers display */
-    font-size: 2.2em; 
-    font-weight: 800; 
-    color: #2d3748; 
-    text-align: center;
-    margin-top: 10px;
-}
-.interactive-funnel .leads-card .value-comparison {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 10px;
-}
-.interactive-funnel .leads-card .actual-value {
-    font-size: 2.2em; font-weight: 800; color: #2d3748; 
-}
-.interactive-funnel .leads-card .separator {
-    font-size: 1.5em; color: #a0aec0;
-}
-.interactive-funnel .leads-card .target-value {
-    font-size: 1.8em; font-weight: 600; color: #718096;
-}
-.interactive-funnel .target-note {
-    text-align: center;
-    font-size: 0.85em;
-    color: #718096;
-    margin-top: 8px;
-}
+.interactive-funnel .stat-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.interactive-funnel .stat-input:focus { background-color: var(--color-white); border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2); outline: none; }
 
-/* --- [NEW] Performance Summary Styles --- */
+.interactive-funnel .display-card { background: transparent; border: none; box-shadow: none; padding: 20px 0;} /* Make display cards blend in */
+.interactive-funnel .display-card:hover { transform: none; box-shadow: none; background: transparent; }
+.interactive-funnel .display-card .stat-label { text-align: center; }
+
+.interactive-funnel .leads-card .value-comparison { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-top: 5px; }
+.interactive-funnel .leads-card .actual-value { font-size: 2.0em; }
+.interactive-funnel .leads-card .separator { font-size: 1.4em; color: #ccc; }
+.interactive-funnel .leads-card .target-value { font-size: 1.6em; }
+.interactive-funnel .target-note { text-align: center; font-size: 0.8em; color: var(--color-text-subtle); margin-top: 5px; }
+
+.interactive-funnel .sales-card .stat-value { font-size: 2.0em; text-align: center; }
+.interactive-funnel .cpl-card .stat-value { font-size: 2.0em; text-align: center; color: var(--color-danger); }
+
+
+/* --- [NEW] Performance Summary Styles (Sec 3) --- */
 .performance-summary {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 15px;
-    padding: 20px 25px;
-    margin-bottom: 30px;
-    display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    gap: 20px;
+    background: var(--color-white); border: 1px solid var(--color-border); border-radius: var(--border-radius-medium);
+    padding: 20px 25px; margin-bottom: 30px; display: flex; justify-content: space-around;
+    flex-wrap: wrap; gap: 20px; box-shadow: var(--shadow-subtle);
 }
-.summary-item {
-    text-align: center;
-}
-.summary-label {
-    display: block;
-    color: #6c757d;
-    font-size: 0.9em;
-    font-weight: 600;
-    margin-bottom: 5px;
-    text-transform: uppercase;
-}
-.summary-value {
-    font-size: 1.6em;
-    font-weight: 700;
-    color: #495057;
-}
-.summary-value.target {
-    color: #667eea; /* Highlight target values */
-}
+.summary-item { text-align: center; }
+.summary-label { display: block; color: var(--color-text-subtle); font-size: 0.85em; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; }
+.summary-value { font-size: 1.5em; font-weight: 700; color: var(--color-text-dark); }
+.summary-value.target { color: var(--color-primary); }
 
+/* --- Team Grid Styles (Sec 3) --- */
+.team-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); } /* Adjust if needed */
+.team-grid .stat-card { border-top: 5px solid; /* Color set by JS */ padding-top: 20px; }
+.team-grid .stat-card h3 { font-size: 1.2em; color: var(--color-text-dark); margin-bottom: 10px; border-bottom: none; padding-bottom: 0;}
+.team-grid .stat-value { font-size: 2.0em; margin-bottom: 5px;} /* Color set by JS */
+.team-grid .stat-label { font-size: 0.85em; text-align: center; margin-bottom: 15px;}
+.team-grid .metric-item { font-size: 0.95em; padding: 8px 0; border-bottom: 1px solid #eee;}
+.team-grid .metric-item span:first-child { color: var(--color-text-light); }
+.team-grid .metric-item span:last-child { font-weight: 600; }
+.team-grid .placeholder { text-align: center; color: #aaa; background: #fdfdfd; border-top: none !important; }
 
-/* --- Team Grid Styles --- */
-.team-grid .stat-card { /* Minor adjustments if needed */ }
-.team-grid .placeholder { /* Style for the loading message */
-     text-align: center; color: #aaa; background: #fdfdfd; 
+/* --- KPI Section Styles (Sec 5) --- */
+.kpi-input-card .stat-input { /* Input for Target KPI */
+    width: 60%; margin: 5px auto 8px auto; display: block; font-size: 1.6em; padding: 8px;
+    border-radius: 8px; border: 2px solid var(--color-border); background: var(--color-bg-input); text-align: center;
 }
+.kpi-input-card .stat-input:focus { /* ... focus style ... */ }
+.kpi-input-card .stat-actual { text-align: center; font-size: 0.9em; color: var(--color-text-subtle); }
+#actual-lead-sale { /* Actual Lead->Sale Rate display */ color: var(--color-info); }
+.stat-card.highlight { /* Goal Revenue card */ background: var(--gradient-header); color: var(--color-white); border: none; }
+.stat-card.highlight .stat-label, .stat-card.highlight .stat-value { color: var(--color-white); }
 
-/* --- Other Styles (Insight, Plan, Planner, Table, etc.) --- */
-.stat-subtext { /* ... เหมือนเดิม ... */ }
-.highlight { /* ... เหมือนเดิม ... */ }
-.stat-card .metric-item { /* ... เหมือนเดิม ... */ }
+/* --- Marketing Input Table Styles (Sec 5.5) --- */
+.marketing-input-table table { max-width: 600px; margin: 0 auto; }
+.marketing-input-table th { background-color: #e9ecef; }
+.marketing-input-table td { padding: 6px 8px; }
+.marketing-input-table input[type="number"] {
+    width: 100%; padding: 8px; border: 1px solid var(--color-border); border-radius: 6px;
+    font-family: var(--font-family-main); font-size: 1em; font-weight: 600; text-align: center;
+    background-color: var(--color-bg-input); transition: all 0.3s ease; -moz-appearance: textfield;
+}
+.marketing-input-table input[type="number"]::-webkit-outer-spin-button,
+.marketing-input-table input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.marketing-input-table input[type="number"]:focus { /* ... focus style ... */ }
+.marketing-input-table input[type="number"]:hover { background-color: var(--color-white); }
+
+/* --- Financial Table Styles (Sec 6) --- */
 .table-container { /* ... เหมือนเดิม ... */ }
 table { /* ... เหมือนเดิม ... */ }
 th { /* ... เหมือนเดิม ... */ }
-td { /* ... เหมือนเดิม ... */ }
-/* ... (Styles for interactive table, footer, inputs remain the same) ... */
-.insight-box { /* ... เหมือนเดิม ... */ }
-.plan-box { /* ... เหมือนเดิม ... */ }
-.planner-main { /* ... เหมือนเดิม ... */ }
-.panel { /* ... เหมือนเดิม ... */ }
-/* ... (All other Planner styles remain the same) ... */
+td { padding: 8px 10px; /* Reduced padding */ } 
+tbody tr:hover { /* ... เหมือนเดิม ... */ }
+td.good { /* ... เหมือนเดิม ... */ }
 
-@media (max-width: 900px) { /* ... เหมือนเดิม ... */ }
-@media (max-width: 768px) { 
-    /* ... Media queries เหมือนเดิม ... */ 
-    .interactive-funnel .stat-input { font-size: 1.5em; } /* Adjust input size */
-    .interactive-funnel .display-card .stat-value,
+/* Financial Table Inputs/Cells */
+#financial-table-body td input[type="number"] {
+    width: 100%; min-width: 90px; padding: 6px; border: 1px solid transparent; border-radius: 4px;
+    font-family: var(--font-family-main); font-size: 0.95em; font-weight: 600; text-align: right;
+    background-color: transparent; transition: all 0.2s ease; -moz-appearance: textfield;
+}
+#financial-table-body td input[type="number"]::-webkit-outer-spin-button,
+#financial-table-body td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+#financial-table-body td input[type="number"]:focus { /* ... focus style ... */ }
+#financial-table-body td input[type="number"]:hover { background-color: #f0f4ff; }
+#financial-table-body td.cell-text { /* For displaying Inbox */
+    font-weight: 600; text-align: right; padding-right: 10px; 
+}
+#financial-table-body td.cell-calc { /* For CPL, ROAS */
+    font-weight: 700; font-size: 1em; text-align: right; padding-right: 10px;
+}
+
+/* Table Footer */
+tfoot tr { background: #e9ecef; border-top: 3px solid var(--color-primary); }
+tfoot td { padding: 12px 10px; font-weight: 700; font-size: 1.05em; color: var(--color-text-dark); text-align: right; }
+tfoot td:first-child { text-align: left; font-weight: 800; color: var(--color-primary); }
+
+
+/* --- Planner Styles (Sec 7) --- */
+/* Use styles from Sale Performance Example */
+.planner-main { display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; }
+.panel { background: var(--color-white); border: 1px solid var(--color-border); border-radius: var(--border-radius-medium); padding: 25px; box-shadow: var(--shadow-subtle); }
+.panel h3 { margin-top: 0; color: var(--color-text-dark); border-bottom: 2px solid var(--color-border); padding-bottom: 10px;}
+.row { display: flex; align-items: center; gap: 15px; margin-bottom: 18px; }
+.planner-main label { flex: 0 0 160px; color: var(--color-text-light); font-size: 0.95rem; font-weight: 600; }
+.planner-main input[type="number"], .planner-main input[type="text"] { flex: 1; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; font-weight: 600; background: var(--color-bg-input); }
+.planner-main input[type="number"]:focus, .planner-main input[type="text"]:focus { /* ... focus style ... */ }
+.planner-main input[type="range"] { /* ... slider style ... */ }
+.planner-main input[type="range"]::-webkit-slider-thumb { /* ... thumb style ... */ }
+.slider-info { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--color-text-subtle); margin-top: -10px; }
+.actions { display: flex; gap: 10px; margin-top: 25px; }
+.planner-main button { background: var(--color-primary); color: var(--color-white); border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 700; transition: all 0.2s; }
+.planner-main button:hover { background: var(--color-secondary); transform: translateY(-2px); }
+.planner-main button.secondary { background: transparent; border: 2px solid var(--color-border); color: var(--color-secondary); }
+.result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+.card { background: var(--color-bg-light); border: 1px solid var(--color-border); border-radius: 10px; text-align: center; padding: 15px; }
+.card h4 { margin: 0; color: var(--color-text-subtle); font-size: 0.9rem; font-weight: 600; }
+.card p { font-size: 1.4em; font-weight: 700; margin: 8px 0 0; }
+.card.positive p { color: var(--color-success); }
+.card.negative p { color: var(--color-danger); }
+.planner-insight-box { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 18px; margin-top: 25px; }
+.planner-insight-box h4 { font-size: 1.1em; color: var(--color-primary); margin-bottom: 10px; }
+.planner-insight-box p { margin: 0; font-weight: 600; line-height: 1.6; color: var(--color-text-dark); }
+.planner-highlight { color: var(--color-secondary); font-weight: 700; }
+.notes { font-size: 0.85rem; color: var(--color-text-subtle); background: var(--color-bg-light); padding: 10px 15px; border-radius: 8px; margin-top: 20px; border: 1px solid var(--color-border); }
+
+
+/* --- Responsive Design --- */
+@media (max-width: 900px) { .planner-main { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+    body { padding: 15px 10px; }
+    .content { padding: 25px 15px; }
+    .header h1 { font-size: 2em; }
+    .header p { font-size: 1em; }
+    .section-title { font-size: 1.5em; }
+    .stats-grid { grid-template-columns: 1fr; gap: 15px;}
+    .stat-card { padding: 20px; }
+    .stat-value { font-size: 1.8em; }
+    .interactive-funnel .stat-input { font-size: 1.4em; }
     .interactive-funnel .leads-card .actual-value { font-size: 1.8em; }
-    .performance-summary { flex-direction: column; align-items: center; }
+    .interactive-funnel .leads-card .target-value { font-size: 1.5em; }
+    .performance-summary { flex-direction: column; align-items: flex-start; }
+    .summary-value { font-size: 1.3em; }
+    .planner-main label { flex-basis: 120px; }
+    .marketing-input-table table { max-width: 100%; } 
+    #financial-table-body td input[type="number"] { min-width: 80px; font-size: 0.9em; }
+    #financial-table-body td.cell-text, #financial-table-body td.cell-calc { font-size: 0.95em; }
+    tfoot td { font-size: 1em; padding: 10px 8px;}
 }
