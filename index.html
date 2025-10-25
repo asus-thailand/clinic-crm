@@ -29,28 +29,43 @@
         </div>
     </header>
 
+    {/* ===== ส่วนของการ์ดสถิติที่แก้ไข ===== */}
     <div class="stats-container">
         <div class="stat-card">
             <div class="stat-title">ลูกค้าทั้งหมด</div>
-            <div class="stat-value" id="totalCustomers">0</div>
-            <div class="stat-change stat-up">📈 Active Records</div>
+            {/* เพิ่ม div.stat-main-content ครอบ value และ change */}
+            <div class="stat-main-content">
+                <div class="stat-value" id="totalCustomers">0</div>
+                <div class="stat-change stat-up">📈 Active Records</div>
+            </div>
         </div>
         <div class="stat-card">
             <div class="stat-title">ลูกค้าใหม่วันนี้</div>
-            <div class="stat-value" id="todayCustomers">0</div>
-            <div class="stat-change" style="color: #007bff;">📅 Today</div>
+            {/* เพิ่ม div.stat-main-content ครอบ value และ change */}
+            <div class="stat-main-content">
+                <div class="stat-value" id="todayCustomers">0</div>
+                <div class="stat-change" style="color: #007bff;">📅 Today</div>
+            </div>
         </div>
         <div class="stat-card">
             <div class="stat-title">รอติดตาม</div>
-            <div class="stat-value" id="pendingCustomers">0</div>
-            <div class="stat-change stat-down">⏰ Pending</div>
+            {/* เพิ่ม div.stat-main-content ครอบ value และ change */}
+            <div class="stat-main-content">
+                <div class="stat-value" id="pendingCustomers">0</div>
+                <div class="stat-change stat-down">⏰ Pending</div>
+            </div>
         </div>
         <div class="stat-card">
             <div class="stat-title">ปิดการขาย</div>
-            <div class="stat-value" id="closedDeals">0</div>
-            <div class="stat-change stat-up">✅ Closed</div>
+            {/* เพิ่ม div.stat-main-content ครอบ value และ change */}
+            <div class="stat-main-content">
+                <div class="stat-value" id="closedDeals">0</div>
+                <div class="stat-change stat-up">✅ Closed</div>
+            </div>
         </div>
     </div>
+    {/* ===== จบส่วนของการ์ดสถิติ ===== */}
+
 
     <div class="toolbar">
         <div class="toolbar-left">
