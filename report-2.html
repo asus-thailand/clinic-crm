@@ -4,69 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales Funnel Analysis</title>
-    <link rel="stylesheet" href="./report-2.css">
+    <link rel="stylesheet" href="./report-2.css"> {/* ตรวจสอบว่าไฟล์ CSS นี้มีอยู่จริง */}
 </head>
 <body>
     <div class="container">
-        {/* ... header ... */}
+        <div class="header">
+            <h1>Sales Performance Analysis Report</h1>
+            <p>Step 1: Funnel Analysis</p>
+            <a href="./index.html" class="back-link">กลับหน้าหลัก (CRM)</a>
+        </div>
+
         <div class="content-wrapper">
             <div class="content">
+
                 {/* --- Section 2: Funnel Analysis --- */}
                 <div class="section">
                     <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
+                    {/* *** ตรวจสอบว่า DIV นี้และ ID ภายในถูกต้องตาม JS v1.6 *** */}
                     <div class="stats-grid interactive-funnel funnel-section">
-                        {/* ... Funnel cards and inputs (Ensure IDs are correct) ... */}
+
+                        {/* Overall Budget Input */}
                         <div class="stat-card input-card">
                             <label class="stat-label" for="funnel-budget-input">Overall Budget (ใส่ตัวเลข)</label>
+                            {/* *** JS v1.6 จะหา ID นี้ *** */}
                             <input type="number" class="stat-input" id="funnel-budget-input" value="0" step="1000" min="0">
                         </div>
-                        <div class="stat-card display-card"> {/* Changed back to display for Inboxes */}
+
+                        {/* Total Inboxes Display (ดึงค่า total_customers จาก myReportData) */}
+                        <div class="stat-card display-card">
                             <div class="stat-label">Total Inboxes (ลูกค้าทั้งหมด)</div>
+                             {/* *** JS v1.6 จะหา ID นี้เพื่อแสดงผล *** */}
                             <div class="stat-value" id="funnel-inboxes">...</div>
                         </div>
+
+                        {/* Qualified Leads Display (Actual vs Target) */}
                         <div class="stat-card display-card leads-card">
                             <div class="stat-label">Qualified Leads (ตัวเลขจริง / เป้าหมาย)</div>
                             <div class="value-comparison">
+                                 {/* *** JS v1.6 จะหา ID นี้เพื่อแสดงผล *** */}
                                 <span class="actual-value" id="funnel-leads-actual">...</span>
                                 <span class="separator">/</span>
+                                 {/* *** JS v1.6 จะหา ID นี้เพื่อแสดงผล *** */}
                                 <span class="target-value" id="funnel-leads-target">...</span>
                             </div>
                             <div class="target-note">(เป้าหมายคำนวณจาก 30% KPI)</div>
                         </div>
+
+                        {/* Closed Sales Display (Actual) */}
                         <div class="stat-card display-card sales-card">
                             <div class="stat-label">Closed Sales (ตัวเลขจริง)</div>
+                             {/* *** JS v1.6 จะหา ID นี้เพื่อแสดงผล *** */}
                             <div class="stat-value" id="funnel-sales-actual">...</div>
                         </div>
-                         <div class="stat-card display-card cpl-card">
+
+                         {/* Overall CPL Display */}
+                        <div class="stat-card display-card cpl-card">
                             <div class="stat-label">Overall Cost Per Lead (คำนวณ)</div>
+                             {/* *** JS v1.6 จะหา ID นี้เพื่อแสดงผล *** */}
                             <div class="stat-value" id="funnel-overall-cpl">...</div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    {/* --- [MODIFIED] Define Data Script FIRST --- */}
+                    </div> {/* End stats-grid */}
+                </div> {/* End section */}
+
+                {/* ส่วนอื่นๆ ถูกลบออกไปสำหรับเวอร์ชัน Simplified นี้ */}
+
+            </div> {/* End content */}
+        </div> {/* End content-wrapper */}
+    </div> {/* End container */}
+
+    {/* --- [สำคัญ] กำหนดข้อมูลเริ่มต้นก่อนโหลด report-2.js --- */}
     <script>
         // Define data globally BEFORE report-2.js runs
+        // ตรวจสอบข้อมูล core_metrics ให้ถูกต้องตามที่ API v3.6 ควรจะส่งมา
         window.myReportData = {
             core_metrics: {
-                total_customers: 96,
-                qualified_leads: 81,
-                closed_sales: 18,
-                total_revenue: 1685000,
-                avg_deal_size: 93611,
-                avg_closing_days: 15.3
+                total_customers: 96,    // ค่านี้จะถูกใช้เป็น Total Inboxes
+                qualified_leads: 81,    // ค่านี้จะแสดงเป็น Leads (Actual)
+                closed_sales: 18,     // ค่านี้จะแสดงเป็น Sales (Actual)
+                total_revenue: 1685000, // จำเป็นสำหรับคำนวณอื่นๆ (ถ้ามี)
+                avg_deal_size: 93611,   // จำเป็นสำหรับ Planner (ถ้ามี)
+                avg_closing_days: 15.3  // จำเป็นสำหรับ Performance (ถ้ามี)
             },
-            monthly_breakdown: [], team_breakdown: [],
-            category_breakdown: [], channel_breakdown: [],
+            // ส่วนอื่นๆ อาจจะยังไม่จำเป็นสำหรับ Funnel อย่างเดียว
+            monthly_breakdown: [],
+            team_breakdown: [],
+            category_breakdown: [],
+            channel_breakdown: [],
             planner_defaults: {}
         };
-        console.log("HTML: window.myReportData defined."); // DEBUG
+        console.log("HTML: window.myReportData defined."); // DEBUG Log
     </script>
 
-    {/* --- Load the JS file AFTER data is defined --- */}
+    {/* --- โหลดไฟล์ JS หลัก (หลังจากกำหนดข้อมูลแล้ว) --- */}
     <script src="./report-2.js"></script>
 
 </body>
