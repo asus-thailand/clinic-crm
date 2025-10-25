@@ -1,185 +1,59 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Performance Analysis Report Q3 2025</title>
-    
-    <link rel="stylesheet" href="./report-2.css">
-    
-    </head>
-<body>
-    
-    <div class="container">
-        <div class="header">
-            <h1>Sales Performance Analysis Report Q3 2025</h1>
-            <p>Strategic Sales Performance & Deep Dive Analysis</p>
-            <a href="./index.html" class="back-link">กลับหน้าหลัก (CRM)</a>
-        </div>
-
-        <div class="content-wrapper">
-            <div class="content">
-
-                <div class="section">
-                    <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
-                    <div class="stats-grid interactive-funnel funnel-section">
-                        {/* Overall Budget Input */}
-                        <div class="stat-card input-card">
-                            <label class="stat-label" for="funnel-budget-input">Overall Budget (Input)</label>
-                            <input type="number" class="stat-input" id="funnel-budget-input" value="0" step="1000" min="0">
-                        </div>
-                        {/* Total Inboxes Input */}
-                        <div class="stat-card input-card">
-                            <label class="stat-label" for="funnel-inboxes-input">Total Inboxes (Input)</label>
-                            <input type="number" class="stat-input" id="funnel-inboxes-input" value="0" step="10" min="0">
-                        </div>
-                        {/* Qualified Leads Display (Actual vs Target) */}
-                        <div class="stat-card display-card leads-card">
-                            <div class="stat-label">Qualified Leads (Actual vs Target)</div>
-                            <div class="value-comparison">
-                                <span class="actual-value" id="funnel-leads-actual">...</span>
-                                <span class="separator">/</span>
-                                <span class="target-value" id="funnel-leads-target">...</span>
-                            </div>
-                            <div class="target-note">(Target based on <span id="funnel-target-kpi-display">30</span>% KPI)</div>
-                        </div>
-                        {/* Closed Sales Display (Actual) */}
-                        <div class="stat-card display-card sales-card">
-                            <div class="stat-label">Closed Sales (Actual)</div>
-                            <div class="stat-value" id="funnel-sales-actual">...</div>
-                        </div>
-                         {/* Overall CPL Display */}
-                        <div class="stat-card display-card cpl-card">
-                            <div class="stat-label">Overall Cost Per Lead</div>
-                            <div class="stat-value" id="funnel-overall-cpl">...</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <h2 class="section-title">3. Performance Deep Dive (Overall)</h2>
-                    {/* Key Metrics Display */}
-                    <div class="performance-summary">
-                        <div class="summary-item">
-                             <span class="summary-label">KPI Lead → Appt Target:</span>
-                             <span class="summary-value target">90%</span>
-                        </div>
-                         <div class="summary-item">
-                             <span class="summary-label">Avg Closing Time:</span>
-                             <span class="summary-value" id="perf-avg-closing-days">...</span> วัน
-                        </div>
-                        <div class="summary-item">
-                             <span class="summary-label">Overall Closing Rate:</span>
-                             <span class="summary-value" id="perf-overall-closing-rate">...</span> %
-                        </div>
-                    </div>
-                    {/* Team Grid (will be filtered by JS) */}
-                    <div class="stats-grid team-grid" id="team-performance-grid">
-                         <div class="stat-card placeholder">
-                            <h3>Loading Team Data...</h3>
-                         </div>
-                    </div>
-                </div>
-
-                {/* Section 7 Planner (Kept) */}
-                <div class="section">
-                    <h2 class="section-title">7. Q4 Scenario Planner</h2>
-                    <main class="planner-main">
-                        <section class="panel">
-                            <h3>กำหนดเป้าหมายและปรับตัวแปร</h3>
-                            <div class="row">
-                                <label>เป้าหมายยอดขาย (฿)</label>
-                                <input id="target" type="number" value="6500000" placeholder="6,500,000" step="100000">
-                            </div>
-                            <div class="row">
-                                <label>จำนวน Inbox</label>
-                                <input id="inboxes" type="number" value="0" step="10" readonly> </div>
-                            <div class="row">
-                                <label>Inbox → Lead (%)</label>
-                                <input id="inboxToLead" type="range" min="1" max="50" step="0.1" value="0">
-                            </div>
-                            <div class="slider-info">
-                                <span id="inboxToLeadValue">0.0%</span>
-                                <span>(Calculated)</span>
-                            </div>
-                            <div class="row" style="margin-top:16px;">
-                                <label>Lead → Sale (%)</label>
-                                <input id="leadToSale" type="number" value="0" step="0.1">
-                            </div>
-                            <div class="row">
-                                <label>ค่าเฉลี่ยต่อเคส (฿)</label>
-                                <input id="ticket" type="number" value="0" step="1000">
-                            </div>
-                            <div class="actions">
-                                <button id="calcBtn" style="display: none;">คำนวณ</button> 
-                                <button id="resetBtn" class="secondary">รีเซ็ตข้อมูล Input</button>
-                            </div>
-                            <div class="notes" id="planner-notes">
-                                * ค่าเริ่มต้นอิงจากผลจริง Q3
-                            </div>
-                        </section>
-
-                        <aside class="panel">
-                            <h3>ผลการจำลอง (Forecast)</h3>
-                            <div class="result-grid">
-                                <div class="card"><h4>จำนวน Leads</h4><p id="leadsOut">—</p></div>
-                                <div class="card"><h4>จำนวนเคสปิดได้</h4><p id="salesOut">—</p></div>
-                                <div class="card"><h4>ยอดขายรวม (Revenue)</h4><p id="revenueOut">—</p></div>
-                                <div class="card"><h4>ส่วนต่างจากเป้า</h4><p id="gapOut">—</p></div>
-                            </div>
-                            <div class="planner-insight-box">
-                                <h4>Insights & Strategic Recommendations</h4>
-                                <p id="insight">—</p>
-                            </div>
-                        </aside>
-                    </main>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    {/* Ensure report-2.js is loaded */}
+{/* Load the JS file FIRST */}
     <script src="./report-2.js"></script> 
     
     {/* --- Example Initialization Script --- */}
     <script>
-        // Example Data (API v3.2 format - includes avg_closing_days)
+        // Example Data (API v3.4 format) - CHECK SYNTAX CAREFULLY!
         const myData = {
-            core_metrics: { 
-                qualified_leads: 81, // Example Actual Leads
-                closed_sales: 18,   // Example Actual Sales
-                total_revenue: 1685000, // Example Calculated Revenue
+            core_metrics: {
+                total_customers: 96, 
+                qualified_leads: 81,
+                closed_sales: 18,
+                total_revenue: 1685000, 
                 avg_deal_size: 93611, 
-                avg_closing_days: 15.3 // Example Avg Days
+                avg_closing_days: 15.3 
             },
-            monthly_breakdown: [ // Example actual monthly leads/revenue
+            monthly_breakdown: [ 
                 { month: "2025-07", month_th: "ก.ค.", leads: 25, revenue: 550000 },
                 { month: "2025-08", month_th: "ส.ค.", leads: 30, revenue: 650000 },
                 { month: "2025-09", month_th: "ก.ย.", leads: 26, revenue: 485000 }
             ],
-            team_breakdown: [ // Example team data (including 'Online')
+            team_breakdown: [ 
                 { team_name: "Online", leads: 30, sales: 5, revenue: 450000 },
                 { team_name: "MAM", leads: 20, sales: 6, revenue: 580000 },
                 { team_name: "AU", leads: 16, sales: 4, revenue: 355000 },
                 { team_name: "GOLF", leads: 15, sales: 3, revenue: 300000 }
             ],
-            // Removed category/channel breakdown for now as per removal request
+            category_breakdown: [], // Can be empty
+            channel_breakdown: [], // Can be empty
             planner_defaults: { 
                 target: 6500000, 
-                leadToSale_percent: 22.2, // Example (18/81)
+                leadToSale_percent: 22.2, // Example
                 avg_ticket_size: 93611 
             }
         };
 
+        // --- DEBUG: Test if myData is valid JSON ---
+        try {
+            console.log("Testing myData structure:", JSON.stringify(myData).substring(0, 100) + "..."); // Log first 100 chars
+        } catch (e) {
+            console.error("ERROR: myData has invalid syntax!", e);
+            alert("Error in example data! Check console."); // Alert user
+        }
+        // --- END DEBUG ---
+
         // Call initialization function after DOM is ready
         window.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM Ready, attempting manual initialization with example data (v3.4)...");
-            if (typeof window.initializeSalesReport === 'function') {
-                window.initializeSalesReport(myData); // Initialize with example data
-            } else { 
-                 console.error("Initialization function 'window.initializeSalesReport' not found!");
-                 document.body.innerHTML = "<h1 style='color:red; text-align: center; margin-top: 50px;'>Error: Report script (report-2.js) failed to load correctly.</h1>";
+            console.log("DOM Ready, attempting manual initialization..."); // Simplified log message
+            
+            // Check if the function exists AGAIN right before calling
+            if (typeof window.initializeFunnelReport === 'function') { // Use the correct function name!
+                console.log("Calling window.initializeFunnelReport..."); // DEBUG
+                window.initializeFunnelReport(myData); // Initialize with example data
+                console.log("window.initializeFunnelReport call finished."); // DEBUG
+            } else {
+                 console.error("CRITICAL: Initialization function 'window.initializeFunnelReport' not found at time of call!");
+                 displayError(new Error("Report script function not found.")); // Use displayError if available
             }
         });
     </script>
