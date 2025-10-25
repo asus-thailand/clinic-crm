@@ -8,72 +8,66 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Sales Performance Analysis Report</h1>
-            <p>Step 1: Funnel Analysis</p>
-            <a href="./index.html" class="back-link">กลับหน้าหลัก (CRM)</a>
-        </div>
-
+        {/* ... header ... */}
         <div class="content-wrapper">
             <div class="content">
-
+                {/* --- Section 2: Funnel Analysis --- */}
                 <div class="section">
                     <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
-                    {/* *** ENSURE THIS DIV EXISTS AND CONTAINS THE CARDS BELOW *** */}
                     <div class="stats-grid interactive-funnel funnel-section">
-
-                        {/* Overall Budget Input */}
+                        {/* ... Funnel cards and inputs (Ensure IDs are correct) ... */}
                         <div class="stat-card input-card">
                             <label class="stat-label" for="funnel-budget-input">Overall Budget (ใส่ตัวเลข)</label>
-                            {/* *** ENSURE THIS INPUT EXISTS WITH CORRECT ID *** */}
                             <input type="number" class="stat-input" id="funnel-budget-input" value="0" step="1000" min="0">
                         </div>
-
-                        {/* Total Inboxes Input */}
-                        <div class="stat-card input-card">
-                            <label class="stat-label" for="funnel-inboxes-input">Total Inboxes (ใส่ตัวเลข)</label>
-                             {/* *** ENSURE THIS INPUT EXISTS WITH CORRECT ID *** */}
-                            <input type="number" class="stat-input" id="funnel-inboxes-input" value="0" step="10" min="0">
+                        <div class="stat-card display-card"> {/* Changed back to display for Inboxes */}
+                            <div class="stat-label">Total Inboxes (ลูกค้าทั้งหมด)</div>
+                            <div class="stat-value" id="funnel-inboxes">...</div>
                         </div>
-
-                        {/* Qualified Leads Display (Actual vs Target) */}
                         <div class="stat-card display-card leads-card">
                             <div class="stat-label">Qualified Leads (ตัวเลขจริง / เป้าหมาย)</div>
                             <div class="value-comparison">
-                                 {/* *** ENSURE THIS SPAN EXISTS WITH CORRECT ID *** */}
                                 <span class="actual-value" id="funnel-leads-actual">...</span>
                                 <span class="separator">/</span>
                                 <span class="target-value" id="funnel-leads-target">...</span>
                             </div>
                             <div class="target-note">(เป้าหมายคำนวณจาก 30% KPI)</div>
                         </div>
-
-                        {/* Closed Sales Display (Actual) */}
                         <div class="stat-card display-card sales-card">
                             <div class="stat-label">Closed Sales (ตัวเลขจริง)</div>
                             <div class="stat-value" id="funnel-sales-actual">...</div>
                         </div>
-
-                         {/* Overall CPL Display */}
-                        <div class="stat-card display-card cpl-card">
+                         <div class="stat-card display-card cpl-card">
                             <div class="stat-label">Overall Cost Per Lead (คำนวณ)</div>
                             <div class="stat-value" id="funnel-overall-cpl">...</div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    </div> {/* End stats-grid */}
-                </div> {/* End section */}
+    {/* --- [MODIFIED] Define Data Script FIRST --- */}
+    <script>
+        // Define data globally BEFORE report-2.js runs
+        window.myReportData = {
+            core_metrics: {
+                total_customers: 96,
+                qualified_leads: 81,
+                closed_sales: 18,
+                total_revenue: 1685000,
+                avg_deal_size: 93611,
+                avg_closing_days: 15.3
+            },
+            monthly_breakdown: [], team_breakdown: [],
+            category_breakdown: [], channel_breakdown: [],
+            planner_defaults: {}
+        };
+        console.log("HTML: window.myReportData defined."); // DEBUG
+    </script>
 
-            </div> {/* End content */}
-        </div> {/* End content-wrapper */}
-    </div> {/* End container */}
-
+    {/* --- Load the JS file AFTER data is defined --- */}
     <script src="./report-2.js"></script>
 
-    {/* --- Define Data Script --- */}
-    <script>
-        // Define data globally BEFORE report-2.js's DOMContentLoaded runs
-        window.myReportData = { /* ... ข้อมูลตัวอย่าง ... */ };
-        console.log("HTML: window.myReportData defined.");
-    </script>
 </body>
 </html>
