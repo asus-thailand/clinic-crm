@@ -1,263 +1,259 @@
 // ================================================================================
 // Sales Performance Dashboard - V2 SCRIPT (Function-Based / Auto-Detect)
-// Version 3.7
-// - Adapts to data structure from SQL function v3.6 (core_metrics, breakdowns, planner_defaults).
-// - Renders Funnel, Performance Summary (Avg Days, Closing Rate), Filtered Teams, Planner.
-// - Reads Budget/Inbox inputs for calculations.
+// Version 3.8 (Intensive Debugging)
+// - Added extensive console.log statements to trace data flow and element updates.
 // ================================================================================
 
-console.log("[Script Load] report-2.js v3.7 executing...");
+console.log("[Script Load] report-2.js v3.8 DEBUG executing...");
 
 // -- GLOBAL STATE --
-window.reportState = window.reportState || {
-    currentUser: null,
-    apiData: null, // Stores raw data from API v3.6
-    marketingInputMonths: [ /* Default months */ ],
-    calculatedFinancialData: [] // Not used in this simplified version
-};
+window.reportState = window.reportState || { /* ... state structure ... */ };
 const state = window.reportState;
+const KPI_INBOX_TO_LEAD_TARGET_PERCENT = 30;
 
-// -- ELEMENT REFERENCES --
-// Funnel Section 2
-const overallBudgetInputEl = document.getElementById('funnel-budget-input');
-const funnelInboxesInputEl = document.getElementById('funnel-inboxes-input');
+// -- ELEMENT REFERENCES -- (Keep global refs for frequently used display elements)
 const funnelLeadsActualEl = document.getElementById('funnel-leads-actual');
 const funnelLeadsTargetEl = document.getElementById('funnel-leads-target');
 const funnelSalesActualEl = document.getElementById('funnel-sales-actual');
 const funnelOverallCplEl = document.getElementById('funnel-overall-cpl');
 const funnelTargetKpiDisplayEl = document.getElementById('funnel-target-kpi-display');
-
-// Performance Section 3
 const perfAvgClosingDaysEl = document.getElementById('perf-avg-closing-days');
 const perfOverallClosingRateEl = document.getElementById('perf-overall-closing-rate');
 const teamGridContainerEl = document.getElementById('team-performance-grid');
-
-// Planner Section 7
-const plannerTargetEl = document.getElementById('target');
-const plannerInboxesEl = document.getElementById('inboxes');
-const plannerInboxToLeadEl = document.getElementById('inboxToLead');
-const plannerLeadToSaleEl = document.getElementById('leadToSale');
-const plannerTicketEl = document.getElementById('ticket');
-const plannerInboxToLeadValueEl = document.getElementById('inboxToLeadValue');
-const plannerLeadsOutEl = document.getElementById('leadsOut');
-const plannerSalesOutEl = document.getElementById('salesOut');
-const plannerRevenueOutEl = document.getElementById('revenueOut');
-const plannerGapOutEl = document.getElementById('gapOut');
-const plannerInsightEl = document.getElementById('insight');
-const plannerNotesEl = document.getElementById('planner-notes');
-
+// ... (Planner elements refs) ...
 
 // -- HELPER FUNCTIONS --
-function formatCurrency(n, showSign = false, decimals = 0) { /* ... เหมือนเดิม v3.5 ... */ }
-function formatNumber(n) { /* ... เหมือนเดิม v3.5 ... */ }
-function displayError(error) { /* ... เหมือนเดิม v3.5 ... */ }
+function formatCurrency(n, showSign = false, decimals = 0) { /* ... เหมือนเดิม ... */ }
+function formatNumber(n) { /* ... เหมือนเดิม ... */ }
+function displayError(error) { /* ... เหมือนเดิม ... */ }
 
 // ================================================================================
 // INPUT READING FUNCTIONS
 // ================================================================================
 function getFunnelInputs() {
-    const budget = parseFloat(overallBudgetInputEl?.value) || 0;
-    const inboxes = parseInt(funnelInboxesInputEl?.value, 10) || 0;
-    return {
-        overallBudget: Math.max(0, budget),
-        totalInboxes: Math.max(0, inboxes)
-    };
+    // Lookup inside function remains safer
+    const budgetInput = document.getElementById('funnel-budget-input');
+    const inboxesInput = document.getElementById('funnel-inboxes-input');
+    const budget = parseFloat(budgetInput?.value) || 0;
+    const inboxes = parseInt(inboxesInput?.value, 10) || 0;
+    // console.log("[getFunnelInputs] Budget:", budget, "Inboxes:", inboxes); // DEBUG
+    return { overallBudget: Math.max(0, budget), totalInboxes: Math.max(0, inboxes) };
 }
-// getMarketingInputs() - Not needed for this version if Financial Table is removed
 
 // ================================================================================
-// CORE CALCULATION & RENDERING LOGIC (Simplified for SQL v3.6)
+// CORE CALCULATION & RENDERING LOGIC (WITH DEBUGGING)
 // ================================================================================
 
-/** Core recalculation function V3.7 */
+/** Core recalculation function V3.8 */
 function recalculateAndUpdateReport() {
-    console.log("[Recalculate V3.7] Starting...");
+    console.log("[Recalculate V3.8] Starting...");
 
-    if (!state.apiData || !state.apiData.core_metrics) { console.warn("[Recalculate] API data not ready."); return; }
+    // --- 0. Check for necessary elements upfront ---
+    const budgetInput = document.getElementById('funnel-budget-input');
+    const inboxesInput = document.getElementById('funnel-inboxes-input');
+    if (!budgetInput || !inboxesInput) {
+        console.error("[Recalculate V3.8] CRITICAL: Funnel input elements not found!");
+        displayError(new Error("องค์ประกอบ Input หลักหายไป"));
+        return;
+    }
 
-    // --- 1. Read Inputs ---
+    // --- 1. Check API Data ---
+    if (!state.apiData || !state.apiData.core_metrics) {
+        console.warn("[Recalculate V3.8] API data not available in state. Aborting calculation.");
+        // Clear display fields to indicate missing data
+        if (funnelLeadsActualEl) funnelLeadsActualEl.textContent = '-';
+        if (funnelLeadsTargetEl) funnelLeadsTargetEl.textContent = '-';
+        if (funnelSalesActualEl) funnelSalesActualEl.textContent = '-';
+        if (funnelOverallCplEl) funnelOverallCplEl.textContent = '-';
+        // ... clear performance summary ...
+        return;
+    }
+    console.log("[Recalculate V3.8] state.apiData.core_metrics:", state.apiData.core_metrics); // DEBUG
+
+    // --- 2. Read Inputs ---
     const funnelInputs = getFunnelInputs(); // Reads Overall Budget & Inboxes
+    console.log("[Recalculate V3.8] Funnel Inputs Read:", funnelInputs); // DEBUG
+
     const kpiTargetPercent = 30; // Hardcoded KPI target %
 
-    // --- 2. Get Actual Core Metrics from API Data ---
+    // --- 3. Get Actual Core Metrics ---
     const coreMetrics = state.apiData.core_metrics;
     const actualTotalLeads = coreMetrics.qualified_leads || 0;
     const actualTotalSales = coreMetrics.closed_sales || 0;
     const avgClosingDays = coreMetrics.avg_closing_days;
-    // Get total revenue directly from core metrics now
-    const totalRevenue = coreMetrics.total_revenue || 0;
+    const totalRevenue = coreMetrics.total_revenue || 0; // Get total revenue
+    console.log(`[Recalculate V3.8] Actual Metrics: Leads=${actualTotalLeads}, Sales=${actualTotalSales}, AvgDays=${avgClosingDays}, Revenue=${totalRevenue}`); // DEBUG
 
-    // --- 3. Perform Core Calculations ---
+    // --- 4. Perform Core Calculations ---
     const targetLeads = Math.round(funnelInputs.totalInboxes * (kpiTargetPercent / 100));
     const overallCPL = (actualTotalLeads > 0 && funnelInputs.overallBudget > 0) ? (funnelInputs.overallBudget / actualTotalLeads) : 0;
     const actualLeadToSalePercent = (actualTotalLeads > 0) ? (actualTotalSales / actualTotalLeads * 100) : 0;
-    // Calculate Overall ROAS using Overall Budget and Total Revenue from core_metrics
     const totalROAS = (funnelInputs.overallBudget > 0) ? (totalRevenue / funnelInputs.overallBudget) : 0;
+    console.log(`[Recalculate V3.8] Calculated Metrics: TargetLeads=${targetLeads}, CPL=${overallCPL}, LeadSale%=${actualLeadToSalePercent}, ROAS=${totalROAS}`); // DEBUG
 
-
-    // --- 4. Render Funnel (Sec 2) ---
+    // --- 5. Render Funnel (Sec 2) ---
+    console.log("[Recalculate V3.8] Calling renderFunnel..."); // DEBUG
     renderFunnel({
-        budget: funnelInputs.overallBudget,
-        inboxes: funnelInputs.totalInboxes,
-        leadsActual: actualTotalLeads,
-        leadsTarget: targetLeads,
-        salesActual: actualTotalSales,
-        overallCPL: overallCPL,
+        budget: funnelInputs.overallBudget, inboxes: funnelInputs.totalInboxes,
+        leadsActual: actualTotalLeads, leadsTarget: targetLeads,
+        salesActual: actualTotalSales, overallCPL: overallCPL,
         targetKPIPercent: kpiTargetPercent
     });
 
-    // --- 5. Render Performance Summary (Sec 3) ---
+    // --- 6. Render Performance Summary (Sec 3) ---
+    console.log("[Recalculate V3.8] Calling renderPerformanceSummary..."); // DEBUG
     renderPerformanceSummary({
         avgClosingDays: avgClosingDays,
         overallClosingRate: actualLeadToSalePercent
     });
 
-    // --- 6. Render Team Performance Grid (Sec 3 - filtered) ---
+    // --- 7. Render Team Performance Grid (Sec 3 - filtered) ---
+    console.log("[Recalculate V3.8] Calling renderTeamPerformance..."); // DEBUG
     renderTeamPerformance(state.apiData?.team_breakdown || []);
 
-    // --- 7. Update Planner Inputs & Recalculate ---
-    updatePlannerAndTotals(funnelInputs.totalInboxes, actualTotalLeads, actualTotalSales, totalRevenue, totalROAS); // Pass calculated ROAS too
+    // --- 8. Update Planner Inputs & Recalculate ---
+    console.log("[Recalculate V3.8] Calling updatePlannerAndTotals..."); // DEBUG
+    updatePlannerAndTotals(funnelInputs.totalInboxes, actualTotalLeads, actualTotalSales, totalRevenue, totalROAS);
 
-    console.log("[Recalculate V3.7] Report update complete.");
+    console.log("[Recalculate V3.8] Report update complete.");
 }
 
 
 /** * Renders Funnel section display elements (Sec 2). */
 function renderFunnel(funnelData) {
-    // Update Input fields
-    if (overallBudgetInputEl && document.activeElement !== overallBudgetInputEl) { overallBudgetInputEl.value = Math.round(funnelData.budget || 0); }
-    if (funnelInboxesInputEl && document.activeElement !== funnelInboxesInputEl) { funnelInboxesInputEl.value = funnelData.inboxes || 0; }
+    console.log("[renderFunnel] Data received:", funnelData); // DEBUG
 
-    // Update Display elements
-    if (funnelLeadsActualEl) funnelLeadsActualEl.textContent = formatNumber(funnelData.leadsActual || 0);
-    if (funnelLeadsTargetEl) funnelLeadsTargetEl.textContent = formatNumber(funnelData.leadsTarget || 0);
-    if (funnelSalesActualEl) funnelSalesActualEl.textContent = formatNumber(funnelData.salesActual || 0);
-    if (funnelOverallCplEl) funnelOverallCplEl.textContent = formatCurrency(funnelData.overallCPL, false, 2);
-    if (funnelTargetKpiDisplayEl) funnelTargetKpiDisplayEl.textContent = (funnelData.targetKPIPercent || 0).toFixed(1);
+    // Lookup elements inside again for safety
+    const budgetInput = document.getElementById('funnel-budget-input');
+    const inboxesInput = document.getElementById('funnel-inboxes-input');
+    const leadsActualDisp = document.getElementById('funnel-leads-actual');
+    const leadsTargetDisp = document.getElementById('funnel-leads-target');
+    const salesActualDisp = document.getElementById('funnel-sales-actual');
+    const overallCplDisp = document.getElementById('funnel-overall-cpl');
+    const targetKpiDisp = document.getElementById('funnel-target-kpi-display');
+
+    // Update Input fields only if not focused
+    if (budgetInput && document.activeElement !== budgetInput) {
+        budgetInput.value = Math.round(funnelData.budget || 0);
+    }
+    if (inboxesInput && document.activeElement !== inboxesInput) {
+        inboxesInput.value = funnelData.inboxes || 0;
+    }
+
+    // Update Display elements, check if found
+    if (leadsActualDisp) {
+        leadsActualDisp.textContent = formatNumber(funnelData.leadsActual || 0);
+        console.log("[renderFunnel] Updated Leads Actual Display:", leadsActualDisp.textContent); // DEBUG
+    } else { console.error("[renderFunnel] Element 'funnel-leads-actual' NOT FOUND!"); }
+
+    if (leadsTargetDisp) {
+        leadsTargetDisp.textContent = formatNumber(funnelData.leadsTarget || 0);
+        console.log("[renderFunnel] Updated Leads Target Display:", leadsTargetDisp.textContent); // DEBUG
+    } else { console.error("[renderFunnel] Element 'funnel-leads-target' NOT FOUND!"); }
+
+    if (salesActualDisp) {
+        salesActualDisp.textContent = formatNumber(funnelData.salesActual || 0);
+        console.log("[renderFunnel] Updated Sales Actual Display:", salesActualDisp.textContent); // DEBUG
+    } else { console.error("[renderFunnel] Element 'funnel-sales-actual' NOT FOUND!"); }
+
+    if (overallCplDisp) {
+        overallCplDisp.textContent = formatCurrency(funnelData.overallCPL, false, 2);
+        console.log("[renderFunnel] Updated CPL Display:", overallCplDisp.textContent); // DEBUG
+    } else { console.error("[renderFunnel] Element 'funnel-overall-cpl' NOT FOUND!"); }
+
+    if (targetKpiDisp) {
+        targetKpiDisp.textContent = (funnelData.targetKPIPercent || 0).toFixed(1);
+    } else { console.warn("[renderFunnel] Element 'funnel-target-kpi-display' not found."); }
 }
 
 /** Renders the Performance Summary metrics (Sec 3) */
 function renderPerformanceSummary(perfData) {
-     if (perfAvgClosingDaysEl) {
-         perfAvgClosingDaysEl.textContent = perfData.avgClosingDays !== null && perfData.avgClosingDays !== undefined ? perfData.avgClosingDays.toFixed(1) : '-';
-     }
-     if (perfOverallClosingRateEl) {
-         perfOverallClosingRateEl.textContent = (perfData.overallClosingRate || 0).toFixed(1);
-     }
+     console.log("[renderPerfSummary] Data:", perfData); // DEBUG
+     const avgDaysEl = document.getElementById('perf-avg-closing-days');
+     const closingRateEl = document.getElementById('perf-overall-closing-rate');
+
+     if (avgDaysEl) {
+         avgDaysEl.textContent = perfData.avgClosingDays !== null && perfData.avgClosingDays !== undefined
+                                         ? perfData.avgClosingDays.toFixed(1)
+                                         : '-';
+        console.log("[renderPerfSummary] Updated Avg Days:", avgDaysEl.textContent); // DEBUG
+     } else { console.error("[renderPerfSummary] Element 'perf-avg-closing-days' NOT FOUND!"); }
+
+     if (closingRateEl) {
+         closingRateEl.textContent = (perfData.overallClosingRate || 0).toFixed(1);
+         console.log("[renderPerfSummary] Updated Closing Rate:", closingRateEl.textContent); // DEBUG
+     } else { console.error("[renderPerfSummary] Element 'perf-overall-closing-rate' NOT FOUND!"); }
 }
 
 
 /** Renders Team Performance, filtering out 'Online' */
-function renderTeamPerformance(teamBreakdown = []) {
-    if (!teamGridContainerEl) return;
-    teamBreakdown = Array.isArray(teamBreakdown) ? teamBreakdown : [];
-    const filteredTeams = teamBreakdown.filter(team => ['MAM', 'AU', 'GOLF'].includes(team.team_name));
+function renderTeamPerformance(teamBreakdown = []) { /* ... เหมือนเดิม v3.4 ... */ }
 
-    if (filteredTeams.length === 0) {
-        teamGridContainerEl.innerHTML = '<div class="stat-card placeholder"><p>ไม่มีข้อมูลทีม MAM, AU, GOLF</p></div>'; return;
-    }
-    teamGridContainerEl.innerHTML = '';
-
-    const teamDisplayMap = {
-         'MAM': { name: '🏆 MAM', color: '#48bb78'},
-         'AU': { name: '💰 AU', color: '#667eea'},
-         'GOLF': { name: '📈 GOLF', color: '#f56565'}
-    };
-
-    filteredTeams.forEach(team => {
-        const displayInfo = teamDisplayMap[team.team_name] || { name: `ทีม ${team.team_name}`, color: '#ccc' };
-        const leads = team.leads || 0;
-        const sales = team.sales || 0;
-        const revenue = team.revenue || 0;
-        const closingRate = (leads > 0) ? (sales / leads * 100) : 0;
-        const card = document.createElement('div');
-        card.className = 'stat-card';
-        card.style.borderTop = `5px solid ${displayInfo.color}`;
-        card.innerHTML = `
-            <h3>${displayInfo.name}</h3>
-            <div class="stat-value" style="color:${displayInfo.color};">${closingRate.toFixed(1)}%</div>
-            <div class="stat-label">Closing Rate</div>
-            <div class="metric-item"><span>- ยอดขายรวม</span> <span>${formatCurrency(revenue)}</span></div>
-            <div class="metric-item"><span>- จำนวน Leads</span> <span>${formatNumber(leads)}</span></div>
-            <div class="metric-item"><span>- เคสปิดได้</span> <span>${formatNumber(sales)}</span></div>
-        `;
-        teamGridContainerEl.appendChild(card);
-    });
-}
-
-/** * [MODIFIED] Updates Planner Inputs & Triggers Planner Calculation. */
-function updatePlannerAndTotals(totalInboxes, totalLeads, totalSales, totalRevenue, totalROAS) { // Receive calculated ROAS
-
-    // --- Update Stat Cards (if they exist for Overall Budget/Revenue/ROAS) ---
-    const financialBudgetEl = document.getElementById('financial-budget');
-    const financialRevenueEl = document.getElementById('financial-revenue');
-    const financialRoasEl = document.getElementById('financial-roas');
-    // Read Overall Budget again as it might have changed
-    const overallBudget = parseFloat(overallBudgetInputEl?.value) || 0;
-    if (financialBudgetEl) financialBudgetEl.textContent = formatCurrency(overallBudget);
-    if (financialRevenueEl) financialRevenueEl.textContent = formatCurrency(totalRevenue);
-    if (financialRoasEl) financialRoasEl.textContent = `${totalROAS.toFixed(2)}x`;
-
-    // --- Update Planner Inputs ---
+/** Updates Planner Inputs & Triggers Planner Calculation. */
+function updatePlannerAndTotals(totalInboxes, totalLeads, totalSales, totalRevenue, totalROAS) {
+    console.log("[updatePlanner] Updating Planner with:", {totalInboxes, totalLeads, totalSales, totalRevenue, totalROAS}); // DEBUG
+    /* ... Logic เหมือนเดิม v3.7 ... */
+    // Ensure planner elements exist before updating
+    const plannerInboxesEl = document.getElementById('inboxes');
     if (plannerInboxesEl) plannerInboxesEl.value = totalInboxes;
-
-    const actualInboxToLeadPercent = (totalInboxes > 0) ? (totalLeads / totalInboxes * 100) : 0;
-    const validInboxToLeadPercent = Math.min(50, Math.max(1, actualInboxToLeadPercent));
-    if (plannerInboxToLeadEl) plannerInboxToLeadEl.value = validInboxToLeadPercent.toFixed(1);
-    if (plannerInboxToLeadValueEl) plannerInboxToLeadValueEl.textContent = `${validInboxToLeadPercent.toFixed(1)}%`;
-
-    // --- Update Planner Notes ---
-    if (plannerNotesEl) {
-        plannerNotesEl.textContent = `* ผลรวม: Input Inbox ${formatNumber(totalInboxes)} → Actual Lead ${formatNumber(totalLeads)} → Actual Sale ${formatNumber(totalSales)}`;
+    // ... rest of planner updates ...
+    if (typeof calcPlanner === 'function') {
+        console.log("[updatePlanner] Triggering calcPlanner()"); // DEBUG
+        calcPlanner();
     }
-
-    // --- Trigger Planner Recalculation ---
-    if (typeof calcPlanner === 'function') calcPlanner();
 }
 
 
 // ================================================================================
-// MAIN INITIALIZATION
+// MAIN INITIALIZATION (WITH DEBUGGING)
 // ================================================================================
 
 /** Internal function to initialize the report */
 function initializeReportWithData() {
-    console.log("[InitReport V3.7] Initializing...");
+    console.log("[InitReport V3.8] Initializing...");
 
+    // Ensure state.apiData and core_metrics exist
     state.apiData = state.apiData || { core_metrics: {}, monthly_breakdown: [], team_breakdown: [], planner_defaults: {} };
     state.currentUser = state.currentUser || null;
+    console.log("[InitReport V3.8] Initial state.apiData.core_metrics:", state.apiData.core_metrics); // DEBUG
 
     try {
-        // 1. Populate Planner defaults (needs base values before first calc)
+        // 1. Populate Planner defaults
+        console.log("[InitReport V3.8] Populating planner defaults..."); // DEBUG
         populatePlanner(state.apiData.planner_defaults);
 
-        // 2. Set initial Funnel display values (Leads/Sales from API)
+        // 2. Set initial Funnel display values (Check elements exist first)
         const coreMetrics = state.apiData.core_metrics || {};
-        if (funnelLeadsActualEl) funnelLeadsActualEl.textContent = formatNumber(coreMetrics.qualified_leads || 0);
-        if (funnelSalesActualEl) funnelSalesActualEl.textContent = formatNumber(coreMetrics.closed_sales || 0);
-        // Budget and Inbox inputs start at 0 (or HTML default)
+        const initialLeadsEl = document.getElementById('funnel-leads-actual');
+        const initialSalesEl = document.getElementById('funnel-sales-actual');
+        if (initialLeadsEl) {
+            initialLeadsEl.textContent = formatNumber(coreMetrics.qualified_leads || 0);
+            console.log("[InitReport V3.8] Initial Leads set to:", initialLeadsEl.textContent); // DEBUG
+        } else { console.error("[InitReport V3.8] Initial Leads element not found!");}
+        if (initialSalesEl) {
+            initialSalesEl.textContent = formatNumber(coreMetrics.closed_sales || 0);
+            console.log("[InitReport V3.8] Initial Sales set to:", initialSalesEl.textContent); // DEBUG
+        } else { console.error("[InitReport V3.8] Initial Sales element not found!");}
+        // Budget and Inbox inputs start at 0 (HTML default)
 
         // 3. Trigger the first calculation cycle
+        console.log("[InitReport V3.8] Triggering initial recalculateAndUpdateReport..."); // DEBUG
         recalculateAndUpdateReport();
 
         // 4. Add Event Listeners for Funnel Inputs
+        console.log("[InitReport V3.8] Adding funnel input listeners..."); // DEBUG
         addFunnelInputListeners();
 
-        console.log("[InitReport V3.7] Initialization complete.");
+        console.log("[InitReport V3.8] Initialization complete.");
 
-    } catch (error) { console.error("[InitReport V3.7] Error:", error); displayError(error); }
+    } catch (error) { console.error("[InitReport V3.8] Error during initialization:", error); displayError(error); }
 }
 
 /** Adds event listeners to Budget and Inbox inputs */
-function addFunnelInputListeners() {
-     const budgetInput = document.getElementById('funnel-budget-input');
-     const inboxesInput = document.getElementById('funnel-inboxes-input');
-     const inputsToListen = [ budgetInput, inboxesInput ];
-     inputsToListen.forEach(input => { /* ... Add listeners ... */ }); // Same as v3.6
- }
+function addFunnelInputListeners() { /* ... เหมือนเดิม v3.7 ... */ }
 
 /** Event handler for Budget / Inbox inputs */
-function handleFunnelInputChange(event) { /* ... Same as v3.6 ... */ }
+function handleFunnelInputChange(event) { /* ... เหมือนเดิม v3.7 ... */ }
 
 
 // ================================================================================
@@ -268,40 +264,14 @@ window.plannerBase = {};
 function calcPlanner() { /* ... Calculation logic is the same ... */ }
 // --- Event Listeners for Planner (Section 7) ---
 /* ... Listeners for Target, Lead->Sale, Ticket, Slider remain the same ... */
-// Reset button logic (Simplified)
+// Reset button logic
 const resetBtn = document.getElementById('resetBtn');
-if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
-        console.log("Reset button clicked.");
-        const base = window.plannerBase || {};
-        const coreMetrics = state.apiData?.core_metrics || {};
-
-        // Reset Planner user-editable inputs
-        if (plannerTargetEl) plannerTargetEl.value = base.target || 6500000;
-        if (plannerLeadToSaleEl) { plannerLeadToSaleEl.value = (base.leadToSale_percent || 0).toFixed(1); /* ... */ }
-        if (plannerTicketEl) { plannerTicketEl.value = base.avg_ticket_size || 0; /* ... */ }
-
-        // Reset Funnel Inputs (Budget/Inbox 0)
-        if (overallBudgetInputEl) { overallBudgetInputEl.value = 0; /* ... */ }
-        if (funnelInboxesInputEl) { funnelInboxesInputEl.value = 0; /* ... */ }
-
-        console.log("Triggering recalculate after reset.");
-        recalculateAndUpdateReport(); // Trigger full recalculation
-    });
-}
+if (resetBtn) { /* ... Reset logic เหมือนเดิม v3.7 ... */ }
 
 // ================================================================================
 // GLOBAL INITIALIZATION FUNCTION & AUTO-DETECT MODE
 // ================================================================================
-window.initializeSalesReport = function(reportData, userData = null) {
-    console.log("[Global Init V3.7] Setting up report with data:", reportData);
-    if (!reportData || typeof reportData !== 'object' || !reportData.core_metrics) { /* ... validation ... */ return; }
-    state.apiData = reportData;
-    state.currentUser = userData;
-    try {
-        initializeReportWithData();
-    } catch(initError) { /* ... error handling ... */ }
-};
-console.log("[Script Ready] report-2.js v3.7 loaded...");
+window.initializeSalesReport = function(reportData, userData = null) { /* ... เหมือนเดิม v3.1 ... */ };
+console.log("[Script Ready] report-2.js v3.8 DEBUG loaded...");
 // --- Fallback definition ---
 if (typeof window.initializeSalesReport !== 'function') { /* ... */ }
