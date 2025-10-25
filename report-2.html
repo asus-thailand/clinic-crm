@@ -1,61 +1,53 @@
-{/* Load the JS file FIRST */}
-    <script src="./report-2.js"></script> 
-    
-    {/* --- Example Initialization Script --- */}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Funnel Analysis</title>
+    <link rel="stylesheet" href="./report-2.css">
+</head>
+<body>
+    {/* ... container, header, content wrapper ... */}
+    <div class="container">
+        {/* ... header ... */}
+        <div class="content-wrapper">
+            <div class="content">
+                {/* --- Section 2: Funnel Analysis --- */}
+                <div class="section">
+                    <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
+                    <div class="stats-grid interactive-funnel funnel-section">
+                        {/* ... Funnel cards and inputs ... */}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {/* Load the JS file */}
+    <script src="./report-2.js"></script>
+
+    {/* --- Define Data Script --- */}
     <script>
-        // Example Data (API v3.4 format) - CHECK SYNTAX CAREFULLY!
-        const myData = {
+        // Define data globally BEFORE report-2.js's DOMContentLoaded runs
+        window.myReportData = { // Changed to window property
             core_metrics: {
-                total_customers: 96, 
+                total_customers: 96,
                 qualified_leads: 81,
                 closed_sales: 18,
-                total_revenue: 1685000, 
-                avg_deal_size: 93611, 
-                avg_closing_days: 15.3 
+                total_revenue: 1685000,
+                avg_deal_size: 93611,
+                avg_closing_days: 15.3
             },
-            monthly_breakdown: [ 
-                { month: "2025-07", month_th: "ก.ค.", leads: 25, revenue: 550000 },
-                { month: "2025-08", month_th: "ส.ค.", leads: 30, revenue: 650000 },
-                { month: "2025-09", month_th: "ก.ย.", leads: 26, revenue: 485000 }
-            ],
-            team_breakdown: [ 
-                { team_name: "Online", leads: 30, sales: 5, revenue: 450000 },
-                { team_name: "MAM", leads: 20, sales: 6, revenue: 580000 },
-                { team_name: "AU", leads: 16, sales: 4, revenue: 355000 },
-                { team_name: "GOLF", leads: 15, sales: 3, revenue: 300000 }
-            ],
-            category_breakdown: [], // Can be empty
-            channel_breakdown: [], // Can be empty
-            planner_defaults: { 
-                target: 6500000, 
-                leadToSale_percent: 22.2, // Example
-                avg_ticket_size: 93611 
-            }
+            monthly_breakdown: [], // Keep structure, even if empty
+            team_breakdown: [],
+            category_breakdown: [],
+            channel_breakdown: [],
+            planner_defaults: {}
         };
+        console.log("HTML: window.myReportData defined."); // DEBUG
 
-        // --- DEBUG: Test if myData is valid JSON ---
-        try {
-            console.log("Testing myData structure:", JSON.stringify(myData).substring(0, 100) + "..."); // Log first 100 chars
-        } catch (e) {
-            console.error("ERROR: myData has invalid syntax!", e);
-            alert("Error in example data! Check console."); // Alert user
-        }
-        // --- END DEBUG ---
+        // --- REMOVED THE DOMContentLoaded listener that calls initialize ---
 
-        // Call initialization function after DOM is ready
-        window.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM Ready, attempting manual initialization..."); // Simplified log message
-            
-            // Check if the function exists AGAIN right before calling
-            if (typeof window.initializeFunnelReport === 'function') { // Use the correct function name!
-                console.log("Calling window.initializeFunnelReport..."); // DEBUG
-                window.initializeFunnelReport(myData); // Initialize with example data
-                console.log("window.initializeFunnelReport call finished."); // DEBUG
-            } else {
-                 console.error("CRITICAL: Initialization function 'window.initializeFunnelReport' not found at time of call!");
-                 displayError(new Error("Report script function not found.")); // Use displayError if available
-            }
-        });
     </script>
 </body>
 </html>
