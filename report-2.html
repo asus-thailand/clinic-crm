@@ -85,11 +85,28 @@
                     <h2 class="section-title">5. Q4 Funnel KPIs & Targets</h2>
                      <div class="stats-grid">
                         <div class="stat-card"><div class="stat-label">KPI: Inbox → Lead</div><div class="stat-value" id="kpi-inbox-lead">...</div></div>
-                        <div class="stat-card"><div class="stat-label">KPI: Lead → Appointment</div><div class="stat-value" id="kpi-lead-appt">...</div></div>
+                        <div class="stat-card"><div class="stat-label">KPI: Lead → Appointment/Sale</div><div class="stat-value" id="kpi-lead-appt">...</div></div>
                         <div class="stat-card highlight"><div class="stat-label">Goal: Total Revenue</div><div class="stat-value" id="kpi-revenue-goal">...</div></div>
                     </div>
                 </div>
-                
+
+                <div class="section" id="marketing-input-section">
+                    <h2 class="section-title">Input: Marketing Data (กรอกข้อมูลการตลาด)</h2>
+                    <p style="margin-bottom: 20px; color: #555;">กรุณากรอกข้อมูล Inboxes และ Budget รายเดือน เพื่อให้ระบบคำนวณ CPL และ ROAS ที่ถูกต้อง</p>
+                    <div class="table-container marketing-input-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>เดือน</th>
+                                    <th>Inboxes</th>
+                                    <th>Budget (฿)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="marketing-input-body">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
                 <hr style="border: none; border-top: 2px dashed #ddd; margin: 60px 0;">
 
                 <div class="section">
@@ -129,31 +146,30 @@
                             <h3>กำหนดเป้าหมายและปรับตัวแปร</h3>
                             <div class="row">
                                 <label>เป้าหมายยอดขาย (฿)</label>
-                                <input id="target" type="number" value="6500000" placeholder="6,500,000">
+                                <input id="target" type="number" value="6500000" placeholder="6,500,000" step="100000">
                             </div>
                             <div class="row">
                                 <label>จำนวน Inbox</label>
-                                <input id="inboxes" type="number" value="3234">
+                                <input id="inboxes" type="number" value="0" step="10">
                             </div>
                             <div class="row">
                                 <label>Inbox → Lead (%)</label>
-                                <input id="inboxToLead" type="range" min="1" max="50" step="0.1" value="8.6">
+                                <input id="inboxToLead" type="range" min="1" max="50" step="0.1" value="0">
                             </div>
                             <div class="slider-info">
-                                <span id="inboxToLeadValue">8.6%</span>
-                                <span>ช่วงค่าเฉลี่ย: 8.6% - 13.6%</span>
+                                <span id="inboxToLeadValue">0.0%</span>
+                                <span>(Calculated)</span>
                             </div>
                             <div class="row" style="margin-top:16px;">
                                 <label>Lead → Sale (%)</label>
-                                <input id="leadToSale" type="number" value="28.6" step="0.1">
+                                <input id="leadToSale" type="number" value="0" step="0.1">
                             </div>
                             <div class="row">
                                 <label>ค่าเฉลี่ยต่อเคส (฿)</label>
-                                <input id="ticket" type="number" value="54368">
+                                <input id="ticket" type="number" value="0" step="1000">
                             </div>
                             <div class="actions">
-                                <button id="calcBtn">คำนวณ</button>
-                                <button id="resetBtn" class="secondary">รีเซ็ต</button>
+                                <button id="calcBtn" style="display: none;">คำนวณ</button> <button id="resetBtn" class="secondary">รีเซ็ตข้อมูล Input</button>
                             </div>
                             <div class="notes" id="planner-notes">
                                 * ค่าเริ่มต้นอิงจากผลจริง Q3
@@ -180,6 +196,7 @@
         </div>
     </div>
 
-<script src="./api-v2.js"></script> <script src="./report-2.js"></script>
+    <script src="./api-v2.js"></script> 
+    <script src="./report-2.js"></script>
 </body>
 </html>
