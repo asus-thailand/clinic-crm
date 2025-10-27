@@ -1,10 +1,10 @@
 // ================================================================================
 // Sales Performance Dashboard - V2 SCRIPT (Updated Funnel Logic + Consult Section)
-// Version: Funnel Step 2.1 (Fixes consult logic)
+// Version: Funnel Step 2.2 (Change Card Target to Closed Sales)
 // Author: ChatGPT Custom Build for FBC
 // ================================================================================
 
-console.log("[Script Load] report-2.js (Funnel v2.1 - Consult) executing...");
+console.log("[Script Load] report-2.js (Funnel v2.2 - Consult Target Fix) executing...");
 
 // --------------------------------------------------------------------------------
 // GLOBAL STATE
@@ -16,7 +16,7 @@ window.reportState = window.reportState || {
 };
 const state = window.reportState;
 const KPI_INBOX_TO_LEAD_TARGET_PERCENT = 30;
-const KPI_LEAD_TO_CONSULT_TARGET_PERCENT = 90; // [NEW] 90% KPI
+const KPI_LEAD_TO_CONSULT_TARGET_PERCENT = 90; // ยังคงใช้สำหรับตาราง
 
 // --------------------------------------------------------------------------------
 // HELPER FUNCTIONS
@@ -127,7 +127,7 @@ function calculateAndUpdateFunnel() {
 // [NEW] CONSULT LOGIC (Section 3)
 // --------------------------------------------------------------------------------
 function calculateAndUpdateConsultSection() {
-    console.log("[CalculateConsult v1.1] Updating...");
+    console.log("[CalculateConsult v1.2] Updating...");
     
     // --- 1. Get Data ---
     const coreData = state.coreData;
@@ -152,20 +152,20 @@ function calculateAndUpdateConsultSection() {
     }
 
     // --- 3. Populate Cards ---
-    // [FIXED] ดึง Qualified Leads จาก `total_customers` (96) ให้ตรงกับ Section 2
     const qualifiedLeads = coreData.total_customers || 0; 
     const consultActual = consultData.consult_2day_actual || 0; 
     
-    // [FIXED] เป้าหมาย (Target) คือ 90% ของ 96
-    const consultTarget = Math.round(qualifiedLeads * (KPI_LEAD_TO_CONSULT_TARGET_PERCENT / 100));
+    // [FIXED] เป้าหมาย (Target) เปลี่ยนเป็น "ยอดปิดการขาย" (20)
+    const consultTarget = coreData.closed_sales || 0;
 
     qualifiedLeadsEl.textContent = formatNumber(qualifiedLeads); // แสดง 96
     consultActualEl.textContent = formatNumber(consultActual); // แสดง 75 (จาก Mock)
-    consultTargetEl.textContent = formatNumber(consultTarget); // แสดง 86 (96 * 0.9)
+    consultTargetEl.textContent = formatNumber(consultTarget); // [FIXED] แสดง 20
     
     console.log("[CalculateConsult] Cards Populated:", { qualifiedLeads, consultActual, consultTarget });
 
     // --- 4. Populate Table ---
+    // (ตรรกะตารางยังคงเดิม คือใช้ 90% KPI ตาม mock data)
     salesTableBody.innerHTML = ''; // Clear loading/old data
     
     if (!salesData || salesData.length === 0) {
@@ -179,7 +179,7 @@ function calculateAndUpdateConsultSection() {
     salesData.forEach(sales => {
         const salesQualified = sales.qualified_leads || 0;
         const salesActual = sales.consult_2day_actual || 0;
-        // [FIXED] เป้าหมายรายเซลล์ คือ 90% ของ Qualified Leads ของเซลล์คนนั้น
+        // เป้าหมายรายเซลล์ ยังคงเป็น 90%
         const salesTarget = Math.round(salesQualified * (KPI_LEAD_TO_CONSULT_TARGET_PERCENT / 100));
         const achievementRate = (salesQualified > 0) ? (salesActual / salesQualified) * 100 : 0;
         
