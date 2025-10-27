@@ -3,93 +3,70 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sales Funnel Analysis</title>
-  <link rel="stylesheet" href="./report-2.css" />
+  <title>Sales Performance Analysis Report</title>
+  <link rel="stylesheet" href="report-2.css" />
 </head>
-
 <body>
   <div class="container">
-    <!-- Header -->
-    <div class="header">
+    <header class="header">
       <h1>Sales Performance Analysis Report</h1>
       <p>Step 1: Funnel Analysis</p>
-      <a href="./index.html" class="back-link">กลับหน้าหลัก (CRM)</a>
-    </div>
+      <a href="/crm" class="back-link">กลับหน้าหลัก (CRM)</a>
+    </header>
 
-    <!-- Content -->
-    <div class="content-wrapper">
-      <div class="content">
+    <div class="content">
+      <h2>2. Funnel Analysis (Overall)</h2>
 
-        <!-- Funnel Section -->
-        <section class="section">
-          <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
+      <div class="funnel-grid">
+        <!-- 🧾 Overall Budget -->
+        <div class="stat-card input-card">
+          <label for="funnel-budget-input">Overall Budget (ใส่ตัวเลข)</label>
+          <input type="number" id="funnel-budget-input" value="0" step="1000" min="0" class="stat-input" />
+        </div>
 
-          <div class="stats-grid interactive-funnel funnel-section">
+        <!-- 🧾 Overall Inboxes (Manual) -->
+        <div class="stat-card input-card">
+          <label for="funnel-inboxes-input">Overall Inboxes (ใส่ตัวเลข)</label>
+          <input type="number" id="funnel-inboxes-input" value="" step="10" min="0" class="stat-input" />
+        </div>
 
-            <!-- Budget -->
-            <div class="stat-card input-card">
-              <label class="stat-label" for="funnel-budget-input">Overall Budget (ใส่ตัวเลข)</label>
-              <input
-                type="number"
-                class="stat-input"
-                id="funnel-budget-input"
-                value="0"
-                step="1000"
-                min="0"
-              />
-            </div>
+        <!-- 📩 Total Inboxes Display -->
+        <div class="stat-card">
+          <label>TOTAL INBOXES (ลูกค้าทั้งหมด)</label>
+          <div class="stat-value" id="funnel-inboxes">0</div>
+        </div>
 
-            <!-- Total Inboxes -->
-            <div class="stat-card display-card">
-              <div class="stat-label">Total Inboxes (ลูกค้าทั้งหมด)</div>
-              <div class="stat-value" id="funnel-inboxes">0</div>
-            </div>
-
-            <!-- Qualified Leads -->
-            <div class="stat-card display-card leads-card">
-              <div class="stat-label">Qualified Leads (ตัวเลขจริง / เป้าหมาย)</div>
-              <div class="value-comparison">
-                <span class="actual-value" id="funnel-leads-actual">0</span>
-                <span class="separator">/</span>
-                <span class="target-value" id="funnel-leads-target">0</span>
-              </div>
-              <div class="target-note">(เป้าหมายคำนวณจาก 30% KPI)</div>
-            </div>
-
-            <!-- Closed Sales -->
-            <div class="stat-card display-card sales-card">
-              <div class="stat-label">Closed Sales (ตัวเลขจริง)</div>
-              <div class="stat-value" id="funnel-sales-actual">0</div>
-            </div>
-
-            <!-- Overall CPL -->
-            <div class="stat-card display-card cpl-card">
-              <div class="stat-label">Overall Cost Per Lead (คำนวณ)</div>
-              <div class="stat-value" id="funnel-overall-cpl">0</div>
-            </div>
-
+        <!-- 🎯 Qualified Leads -->
+        <div class="stat-card">
+          <label>QUALIFIED LEADS (ตัวเลขจริง / เป้าหมาย)</label>
+          <div>
+            <span id="funnel-leads-actual">0</span> /
+            <span id="funnel-leads-target">0</span>
           </div>
-        </section>
+          <div class="note">(เป้าหมายคำนวณจาก 30% KPI)</div>
+        </div>
+
+        <!-- 💼 Closed Sales -->
+        <div class="stat-card">
+          <label>CLOSED SALES (ตัวเลขจริง)</label>
+          <div class="stat-value" id="funnel-sales-actual">0</div>
+        </div>
+
+        <!-- 💰 CPL -->
+        <div class="stat-card">
+          <label>OVERALL COST PER LEAD (คำนวณ)</label>
+          <div class="stat-value highlight" id="funnel-overall-cpl">0</div>
+        </div>
       </div>
+
+      <!-- 🔍 Insight Summary (Auto) -->
+      <div id="insight-summary"></div>
     </div>
   </div>
 
-  <!-- Default Mock Data (ใช้เมื่อยังไม่เชื่อมฐานข้อมูล) -->
-  <script>
-    window.myReportData = {
-      core_metrics: {
-        total_customers: 96,
-        qualified_leads: 81,
-        closed_sales: 18,
-        total_revenue: 1685000,
-        avg_deal_size: 93611,
-        avg_closing_days: 15.3
-      }
-    };
-    console.log("HTML: window.myReportData defined.");
-  </script>
-
-  <!-- Script Main -->
-  <script src="./report-2.js"></script>
+  <!-- ✅ JS -->
+  <script src="config.js"></script>
+  <script src="api-v2.js"></script>
+  <script src="report-2.js"></script>
 </body>
 </html>
