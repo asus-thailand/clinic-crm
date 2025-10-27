@@ -1,10 +1,10 @@
 // ================================================================================
-// Sales Performance Dashboard - V2 SCRIPT (Simplified - Funnel Only)
-// Version: Funnel Step 1.9 (SUPABASE + LOADING UI + AUTO FALLBACK)
-// Author: ChatGPT (Optimized for Beauty Clinic CRM)
+// Sales Performance Dashboard - V2 SCRIPT (Updated Funnel Logic)
+// Version: Funnel Step 2.0 (User Editable Inboxes + Actual Data Fetch)
+// Author: ChatGPT Custom Build for FBC
 // ================================================================================
 
-console.log("[Script Load] report-2.js (Funnel Only v1.9 PRODUCTION) executing...");
+console.log("[Script Load] report-2.js (Funnel v2.0) executing...");
 
 // --------------------------------------------------------------------------------
 // GLOBAL STATE
@@ -30,7 +30,7 @@ function formatNumber(n) {
 
 function displayError(error) {
     console.error("[DisplayError]", error);
-    removeLoadingOverlay(); // ปิดโหลดถ้ามี
+    removeLoadingOverlay();
     const errMsg = document.createElement("div");
     errMsg.style.background = "#ffe6e6";
     errMsg.style.color = "#a33";
@@ -45,7 +45,7 @@ function displayError(error) {
 }
 
 // --------------------------------------------------------------------------------
-// LOADING UI HANDLER
+// LOADING UI
 // --------------------------------------------------------------------------------
 function showLoadingOverlay(message = "กำลังโหลดข้อมูลจากระบบ...") {
     let overlay = document.getElementById("loading-overlay");
@@ -79,41 +79,33 @@ function removeLoadingOverlay() {
 }
 
 // --------------------------------------------------------------------------------
-// CORE FUNNEL LOGIC
+// MAIN FUNNEL LOGIC
 // --------------------------------------------------------------------------------
 function calculateAndUpdateFunnel() {
-    console.log("[CalculateFunnel v1.9] Updating...");
-
-    if (!state.coreData) {
-        console.warn("[CalculateFunnel] No core data found in state.");
-        return;
-    }
+    console.log("[CalculateFunnel v2.0] Updating...");
 
     const budgetInput = document.getElementById('funnel-budget-input');
-    const inboxesDisplay = document.getElementById('funnel-inboxes');
+    const inboxInput = document.getElementById('funnel-inboxes-input');
     const leadsActualEl = document.getElementById('funnel-leads-actual');
     const leadsTargetEl = document.getElementById('funnel-leads-target');
     const salesActualEl = document.getElementById('funnel-sales-actual');
     const overallCplEl = document.getElementById('funnel-overall-cpl');
 
-    if (!budgetInput || !inboxesDisplay || !leadsActualEl || !leadsTargetEl || !salesActualEl || !overallCplEl) {
-        console.error("[CalculateFunnel] Missing elements!");
+    if (!budgetInput || !inboxInput || !leadsActualEl || !leadsTargetEl || !salesActualEl || !overallCplEl) {
         displayError(new Error("องค์ประกอบหน้าเว็บบางส่วนหายไป (Funnel)"));
         return;
     }
 
     const overallBudget = parseFloat(budgetInput.value) || 0;
+    const totalInboxes = parseFloat(inboxInput.value) || 0;
 
-    const totalInboxes = state.coreData.total_customers || 0;
-    const actualLeads = state.coreData.qualified_leads || 0;
-    const actualSales = state.coreData.closed_sales || 0;
-
+    const actualLeads = parseFloat(state.coreData?.total_customers) || 0; // ตัวเลขจริง
+    const actualSales = parseFloat(state.coreData?.closed_sales) || 0;     // ตัวเลขจริง
     const targetLeads = Math.round(totalInboxes * (KPI_INBOX_TO_LEAD_TARGET_PERCENT / 100));
-    const overallCPL = (actualLeads > 0 && overallBudget > 0)
+    const overallCPL = (overallBudget > 0 && actualLeads > 0)
         ? (overallBudget / actualLeads)
         : 0;
 
-    inboxesDisplay.textContent = formatNumber(totalInboxes);
     leadsActualEl.textContent = formatNumber(actualLeads);
     leadsTargetEl.textContent = formatNumber(targetLeads);
     salesActualEl.textContent = formatNumber(actualSales);
@@ -127,62 +119,24 @@ function calculateAndUpdateFunnel() {
 }
 
 // --------------------------------------------------------------------------------
-// INPUT EVENT HANDLER
+// INPUT HANDLERS
 // --------------------------------------------------------------------------------
 function handleFunnelInputChange(event) {
-    if (event.target && event.target.id === 'funnel-budget-input') {
+    const id = event.target.id;
+    if (id === 'funnel-budget-input' || id === 'funnel-inboxes-input') {
         if (parseFloat(event.target.value) < 0) event.target.value = 0;
-        if (event.target.validity.valid || event.target.value === '') {
-            event.target.style.outline = '';
-            calculateAndUpdateFunnel();
-        } else {
-            event.target.style.outline = '2px solid red';
-        }
+        calculateAndUpdateFunnel();
     }
 }
 
 function addFunnelInputListeners() {
-    const budgetInput = document.getElementById('funnel-budget-input');
-    if (budgetInput) {
-        budgetInput.removeEventListener('input', handleFunnelInputChange);
-        budgetInput.addEventListener('input', handleFunnelInputChange);
-        console.log("[AddListeners] Attached to budget input.");
-    } else {
-        displayError(new Error("ไม่พบช่อง Input งบประมาณในหน้า HTML"));
-    }
-}
-
-// --------------------------------------------------------------------------------
-// SUPABASE FETCH
-// --------------------------------------------------------------------------------
-async function fetchReportDataFromSupabase() {
-    showLoadingOverlay("กำลังโหลดข้อมูลจากระบบ Supabase...");
-    console.log("[Supabase Fetch] Starting...");
-
-    try {
-        const userId = localStorage.getItem("crm_user_id") || "demo_user";
-        if (!window.apiV2 || !window.supabaseClient) {
-            throw new Error("Supabase API not ready");
+    ['funnel-budget-input', 'funnel-inboxes-input'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.removeEventListener('input', handleFunnelInputChange);
+            el.addEventListener('input', handleFunnelInputChange);
         }
-
-        const reportData = await window.apiV2.getSalesReportV2(userId);
-        console.log("[Supabase Fetch] Raw:", reportData);
-
-        if (reportData && reportData.core_metrics) {
-            state.coreData = reportData.core_metrics;
-            console.log("[Supabase Fetch] Loaded:", state.coreData);
-        } else {
-            console.warn("[Supabase Fetch] Empty data, fallback to mock.");
-            state.coreData = window.myReportData?.core_metrics || {};
-        }
-    } catch (err) {
-        console.error("[Supabase Fetch] Error:", err);
-        state.coreData = window.myReportData?.core_metrics || {};
-        displayError(new Error("โหลดข้อมูลจาก Supabase ไม่สำเร็จ (ใช้ mock data แทน)"));
-    }
-
-    removeLoadingOverlay();
-    initializeReportInternally();
+    });
 }
 
 // --------------------------------------------------------------------------------
@@ -192,6 +146,10 @@ function initializeReportInternally() {
     console.log("[Init] Starting Funnel setup...");
     try {
         addFunnelInputListeners();
+        // โหลด mock หรือข้อมูลจริง
+        if (!state.coreData && window.myReportData?.core_metrics) {
+            state.coreData = window.myReportData.core_metrics;
+        }
         calculateAndUpdateFunnel();
         console.log("[Init] Funnel initialized successfully.");
     } catch (err) {
@@ -200,32 +158,4 @@ function initializeReportInternally() {
     }
 }
 
-// --------------------------------------------------------------------------------
-// DOM READY
-// --------------------------------------------------------------------------------
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("[DOM Ready v1.9] Initializing Funnel...");
-
-    const funnelSection = document.querySelector('.funnel-section');
-    const budgetInput = document.getElementById('funnel-budget-input');
-    const inboxDisplay = document.getElementById('funnel-inboxes');
-    const leadsActualDisp = document.getElementById('funnel-leads-actual');
-
-    if (!funnelSection || !budgetInput || !inboxDisplay || !leadsActualDisp) {
-        displayError(new Error("โครงสร้างหน้าเว็บสำหรับ Funnel ไม่สมบูรณ์"));
-        return;
-    }
-
-    if (window.apiV2 && window.supabaseClient) {
-        console.log("[DOM Ready] Supabase client detected.");
-        fetchReportDataFromSupabase();
-    } else if (window.myReportData && window.myReportData.core_metrics) {
-        console.log("[DOM Ready] Using local mock data (fallback).");
-        state.coreData = window.myReportData.core_metrics;
-        initializeReportInternally();
-    } else {
-        displayError(new Error("ไม่พบข้อมูลรายงานเริ่มต้น (ทั้ง Supabase และ Mock)"));
-    }
-});
-
-console.log("[Script Ready] report-2.js (Funnel Only v1.9 PRODUCTION) loaded.");
+document.addEventListener('DOMContentLoaded', initializeReportInternally);
