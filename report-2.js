@@ -1,10 +1,10 @@
 // ================================================================================
 // Sales Performance Dashboard - V2 SCRIPT (Funnel + Insight + Manual Inboxes + Auto Save)
-// Version: Funnel Step 2.2 (Pro UX Edition)
+// Version: Funnel Step 2.2.1 (Pro UX Edition)
 // Author: ChatGPT (Optimized for Beauty Clinic CRM)
 // ================================================================================
 
-console.log("[Script Load] report-2.js (Funnel + Insight v2.2) executing...");
+console.log("[Script Load] report-2.js (Funnel + Insight v2.2.1) executing...");
 
 window.reportState = window.reportState || { coreData: null };
 const state = window.reportState;
@@ -32,13 +32,20 @@ function calculateAndUpdateFunnel() {
 
   const budgetInput = document.getElementById("funnel-budget-input");
   const inboxInput = document.getElementById("funnel-inboxes-input");
+
+  // ป้องกันกรณี element ยังไม่โหลด
+  if (!budgetInput || !inboxInput) {
+    console.warn("[Warning] Missing Funnel Input Elements");
+    return;
+  }
+
   const inboxesDisplay = document.getElementById("funnel-inboxes");
   const leadsActualEl = document.getElementById("funnel-leads-actual");
   const leadsTargetEl = document.getElementById("funnel-leads-target");
   const salesActualEl = document.getElementById("funnel-sales-actual");
   const overallCplEl = document.getElementById("funnel-overall-cpl");
 
-  // ✅ อ่านค่าที่กรอก (และจำไว้ใน localStorage)
+  // ✅ อ่านค่าที่กรอก
   const overallBudget = parseFloat(budgetInput.value) || 0;
   const manualInboxes = inboxInput.value ? parseFloat(inboxInput.value) : null;
 
@@ -47,19 +54,12 @@ function calculateAndUpdateFunnel() {
 
   // ✅ ใช้ค่าที่กรอกจากช่อง input ถ้ามี
   let totalInboxes =
-    manualInboxes !== null
-      ? manualInboxes
-      : state.coreData.total_customers || 0;
+    manualInboxes !== null ? manualInboxes : state.coreData.total_customers || 0;
   const actualLeads = state.coreData.qualified_leads || 0;
   const actualSales = state.coreData.closed_sales || 0;
 
-  const targetLeads = Math.round(
-    totalInboxes * (KPI_INBOX_TO_LEAD_TARGET_PERCENT / 100)
-  );
-  const overallCPL =
-    actualLeads > 0 && overallBudget > 0
-      ? overallBudget / actualLeads
-      : 0;
+  const targetLeads = Math.round(totalInboxes * (KPI_INBOX_TO_LEAD_TARGET_PERCENT / 100));
+  const overallCPL = actualLeads > 0 && overallBudget > 0 ? overallBudget / actualLeads : 0;
 
   // ✅ แสดงผล
   inboxesDisplay.textContent = formatNumber(totalInboxes);
@@ -77,18 +77,11 @@ function calculateAndUpdateFunnel() {
 // ----------------------------------------------------------------------
 function updateInsightSummary(inboxes, leads, targetLeads, sales, cpl) {
   let container = document.getElementById("insight-summary");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "insight-summary";
-    container.style =
-      "margin-top:40px;padding:20px;border-radius:12px;text-align:center;font-family:Sarabun,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,0.05);transition:0.3s;";
-    document.querySelector(".content").appendChild(container);
-  }
+  if (!container) return;
 
-  // สีพื้นตามสถานะ
   let bgColor = "#f8f9ff";
   let borderColor = "#dde1ff";
-  const leadRatio = leads / targetLeads;
+  const leadRatio = leads / (targetLeads || 1);
   if (leadRatio >= 1.2) {
     bgColor = "#e6ffed"; borderColor = "#9be6a5";
   } else if (leadRatio >= 0.8) {
@@ -118,6 +111,10 @@ function updateInsightSummary(inboxes, leads, targetLeads, sales, cpl) {
 
   container.style.background = bgColor;
   container.style.border = `1px solid ${borderColor}`;
+  container.style.borderRadius = "12px";
+  container.style.padding = "20px";
+  container.style.marginTop = "25px";
+  container.style.textAlign = "center";
 
   container.innerHTML = `
     <h3 style="color:#334;font-size:1.1rem;margin-bottom:10px;">📊 Insight Summary</h3>
@@ -155,13 +152,8 @@ function restoreSavedInputs() {
 // ----------------------------------------------------------------------
 function initializeReportInternally() {
   restoreSavedInputs();
-  document
-    .getElementById("funnel-budget-input")
-    ?.addEventListener("input", handleInputChange);
-  document
-    .getElementById("funnel-inboxes-input")
-    ?.addEventListener("input", handleInputChange);
-
+  document.getElementById("funnel-budget-input")?.addEventListener("input", handleInputChange);
+  document.getElementById("funnel-inboxes-input")?.addEventListener("input", handleInputChange);
   calculateAndUpdateFunnel();
   console.log("[Init] Funnel initialized with manual inbox + autosave.");
 }
@@ -178,4 +170,4 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-console.log("[Script Ready] report-2.js (Funnel + Insight v2.2 PRO UX) loaded.");
+console.log("[Script Ready] report-2.js (Funnel + Insight v2.2.1 PRO UX) loaded.");
