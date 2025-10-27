@@ -5,54 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sales Funnel Analysis</title>
   <link rel="stylesheet" href="./report-2.css" />
+  <style>
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .excel-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .excel-table th, .excel-table td {
+      border: 1px solid #e9ecef;
+      padding: 12px 15px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .excel-table thead {
+      background-color: #f8f9fa;
+    }
+    .excel-table thead th {
+      font-weight: 600;
+      color: #495057;
+      vertical-align: middle;
+    }
+    .excel-table tbody tr:nth-child(even) {
+      background-color: #fdfdfd;
+    }
+    .excel-table tbody tr:hover {
+      background-color: #f1f3f5;
+    }
+    .subsection-title {
+        font-size: 1.4em;
+        color: #333;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #eee;
+    }
+  </style>
 </head>
 
 <body>
   <div class="container">
-    <!-- Header -->
     <div class="header">
       <h1>Sales Performance Analysis Report</h1>
       <p>Step 1: Funnel Analysis</p>
       <a href="./index.html" class="back-link">กลับหน้าหลัก (CRM)</a>
     </div>
 
-    <!-- Content -->
     <div class="content-wrapper">
       <div class="content">
 
-        <!-- Funnel Section -->
         <section class="section">
           <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
 
           <div class="stats-grid interactive-funnel funnel-section">
 
-            <!-- Budget -->
             <div class="stat-card input-card">
               <label class="stat-label" for="funnel-budget-input">Overall Budget (ใส่ตัวเลข)</label>
               <input
                 type="number"
                 class="stat-input"
                 id="funnel-budget-input"
-                value="0"
+                value="200000"
                 step="1000"
                 min="0"
               />
             </div>
 
-            <!-- Total Inboxes -->
-            <div class="stat-card input-card">
-              <label class="stat-label" for="funnel-inboxes-input">Total Inboxes (ลูกค้าทั้งหมด)</label>
-              <input
-                type="number"
-                class="stat-input"
-                id="funnel-inboxes-input"
-                value="96"
-                step="1"
-                min="0"
-              />
+            <div class="stat-card display-card">
+              <div class="stat-label">Total Inboxes (ลูกค้าทั้งหมด)</div>
+              <div class="stat-value" id="funnel-inboxes">0</div>
             </div>
 
-            <!-- Qualified Leads -->
             <div class="stat-card display-card leads-card">
               <div class="stat-label">Qualified Leads (ตัวเลขจริง / เป้าหมาย)</div>
               <div class="value-comparison">
@@ -63,13 +92,11 @@
               <div class="target-note">(เป้าหมายคำนวณจาก 30% KPI)</div>
             </div>
 
-            <!-- Closed Sales -->
             <div class="stat-card display-card sales-card">
               <div class="stat-label">Closed Sales (ตัวเลขจริง)</div>
               <div class="stat-value" id="funnel-sales-actual">0</div>
             </div>
 
-            <!-- Overall CPL -->
             <div class="stat-card display-card cpl-card">
               <div class="stat-label">Overall Cost Per Lead (คำนวณ)</div>
               <div class="stat-value" id="funnel-overall-cpl">0</div>
@@ -77,26 +104,74 @@
 
           </div>
         </section>
-      </div>
+
+        <section class="section">
+          <h2 class="section-title">3. Inbox to Consult</h2>
+
+          <div class="stats-grid">
+            <div class="stat-card display-card">
+              <div class="stat-label">Qualified Leads (จาก Funnel)</div>
+              <div class="stat-value" id="consult-qualified-leads">0</div>
+            </div>
+
+            <div class="stat-card display-card leads-card">
+              <div class="stat-label">Consult 2 Day (นัด CS ภายใน 2 วัน)</div>
+              <div class="value-comparison">
+                <span class="actual-value" id="consult-2day-actual">0</span>
+                <span class="separator">/</span>
+                <span class="target-value" id="consult-2day-target">0</span>
+              </div>
+              <div class="target-note">(เป้าหมาย 90% KPI)</div>
+            </div>
+          </div>
+
+          <h3 class="subsection-title">Breakdown by Sales (Consult 2 Day)</h3>
+          <div class="table-wrapper">
+              <table class="excel-table" style="min-width: 100%;">
+                <thead>
+                  <tr>
+                    <th>ชื่อเซลล์</th>
+                    <th>Qualified Leads</th>
+                    <th>Consult 2 Day (Actual)</th>
+                    <th>Consult 2 Day (Target 90%)</th>
+                    <th>Achievement Rate</th>
+                  </tr>
+                </thead>
+                <tbody id="consult-sales-breakdown-body">
+                  <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+        </section>
+        </div>
     </div>
   </div>
 
-  <!-- Default Mock Data (ใช้เมื่อยังไม่เชื่อมฐานข้อมูล) -->
   <script>
     window.myReportData = {
       core_metrics: {
-        total_customers: 96,   // จำนวนลีดจริง
-        qualified_leads: 81,   // (ข้อมูลเก่า จะไม่ใช้)
-        closed_sales: 20,      // จำนวนดีลที่ปิดจริง
+        total_customers: 2000,  // อัปเดตจาก Screenshot (Total Inboxes)
+        qualified_leads: 96,    // อัปเดตจาก Screenshot
+        closed_sales: 20,       // อัปเดตจาก Screenshot
         total_revenue: 1685000,
         avg_deal_size: 93611,
         avg_closing_days: 15.3
-      }
+      },
+      // [NEW] Mock data สำหรับ Section "Inbox to Consult"
+      consult_metrics: {
+         consult_2day_actual: 75 // Mockup: 75 จาก 96 (ต้องมาจาก API จริง)
+      },
+      consult_by_sales: [
+        { sales_name: 'เซลล์ A', qualified_leads: 50, consult_2day_actual: 48 }, // 96%
+        { sales_name: 'เซลล์ B', qualified_leads: 30, consult_2day_actual: 25 }, // 83.3%
+        { sales_name: 'เซลล์ C', qualified_leads: 16, consult_2day_actual: 2 }  // 12.5%
+        // (ผลรวม 50+30+16=96, 48+25+2=75, ตรงกับด้านบน)
+      ]
     };
-    console.log("HTML: window.myReportData defined.");
+    console.log("HTML: window.myReportData defined (v2 - Consult).");
   </script>
 
-  <!-- Script Main -->
   <script src="./report-2.js"></script>
 </body>
 </html>
