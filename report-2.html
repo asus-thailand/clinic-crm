@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ฃ<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
@@ -71,15 +71,20 @@
                 type="number"
                 class="stat-input"
                 id="funnel-budget-input"
-                value="200000"
-                step="1000"
+                value="200000" step="1000"
                 min="0"
               />
             </div>
 
-            <div class="stat-card display-card">
-              <div class="stat-label">Total Inboxes (ลูกค้าทั้งหมด)</div>
-              <div class="stat-value" id="funnel-inboxes">0</div>
+            <div class="stat-card input-card">
+              <label class="stat-label" for="funnel-inboxes-input">Total Inboxes (ลูกค้าทั้งหมด)</label>
+              <input
+                type="number"
+                class="stat-input"
+                id="funnel-inboxes-input"
+                value="2000" step="1"
+                min="0"
+              />
             </div>
 
             <div class="stat-card display-card leads-card">
@@ -104,7 +109,7 @@
 
           </div>
         </section>
-
+        
         <section class="section">
           <h2 class="section-title">3. Inbox to Consult</h2>
 
@@ -151,9 +156,9 @@
   <script>
     window.myReportData = {
       core_metrics: {
-        total_customers: 2000,  // อัปเดตจาก Screenshot (Total Inboxes)
-        qualified_leads: 96,    // อัปเดตจาก Screenshot
-        closed_sales: 20,       // อัปเดตจาก Screenshot
+        total_customers: 96,   // จำนวนลีดจริง (Qualified Leads) ที่มาจากไฟล์คุณ
+        qualified_leads: 81,   // (ข้อมูลเก่า จะไม่ใช้)
+        closed_sales: 20,      // จำนวนดีลที่ปิดจริง
         total_revenue: 1685000,
         avg_deal_size: 93611,
         avg_closing_days: 15.3
@@ -166,7 +171,6 @@
         { sales_name: 'เซลล์ A', qualified_leads: 50, consult_2day_actual: 48 }, // 96%
         { sales_name: 'เซลล์ B', qualified_leads: 30, consult_2day_actual: 25 }, // 83.3%
         { sales_name: 'เซลล์ C', qualified_leads: 16, consult_2day_actual: 2 }  // 12.5%
-        // (ผลรวม 50+30+16=96, 48+25+2=75, ตรงกับด้านบน)
       ]
     };
     console.log("HTML: window.myReportData defined (v2 - Consult).");
