@@ -1,4 +1,4 @@
-ฃ<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
@@ -156,8 +156,7 @@
   <script>
     window.myReportData = {
       core_metrics: {
-        total_customers: 96,   // จำนวนลีดจริง (Qualified Leads) ที่มาจากไฟล์คุณ
-        qualified_leads: 81,   // (ข้อมูลเก่า จะไม่ใช้)
+        total_customers: 96,   // [FIXED] นี่คือ "Qualified Leads" (ตัวเลขจริง)
         closed_sales: 20,      // จำนวนดีลที่ปิดจริง
         total_revenue: 1685000,
         avg_deal_size: 93611,
@@ -173,7 +172,7 @@
         { sales_name: 'เซลล์ C', qualified_leads: 16, consult_2day_actual: 2 }  // 12.5%
       ]
     };
-    console.log("HTML: window.myReportData defined (v2 - Consult).");
+    console.log("HTML: window.myReportData defined (v2.1 - Consult Fixed).");
   </script>
 
   <script src="./report-2.js"></script>
