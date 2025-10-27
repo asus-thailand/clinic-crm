@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales Funnel Analysis</title>
+  <link rel="stylesheet" href="./report-2.css" />
+</head>
+
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>Sales Performance Analysis Report</h1>
+      <p>Step 1: Funnel Analysis</p>
+      <a href="./index.html" class="back-link">กลับหน้าหลัก (CRM)</a>
+    </div>
+
+    <!-- Content -->
+    <div class="content-wrapper">
+      <div class="content">
+
+        <!-- Funnel Section -->
+        <section class="section">
+          <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
+
+          <div class="stats-grid interactive-funnel funnel-section">
+
+            <!-- Budget -->
+            <div class="stat-card input-card">
+              <label class="stat-label" for="funnel-budget-input">Overall Budget (ใส่ตัวเลข)</label>
+              <input
+                type="number"
+                class="stat-input"
+                id="funnel-budget-input"
+                value="0"
+                step="1000"
+                min="0"
+              />
+            </div>
+
+            <!-- Total Inboxes -->
+            <div class="stat-card input-card">
+              <label class="stat-label" for="funnel-inboxes-input">Total Inboxes (ลูกค้าทั้งหมด)</label>
+              <input
+                type="number"
+                class="stat-input"
+                id="funnel-inboxes-input"
+                value="96"
+                step="1"
+                min="0"
+              />
+            </div>
+
+            <!-- Qualified Leads -->
+            <div class="stat-card display-card leads-card">
+              <div class="stat-label">Qualified Leads (ตัวเลขจริง / เป้าหมาย)</div>
+              <div class="value-comparison">
+                <span class="actual-value" id="funnel-leads-actual">0</span>
+                <span class="separator">/</span>
+                <span class="target-value" id="funnel-leads-target">0</span>
+              </div>
+              <div class="target-note">(เป้าหมายคำนวณจาก 30% KPI)</div>
+            </div>
+
+            <!-- Closed Sales -->
+            <div class="stat-card display-card sales-card">
+              <div class="stat-label">Closed Sales (ตัวเลขจริง)</div>
+              <div class="stat-value" id="funnel-sales-actual">0</div>
+            </div>
+
+            <!-- Overall CPL -->
+            <div class="stat-card display-card cpl-card">
+              <div class="stat-label">Overall Cost Per Lead (คำนวณ)</div>
+              <div class="stat-value" id="funnel-overall-cpl">0</div>
+            </div>
+
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Default Mock Data (ใช้เมื่อยังไม่เชื่อมฐานข้อมูล) -->
+  <script>
+    window.myReportData = {
+      core_metrics: {
+        total_customers: 96,   // จำนวนลีดจริง
+        qualified_leads: 81,   // (ข้อมูลเก่า จะไม่ใช้)
+        closed_sales: 20,      // จำนวนดีลที่ปิดจริง
+        total_revenue: 1685000,
+        avg_deal_size: 93611,
+        avg_closing_days: 15.3
+      }
+    };
+    console.log("HTML: window.myReportData defined.");
+  </script>
+
+  <!-- Script Main -->
+  <script src="./report-2.js"></script>
+</body>
+</html>
