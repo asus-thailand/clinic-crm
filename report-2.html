@@ -40,9 +40,16 @@
             </div>
 
             <!-- Total Inboxes -->
-            <div class="stat-card display-card">
-              <div class="stat-label">Total Inboxes (ลูกค้าทั้งหมด)</div>
-              <div class="stat-value" id="funnel-inboxes">0</div>
+            <div class="stat-card input-card">
+              <label class="stat-label" for="funnel-inboxes-input">Total Inboxes (ลูกค้าทั้งหมด)</label>
+              <input
+                type="number"
+                class="stat-input"
+                id="funnel-inboxes-input"
+                value="96"
+                step="1"
+                min="0"
+              />
             </div>
 
             <!-- Qualified Leads -->
@@ -78,9 +85,9 @@
   <script>
     window.myReportData = {
       core_metrics: {
-        total_customers: 96,
-        qualified_leads: 81,
-        closed_sales: 18,
+        total_customers: 96,   // จำนวนลีดจริง
+        qualified_leads: 81,   // (ข้อมูลเก่า จะไม่ใช้)
+        closed_sales: 20,      // จำนวนดีลที่ปิดจริง
         total_revenue: 1685000,
         avg_deal_size: 93611,
         avg_closing_days: 15.3
