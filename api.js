@@ -309,5 +309,29 @@ api.getSalesReport = async function(userId, startDate = null, endDate = null) {
     }
 };
 
+/**
+ * [NEW] Fetches aggregated sales performance summary (for report-2.js)
+ * Calls the 'get_sales_performance_summary' RPC in Supabase.
+ * @returns {Promise<Array>} An array of summary objects (e.g., {sales_name, qualified_leads, consult_2day_actual}).
+ */
+api.fetchSalesSummary = async function() {
+    try {
+        // Ensure the client is available
+        if (!window.supabaseClient) {
+            throw new Error("Supabase client not found.");
+        }
+        
+        const { data, error } = await window.supabaseClient.rpc('get_sales_performance_summary');
+        
+        if (error) throw error;
+        
+        return data || []; // Return empty array if no data
+    } catch (error) {
+        console.error('API ERROR in fetchSalesSummary:', error);
+        // คืนค่า Array ว่าง เพื่อให้ UI (report-2.js) ทำงานต่อได้ไม่พัง
+        return [];
+    }
+};
+
 // Make the 'api' object available globally
 window.api = api;
