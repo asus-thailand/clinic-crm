@@ -407,4 +407,75 @@ body {
     .excel-table thead th:nth-child(4) {
         z-index: 101;
     }
+    
+    /* --- [START] Mobile Layout Fixes --- */
+    
+    /* 4. Header layout fix (Wrap buttons) */
+    .header-content {
+        flex-wrap: wrap; /* อนุญาตให้ปุ่มขึ้นบรรทัดใหม่ */
+        gap: 10px;       /* ระยะห่างระหว่างโลโก้และปุ่ม */
+    }
+    .logo {
+        flex-basis: 200px; /* ขนาดขั้นต่ำของโลโก้ */
+        flex-grow: 1;
+    }
+    .user-info {
+        flex-grow: 1;
+        justify-content: flex-end; /* จัดปุ่มไปทางขวา */
+    }
+    .user-info .btn {
+        padding: 6px 10px; /* ลดขนาดปุ่มเล็กน้อย */
+        font-size: 11px;
+    }
+
+    /* 5. Toolbar layout fix (Stack vertically) */
+    .toolbar {
+        flex-direction: column; /* เรียง .toolbar-left และ .toolbar-right เป็นแนวตั้ง */
+        align-items: stretch;   /* ยืดให้เต็มความกว้าง */
+        gap: 15px;              /* ลดระยะห่าง */
+    }
+
+    .toolbar-left, .toolbar-right {
+        flex-direction: column; /* เรียง filter ต่างๆ เป็นแนวตั้ง */
+        align-items: stretch;   /* ยืดให้เต็มความกว้าง */
+        width: 100%;            /* บังคับเต็มความกว้าง */
+        gap: 10px;
+    }
+
+    .toolbar-right {
+        justify-content: flex-start; /* จัดปุ่มชิดซ้าย */
+    }
+
+    /* 6. Make inputs/selects full width */
+    .search-container,
+    .filter-select,
+    .date-filter-container {
+        width: 100%;
+    }
+    .search-input {
+        width: 100%;
+    }
+
+    /* 7. Stack date inputs */
+    .date-filter-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .date-input {
+        width: 100%;
+    }
+    .date-separator {
+        display: none; /* ซ่อนคำว่า 'ถึง' */
+    }
+
+    /* 8. Stack action buttons (Add, Refresh) */
+    .action-buttons {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+    }
+    
+    /* [End] Mobile Layout Fixes --- */
 }
+/* ‼️ REMOVED ‼️: ลบปีกกา '}' ที่เกินมา 1 ตัวจากบรรทัดนี้ */
