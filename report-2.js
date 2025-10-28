@@ -153,13 +153,15 @@ function calculateAndUpdateConsultSection() {
 
     // --- 3. Populate Cards ---
     const qualifiedLeads = coreData.total_customers || 0; 
-    const consultActual = consultData.consult_2day_actual || 0; 
+    
+    // [MODIFIED BY SENIOR DEV] เปลี่ยน Actual ให้เป็น "ยอดปิดการขาย" ตามที่ผู้ใช้ร้องขอ
+    const consultActual = coreData.closed_sales || 0; 
     
     // [FIXED] เป้าหมาย (Target) เปลี่ยนเป็น "ยอดปิดการขาย" (20)
     const consultTarget = coreData.closed_sales || 0;
 
     qualifiedLeadsEl.textContent = formatNumber(qualifiedLeads); // แสดง 96
-    consultActualEl.textContent = formatNumber(consultActual); // แสดง 75 (จาก Mock)
+    consultActualEl.textContent = formatNumber(consultActual); // [MODIFIED] แสดง 20
     consultTargetEl.textContent = formatNumber(consultTarget); // [FIXED] แสดง 20
     
     console.log("[CalculateConsult] Cards Populated:", { qualifiedLeads, consultActual, consultTarget });
