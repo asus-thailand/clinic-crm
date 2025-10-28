@@ -132,7 +132,7 @@ function calculateAndUpdateConsultSection() {
     // --- 1. Get Data ---
     const coreData = state.coreData;
     const consultData = state.consultData;
-    const salesData = state.consultSalesData;
+    const salesData = state.consultSalesData; // <-- ตอนนี้จะดึงข้อมูลจริงจาก API
 
     if (!coreData || !consultData) {
         console.warn("[CalculateConsult] Missing core or consult data.");
@@ -225,21 +225,34 @@ function addFunnelInputListeners() {
 // --------------------------------------------------------------------------------
 // INITIALIZATION
 // --------------------------------------------------------------------------------
-function initializeReportInternally() {
+// [MODIFIED] เปลี่ยนเป็น async function เพื่อรองรับ await
+async function initializeReportInternally() {
     console.log("[Init] Starting Funnel setup...");
     try {
         addFunnelInputListeners();
         
-        // [UPDATED] โหลด mock หรือข้อมูลจริง
+        // [MODIFIED] ส่วนนี้จะโหลดข้อมูล 2 ส่วน
+        
+        // 1. โหลด Mock Data สำหรับการ์ดด้านบน (ตาม Logic เดิม)
         if (!state.coreData && window.myReportData?.core_metrics) {
             state.coreData = window.myReportData.core_metrics;
-            // [NEW] Load mock data for consult section
             state.consultData = window.myReportData.consult_metrics || { consult_2day_actual: 0 };
-            state.consultSalesData = window.myReportData.consult_by_sales || [];
         }
         
+        // 2. [NEW] โหลดข้อมูลจริงสำหรับตาราง Breakdown
+        console.log("[Init] Fetching real sales breakdown data...");
+        if (window.api && typeof window.api.fetchSalesSummary === 'function') {
+            state.consultSalesData = await window.api.fetchSalesSummary();
+            console.log("[Init] Real sales data loaded:", state.consultSalesData);
+        } else {
+            console.error("[Init] api.fetchSalesSummary() function not found! Check api.js.");
+            displayError(new Error("ไม่สามารถโหลดฟังก์ชันสรุปข้อมูลเซลล์ได้ (api.js)"));
+            state.consultSalesData = []; // ใช้ Array ว่างไปก่อน
+        }
+        
+        // เรียกใช้ Function เพื่อวาดหน้าจอ (ตอนนี้ calculateAndUpdateConsultSection จะใช้ข้อมูลจริงแล้ว)
         calculateAndUpdateFunnel(); // เรียกใช้ Section 2
-        calculateAndUpdateConsultSection(); // [NEW] เรียกใช้ Section 3
+        calculateAndUpdateConsultSection(); // เรียกใช้ Section 3
         
         console.log("[Init] Funnel + Consult initialized successfully.");
     } catch (err) {
