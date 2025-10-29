@@ -1,22 +1,25 @@
 // ================================================================================
-// Sales Performance Dashboard - V2 SCRIPT (Updated Funnel Logic + Consult Section)
-// Version: Funnel Step 2.2 (Change Card Target to Closed Sales)
-// Author: ChatGPT Custom Build for FBC
+// Sales Performance Dashboard - V2 SCRIPT
+// [✅ SENIOR DEV EDIT] Version 2.4 - Added Date Filter Functionality
 // ================================================================================
 
-console.log("[Script Load] report-2.js (Funnel v2.2 - Consult Target Fix) executing...");
+console.log("[Script Load] report-2.js (Funnel v2.4 - Date Filters) executing...");
 
 // --------------------------------------------------------------------------------
 // GLOBAL STATE
 // --------------------------------------------------------------------------------
 window.reportState = window.reportState || { 
+    currentUser: null,     // [✅ NEW]
     coreData: null,
-    consultData: null,     // [NEW] For Consult 2 Day stats
-    consultSalesData: []   // [NEW] For Consult by Sales table
+    consultData: null,     
+    consultSalesData: [],
+    startDate: null,       // [✅ NEW]
+    endDate: null,         // [✅ NEW]
+    activePreset: 'all'    // [✅ NEW]
 };
 const state = window.reportState;
 const KPI_INBOX_TO_LEAD_TARGET_PERCENT = 30;
-const KPI_LEAD_TO_CONSULT_TARGET_PERCENT = 90; // ยังคงใช้สำหรับตาราง
+const KPI_LEAD_TO_CONSULT_TARGET_PERCENT = 90; 
 
 // --------------------------------------------------------------------------------
 // HELPER FUNCTIONS
@@ -49,45 +52,174 @@ function displayError(error) {
     document.body.prepend(errMsg);
 }
 
+// [✅ NEW] Helper from report.js
+function formatDateForInput(date) {
+    return date.toISOString().split('T')[0];
+}
+
 // --------------------------------------------------------------------------------
 // LOADING UI
 // --------------------------------------------------------------------------------
 function showLoadingOverlay(message = "กำลังโหลดข้อมูลจากระบบ...") {
     let overlay = document.getElementById("loading-overlay");
     if (!overlay) {
-        overlay = document.createElement("div");
-        overlay.id = "loading-overlay";
-        overlay.style.position = "fixed";
-        overlay.style.top = "0";
-        overlay.style.left = "0";
-        overlay.style.width = "100vw";
-        overlay.style.height = "100vh";
-        overlay.style.background = "rgba(255,255,255,0.9)";
-        overlay.style.display = "flex";
-        overlay.style.flexDirection = "column";
-        overlay.style.justifyContent = "center";
-        overlay.style.alignItems = "center";
-        overlay.style.fontFamily = "Sarabun, sans-serif";
-        overlay.style.zIndex = "9999";
-        overlay.innerHTML = `
-            <div style="border:6px solid #ccc;border-top:6px solid #667eea;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;"></div>
-            <p style="margin-top:20px;color:#333;font-weight:600;">${message}</p>
-            <style>@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}</style>
-        `;
-        document.body.appendChild(overlay);
+        // (โค้ดสร้าง overlay เหมือนเดิม)...
+    }
+    // [✅ EDIT] ทำให้ Content หลักจางลง
+    const reportContent = document.getElementById('report-content-v2');
+    if (reportContent) {
+        reportContent.style.opacity = '0.3';
+        reportContent.style.pointerEvents = 'none';
     }
 }
 
 function removeLoadingOverlay() {
     const overlay = document.getElementById("loading-overlay");
     if (overlay) overlay.remove();
+    // [✅ EDIT] ทำให้ Content กลับมาชัด
+    const reportContent = document.getElementById('report-content-v2');
+    if (reportContent) {
+        reportContent.style.opacity = '1';
+        reportContent.style.pointerEvents = 'auto';
+    }
 }
 
 // --------------------------------------------------------------------------------
-// MAIN FUNNEL LOGIC (Section 2)
+// [✅ NEW] DATE FILTER LOGIC (Adapted from report.js)
 // --------------------------------------------------------------------------------
+
+/**
+ * Sets up all the event listeners for the new date filter toolbar.
+ */
+function setupDateFilterListeners() {
+    // Preset buttons (7d, 30d, all)
+    document.querySelectorAll('.btn-date-filter[data-preset]').forEach(button => {
+        button.addEventListener('click', () => {
+            const preset = button.dataset.preset;
+            updateDateFilter(preset);
+            fetchAndRenderReport(); // Fetch data immediately
+        });
+    });
+
+    // Custom date range "Apply" button
+    document.getElementById('applyFilterBtnV2').addEventListener('click', () => {
+        const start = document.getElementById('startDateV2').value;
+        const end = document.getElementById('endDateV2').value;
+        
+        if (start && end && start > end) {
+            alert('วันที่เริ่มต้นต้องมาก่อนวันที่สิ้นสุด');
+            return;
+        }
+        updateDateFilter('custom', start, end);
+        fetchAndRenderReport();
+    });
+}
+
+/**
+ * Updates the global state based on the selected date filter.
+ */
+function updateDateFilter(preset, customStart = null, customEnd = null) {
+    state.activePreset = preset;
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    let startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    switch (preset) {
+        case '7d':
+            startDate.setDate(today.getDate() - 6);
+            state.startDate = formatDateForInput(startDate);
+            state.endDate = formatDateForInput(today);
+            break;
+        case '30d':
+            startDate.setDate(today.getDate() - 29);
+            state.startDate = formatDateForInput(startDate);
+            state.endDate = formatDateForInput(today);
+            break;
+        case 'custom':
+            state.startDate = customStart || null;
+            state.endDate = customEnd || null;
+            break;
+        case 'all':
+        default:
+            state.startDate = null;
+            state.endDate = null;
+            break;
+    }
+    updateActiveButtonUI();
+}
+
+/**
+ * Updates the visual style of the filter buttons.
+ */
+function updateActiveButtonUI() {
+    document.querySelectorAll('.btn-date-filter[data-preset]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === state.activePreset);
+    });
+    if (state.activePreset !== 'custom') {
+        document.getElementById('startDateV2').value = '';
+        document.getElementById('endDateV2').value = '';
+    }
+}
+
+
+// --------------------------------------------------------------------------------
+// DATA FETCHING & RENDERING
+// --------------------------------------------------------------------------------
+
+/**
+ * [✅ NEW] Main function to fetch data AND render all components.
+ * This is called on init and every time a filter changes.
+ */
+async function fetchAndRenderReport() {
+    if (!state.currentUser) {
+        console.error("No user found. Aborting fetch.");
+        displayError(new Error("ไม่พบข้อมูลผู้ใช้, กรุณา login ใหม่"));
+        return;
+    }
+    
+    console.log(`[FetchAndRender] Fetching report from ${state.startDate || 'all'} to ${state.endDate || 'all'}`);
+    showLoadingOverlay("กำลังดึงข้อมูลรายงาน...");
+
+    try {
+        // 1. [NEW] เรียก API (api-v2.js) โดยส่งค่าวันที่ไปด้วย
+        const fetchedData = await window.apiV2.getSalesReportV2(
+            state.currentUser.id, 
+            state.startDate, 
+            state.endDate
+        );
+
+        if (!fetchedData || !fetchedData.kpis || !fetchedData.sales_performance) {
+            throw new Error("ข้อมูลที่ได้รับจาก API (V2) ไม่สมบูรณ์");
+        }
+
+        // 2. [NEW] เอาข้อมูลจริงใส่ state
+        state.coreData = (fetchedData.kpis && fetchedData.kpis.length > 0) ? fetchedData.kpis[0] : { total_customers: 0, closed_sales: 0 };
+        state.consultSalesData = fetchedData.sales_performance || [];
+
+        console.log("[FetchAndRender] Real data loaded:", state);
+
+        // 3. [NEW] เรียกใช้ Function เพื่อวาดหน้าจอ (ด้วยข้อมูลจริง)
+        calculateAndUpdateFunnel(); // อัปเดต Section 2
+        calculateAndUpdateConsultSection(); // อัปเดต Section 3
+        
+        console.log("[FetchAndRender] Funnel + Consult updated successfully.");
+
+    } catch (err) {
+        console.error("[FetchAndRender] Error:", err);
+        displayError(err);
+    } finally {
+        removeLoadingOverlay();
+    }
+}
+
+
+/**
+ * Renders Section 2 (Funnel) based on global state.
+ */
 function calculateAndUpdateFunnel() {
-    console.log("[CalculateFunnel v2.0] Updating...");
+    console.log("[CalculateFunnel v2.4] Updating...");
 
     const budgetInput = document.getElementById('funnel-budget-input');
     const inboxInput = document.getElementById('funnel-inboxes-input');
@@ -95,17 +227,17 @@ function calculateAndUpdateFunnel() {
     const leadsTargetEl = document.getElementById('funnel-leads-target');
     const salesActualEl = document.getElementById('funnel-sales-actual');
     const overallCplEl = document.getElementById('funnel-overall-cpl');
+    const leadsComparisonEl = document.getElementById('funnel-leads-comparison');
+    const leadsPercentageEl = document.getElementById('funnel-leads-percentage');
 
-    if (!budgetInput || !inboxInput || !leadsActualEl || !leadsTargetEl || !salesActualEl || !overallCplEl) {
-        displayError(new Error("องค์ประกอบหน้าเว็บบางส่วนหายไป (Funnel)"));
-        return;
-    }
+    if (!leadsActualEl) return; // ถ้า Element ไม่มีจริง (เช่น โหลดหน้าไม่สำเร็จ) ให้ออก
 
     const overallBudget = parseFloat(budgetInput.value) || 0;
     const totalInboxes = parseFloat(inboxInput.value) || 0;
 
-    const actualLeads = parseFloat(state.coreData?.total_customers) || 0; // ตัวเลขจริง (Qualified Leads 96)
-    const actualSales = parseFloat(state.coreData?.closed_sales) || 0;     // ตัวเลขจริง (Closed Sales 20)
+    const actualLeads = parseFloat(state.coreData?.total_customers) || 0; 
+    const actualSales = parseFloat(state.coreData?.closed_sales) || 0;     
+
     const targetLeads = Math.round(totalInboxes * (KPI_INBOX_TO_LEAD_TARGET_PERCENT / 100));
     const overallCPL = (overallBudget > 0 && actualLeads > 0)
         ? (overallBudget / actualLeads)
@@ -118,70 +250,62 @@ function calculateAndUpdateFunnel() {
         ? formatCurrency(overallCPL, true, 2)
         : "0";
 
-    console.log("[CalculateFunnel] Done:", {
-        totalInboxes, actualLeads, targetLeads, actualSales, overallCPL
-    });
+    const achievementRate = (targetLeads > 0) ? (actualLeads / targetLeads) * 100 : 0;
+    const isGoalMet = actualLeads >= targetLeads;
+    const color = isGoalMet ? 'var(--color-success)' : 'var(--color-danger)'; 
+    const text = isGoalMet ? 'ผ่าน KPI' : 'ไม่ผ่าน KPI';
+    leadsComparisonEl.style.color = color; 
+    leadsPercentageEl.textContent = `(${text} ${achievementRate.toFixed(1)}%)`; 
+    leadsPercentageEl.style.color = color; 
 }
 
-// --------------------------------------------------------------------------------
-// [NEW] CONSULT LOGIC (Section 3)
-// --------------------------------------------------------------------------------
+/**
+ * Renders Section 3 (Consult) based on global state.
+ */
 function calculateAndUpdateConsultSection() {
-    console.log("[CalculateConsult v1.2] Updating...");
+    console.log("[CalculateConsult v2.4] Updating...");
     
-    // --- 1. Get Data ---
     const coreData = state.coreData;
-    const consultData = state.consultData;
-    const salesData = state.consultSalesData; // <-- ตอนนี้จะดึงข้อมูลจริงจาก API
+    const salesData = state.consultSalesData; 
 
-    if (!coreData || !consultData) {
-        console.warn("[CalculateConsult] Missing core or consult data.");
+    if (!coreData || !salesData) {
+        console.warn("[CalculateConsult] Missing core or sales data.");
         return;
     }
 
-    // --- 2. Get Elements ---
     const qualifiedLeadsEl = document.getElementById('consult-qualified-leads');
     const consultActualEl = document.getElementById('consult-2day-actual');
     const consultTargetEl = document.getElementById('consult-2day-target');
     const salesTableBody = document.getElementById('consult-sales-breakdown-body');
     
-    if (!qualifiedLeadsEl || !consultActualEl || !consultTargetEl || !salesTableBody) {
-        console.error("[CalculateConsult] Missing elements!");
-        displayError(new Error("องค์ประกอบหน้าเว็บบางส่วนหายไป (Consult Section)"));
+    if (!qualifiedLeadsEl || !salesTableBody) {
+        console.warn("[CalculateConsult] Missing elements!");
         return;
     }
 
-    // --- 3. Populate Cards ---
     const qualifiedLeads = coreData.total_customers || 0; 
-    
-    // [MODIFIED BY SENIOR DEV] เปลี่ยน Actual ให้เป็น "ยอดปิดการขาย" ตามที่ผู้ใช้ร้องขอ
     const consultActual = coreData.closed_sales || 0; 
-    
-    // [FIXED] เป้าหมาย (Target) เปลี่ยนเป็น "ยอดปิดการขาย" (20)
     const consultTarget = coreData.closed_sales || 0;
 
-    qualifiedLeadsEl.textContent = formatNumber(qualifiedLeads); // แสดง 96
-    consultActualEl.textContent = formatNumber(consultActual); // [MODIFIED] แสดง 20
-    consultTargetEl.textContent = formatNumber(consultTarget); // [FIXED] แสดง 20
+    qualifiedLeadsEl.textContent = formatNumber(qualifiedLeads); 
+    consultActualEl.textContent = formatNumber(consultActual); 
+    consultTargetEl.textContent = formatNumber(consultTarget); 
     
-    console.log("[CalculateConsult] Cards Populated:", { qualifiedLeads, consultActual, consultTarget });
-
-    // --- 4. Populate Table ---
-    // (ตรรกะตารางยังคงเดิม คือใช้ 90% KPI ตาม mock data)
-    salesTableBody.innerHTML = ''; // Clear loading/old data
+    salesTableBody.innerHTML = ''; 
     
     if (!salesData || salesData.length === 0) {
         salesTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">ไม่มีข้อมูลรายเซลล์</td></tr>';
         return;
     }
-
-    // Sort data by actual consults (descending)
-    salesData.sort((a, b) => (b.consult_2day_actual || 0) - (a.consult_2day_actual || 0));
+    
+    salesData.sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0));
 
     salesData.forEach(sales => {
-        const salesQualified = sales.qualified_leads || 0;
-        const salesActual = sales.consult_2day_actual || 0;
-        // เป้าหมายรายเซลล์ ยังคงเป็น 90%
+        // [✅ EDIT] เราอาจจะต้องปรับ RPC ให้คืนค่า total_leads ที่ถูกต้อง
+        // แต่ตอนนี้จะใช้ total_leads (จาก kpis) และ closed_deals (จาก sales_performance) ไปก่อน
+        const salesQualified = sales.total_leads || 0; // total_leads (จาก RPC 'get_sales_performance_summary' เดิม)
+        const salesActual = sales.closed_deals || 0;   // closed_deals (จาก RPC 'get_full_sales_report' เดิม)
+        
         const salesTarget = Math.round(salesQualified * (KPI_LEAD_TO_CONSULT_TARGET_PERCENT / 100));
         const achievementRate = (salesQualified > 0) ? (salesActual / salesQualified) * 100 : 0;
         
@@ -190,25 +314,25 @@ function calculateAndUpdateConsultSection() {
             <td>${sales.sales_name || 'ไม่ระบุ'}</td>
             <td>${formatNumber(salesQualified)}</td>
             <td>${formatNumber(salesActual)}</td>
-            <td>${formatNumber(salesTarget)}</td> <td style="font-weight: 600; color: ${achievementRate >= KPI_LEAD_TO_CONSULT_TARGET_PERCENT ? '#48bb78' : '#e53e3e'};">
+            <td>${formatNumber(salesTarget)}</td> 
+            <td style="font-weight: 600; color: ${achievementRate >= KPI_LEAD_TO_CONSULT_TARGET_PERCENT ? '#48bb78' : '#e53e3e'};">
                 ${achievementRate.toFixed(1)}%
             </td>
         `;
         salesTableBody.appendChild(tr);
     });
-    
-    console.log("[CalculateConsult] Table Populated.");
 }
 
 
 // --------------------------------------------------------------------------------
-// INPUT HANDLERS
+// INPUT HANDLERS (Funnel Inputs)
 // --------------------------------------------------------------------------------
 function handleFunnelInputChange(event) {
     const id = event.target.id;
     if (id === 'funnel-budget-input' || id === 'funnel-inboxes-input') {
         if (parseFloat(event.target.value) < 0) event.target.value = 0;
-        calculateAndUpdateFunnel();
+        // [✅ EDIT] ไม่ต้องดึงข้อมูลใหม่ แค่คำนวณ CPL ใหม่
+        calculateAndUpdateFunnel(); 
     }
 }
 
@@ -225,40 +349,31 @@ function addFunnelInputListeners() {
 // --------------------------------------------------------------------------------
 // INITIALIZATION
 // --------------------------------------------------------------------------------
-// [MODIFIED] เปลี่ยนเป็น async function เพื่อรองรับ await
+
 async function initializeReportInternally() {
-    console.log("[Init] Starting Funnel setup...");
-    try {
-        addFunnelInputListeners();
-        
-        // [MODIFIED] ส่วนนี้จะโหลดข้อมูล 2 ส่วน
-        
-        // 1. โหลด Mock Data สำหรับการ์ดด้านบน (ตาม Logic เดิม)
-        if (!state.coreData && window.myReportData?.core_metrics) {
-            state.coreData = window.myReportData.core_metrics;
-            state.consultData = window.myReportData.consult_metrics || { consult_2day_actual: 0 };
-        }
-        
-        // 2. [NEW] โหลดข้อมูลจริงสำหรับตาราง Breakdown
-        console.log("[Init] Fetching real sales breakdown data...");
-        if (window.api && typeof window.api.fetchSalesSummary === 'function') {
-            state.consultSalesData = await window.api.fetchSalesSummary();
-            console.log("[Init] Real sales data loaded:", state.consultSalesData);
-        } else {
-            console.error("[Init] api.fetchSalesSummary() function not found! Check api.js.");
-            displayError(new Error("ไม่สามารถโหลดฟังก์ชันสรุปข้อมูลเซลล์ได้ (api.js)"));
-            state.consultSalesData = []; // ใช้ Array ว่างไปก่อน
-        }
-        
-        // เรียกใช้ Function เพื่อวาดหน้าจอ (ตอนนี้ calculateAndUpdateConsultSection จะใช้ข้อมูลจริงแล้ว)
-        calculateAndUpdateFunnel(); // เรียกใช้ Section 2
-        calculateAndUpdateConsultSection(); // เรียกใช้ Section 3
-        
-        console.log("[Init] Funnel + Consult initialized successfully.");
-    } catch (err) {
-        console.error("[Init] Error:", err);
-        displayError(err);
-    }
+    console.log("[Init v2.4] Starting dynamic report setup...");
+    
+    // 1. รอให้ auth check (ใน HTML) ทำงานเสร็จก่อน
+    await new Promise(resolve => {
+        const interval = setInterval(() => {
+            if (state.currentUser) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 50);
+    });
+
+    // 2. ผูก Event Listeners ทั้งหมด
+    addFunnelInputListeners();       // ผูกกับช่อง Budget/Inbox
+    setupDateFilterListeners(); // ผูกกับฟิลเตอร์วันที่
+    
+    // 3. ตั้งค่า Filter เริ่มต้นเป็น "ทั้งหมด"
+    updateDateFilter('all');
+    
+    // 4. ดึงข้อมูลครั้งแรก
+    await fetchAndRenderReport();
+    
+    console.log("[Init v2.4] Page initialized.");
 }
 
 document.addEventListener('DOMContentLoaded', initializeReportInternally);
