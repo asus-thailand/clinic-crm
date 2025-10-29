@@ -158,12 +158,12 @@ body {
 .table-wrapper { overflow: auto; max-height: calc(100vh - 380px); position: relative; }
 .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-family-calibri); min-width: 2300px; }
 
-.excel-table thead th { 
-    font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px; 
-    position: sticky; 
-    top: 0; 
+.excel-table thead th {
+    font-weight: bold; text-align: center; border: 1px solid var(--border-color-dark); padding: 8px 6px;
+    position: sticky;
+    top: 0;
     z-index: 100;
-    height: 45px; vertical-align: middle; user-select: none; 
+    height: 45px; vertical-align: middle; user-select: none;
 }
 
 .sortable-header {
@@ -183,41 +183,41 @@ body {
 .header-admin-section { background: var(--header-bg-admin) !important; color: var(--text-color-white) !important; }
 .header-sales-section { background: var(--header-bg-sales) !important; color: var(--text-color-black) !important; }
 
-.excel-table td { 
-    border: 1px solid var(--border-color-medium); padding: 3px 6px; height: 22px; 
-    background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px; 
+.excel-table td {
+    border: 1px solid var(--border-color-medium); padding: 3px 6px; height: 22px;
+    background: var(--bg-color-white); position: relative; vertical-align: middle; font-size: 11px;
 }
 
 /* [DESKTOP] Styles for the first 4 sticky columns */
 .excel-table th:nth-child(-n+4), .excel-table td:nth-child(-n+4) {
     position: sticky;
-    background-color: #f8f9fa;
+    background-color: #f8f9fa; /* Base color for sticky */
 }
 
-.excel-table th:nth-child(1), .excel-table td:nth-child(1) { 
-    left: 0; 
-    z-index: 54; 
-    width: 40px; min-width: 40px; background: #e7e6e6 !important; 
+.excel-table th:nth-child(1), .excel-table td:nth-child(1) {
+    left: 0;
+    z-index: 54;
+    width: 40px; min-width: 40px; background: #e7e6e6 !important; /* Row number specific color */
 }
-.excel-table th:nth-child(2), .excel-table td:nth-child(2) { 
-    left: 40px; 
-    z-index: 53; 
-    width: 100px; min-width: 100px; 
+.excel-table th:nth-child(2), .excel-table td:nth-child(2) {
+    left: 40px;
+    z-index: 53;
+    width: 100px; min-width: 100px;
 }
-.excel-table th:nth-child(3), .excel-table td:nth-child(3) { 
-    left: 140px; 
-    z-index: 52; 
-    width: 100px; min-width: 100px; 
+.excel-table th:nth-child(3), .excel-table td:nth-child(3) {
+    left: 140px;
+    z-index: 52;
+    width: 100px; min-width: 100px;
 }
-.excel-table th:nth-child(4), .excel-table td:nth-child(4) { 
-    left: 240px; 
-    z-index: 51; 
-    width: 150px; min-width: 150px; 
+.excel-table th:nth-child(4), .excel-table td:nth-child(4) {
+    left: 240px;
+    z-index: 51;
+    width: 150px; min-width: 150px;
     border-right: 2px solid #ccc;
 }
 
 .excel-table thead th:nth-child(-n+4) {
-    z-index: 101;
+    z-index: 101; /* Ensure headers are above body cells */
 }
 .excel-table thead th:nth-child(1) { z-index: 105; }
 .excel-table thead th:nth-child(2) { z-index: 104; }
@@ -226,7 +226,7 @@ body {
 
 
 .excel-table th.header-admin-section:nth-child(-n+4) {
-    background-color: var(--header-bg-admin) !important;
+    background-color: var(--header-bg-admin) !important; /* Ensure sticky header keeps its color */
 }
 
 .actions-cell { text-align: center; padding: 2px !important; min-width: 160px; white-space: nowrap; }
@@ -263,23 +263,23 @@ body {
 .timeline-container { max-height: 60vh; overflow-y: auto; padding-right: 15px; }
 
 /* ✨ UPDATED: History Timeline Styles */
-.timeline-item { 
-    display: flex; 
-    position: relative; 
+.timeline-item {
+    display: flex;
+    position: relative;
     padding: 12px;
-    padding-left: 40px; 
+    padding-left: 40px;
     margin-bottom: 8px;
     border-radius: var(--border-radius-small);
     border: 1px solid var(--border-color-light);
 }
-.timeline-item::before { 
-    content: ''; 
-    position: absolute; 
+.timeline-item::before {
+    content: '';
+    position: absolute;
     left: 21px;
-    top: -8px; 
-    bottom: -8px; 
-    width: 2px; 
-    background-color: #e9ecef; 
+    top: -8px;
+    bottom: -8px;
+    width: 2px;
+    background-color: #e9ecef;
 }
 .timeline-container > .timeline-item:first-child::before {
     top: 12px;
@@ -287,26 +287,26 @@ body {
 .timeline-container > .timeline-item:last-child::before {
     bottom: 12px;
 }
-.timeline-icon { 
-    position: absolute; 
-    left: 12px; 
-    top: 12px; 
-    width: 20px; 
-    height: 20px; 
-    border-radius: 50%; 
-    background-color: #6c757d; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    color: white; 
-    font-size: 12px; 
-    font-weight: bold; 
+.timeline-icon {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
     z-index: 2;
 }
 .timeline-content { flex: 1; }
-.timeline-status { 
-    font-weight: 600; 
-    font-size: 16px; 
+.timeline-status {
+    font-weight: 600;
+    font-size: 16px;
     margin-bottom: 4px;
     display: inline;
     padding: 0;
@@ -361,80 +361,46 @@ body {
 @media (min-width: 640px) { .modal-section-content { grid-template-columns: 1fr 1fr; } }
 .hidden { display: none; }
 
-/* --- 14. Row Highlighting Styles --- */
-.row-deal-closed td,
-.row-deal-closed:hover td {
-    background-color: #9ceb8d !important; /* Bright Green for fully closed deals */
-    font-weight: bold;
-}
-.row-deal-closed:hover td {
-    background-color: #89d87a !important;
-}
+/* --- 14. Row Highlighting Styles (REVISED V3 - Simplified) --- */
 
-/* [✅ NEW] Highlight for '100%' status (softer green) */
-.row-status-100 td {
+/* Default: White background is already set by .excel-table td */
+
+/* Highlight for '100%' status (Green) */
+tr.row-status-100 td {
     background-color: #c8e6c9 !important; /* Softer Green */
 }
-.row-status-100:hover td {
+tr.row-status-100:hover td {
     background-color: #b9d9ba !important;
 }
 
-/* [✅ NEW] Highlight for 'ONLINE' status (purple) */
-.row-status-online td {
-    background-color: #e1bee7 !important; /* Light Purple */
+/* Ensure Green applies to Sticky Columns too */
+tr.row-status-100 td:nth-child(-n+4) {
+    background-color: #c8e6c9 !important;
 }
-.row-status-online:hover td {
-    background-color: #ce93d8 !important;
-}
-
-/* [✅ NEW] Override: If row is fully closed (row-deal-closed), bright green wins over softer green/purple */
-.row-deal-closed.row-status-100 td,
-.row-deal-closed.row-status-online td {
-    background-color: #9ceb8d !important; /* Bright Green takes precedence */
-}
-.row-deal-closed.row-status-100:hover td,
-.row-deal-closed.row-status-online:hover td {
-    background-color: #89d87a !important;
+tr.row-status-100:hover td:nth-child(-n+4) {
+    background-color: #b9d9ba !important;
 }
 
-/* Stale Case Highlighting (Existing) */
-.row-stale-case-15 td {
-    background-color: #FFCCCB !important; /* Light Red */
+/* Keep font bold for fully closed deals, but NO background color */
+tr.row-deal-closed td {
+    /* background-color: transparent !important; */ /* Let 100% rule handle it if applicable */
+    font-weight: bold;
 }
-.row-stale-case-15:hover td {
-    background-color: #ffbaba !important;
-}
-.row-stale-case-21 td {
-    background-color: #f08080 !important; /* Stronger Red */
-    color: #000000 !important;
-}
-.row-stale-case-21:hover td {
-    background-color: #ea6767 !important;
+/* Ensure sticky columns for closed deals also just get font-weight */
+tr.row-deal-closed td:nth-child(-n+4) {
+     /* background-color: transparent !important; */
+     font-weight: bold;
 }
 
-/* [✅ NEW] Override: If row is stale (red), it wins over status colors (green/purple) */
-/* Increased Specificity */
-tr.row-stale-case-15 td {
-    background-color: #FFCCCB !important;
-}
-tr.row-stale-case-15:hover td {
-    background-color: #ffbaba !important;
-}
-tr.row-stale-case-21 td {
-    background-color: #f08080 !important;
-    color: #000000 !important;
-}
-tr.row-stale-case-21:hover td {
-    background-color: #ea6767 !important;
-}
 
-/* Ensure Stale wins over status colors */
-tr.row-stale-case-15.row-status-100 td,
-tr.row-stale-case-15.row-status-online td,
-tr.row-stale-case-21.row-status-100 td,
-tr.row-stale-case-21.row-status-online td {
-    /* Styles are already defined above with higher specificity */
-}
+/*
+ REMOVED RULES FOR:
+ - .row-status-online (Purple)
+ - .row-stale-case-15 (Light Red)
+ - .row-stale-case-21 (Strong Red)
+ - Overrides related to the removed rules
+*/
+
 /* --- End Row Highlighting --- */
 
 
@@ -462,9 +428,9 @@ tr.row-stale-case-21.row-status-online td {
     .excel-table thead th:nth-child(4) {
         z-index: 101;
     }
-    
+
     /* --- [START] Mobile Layout Fixes --- */
-    
+
     /* 4. Header layout fix (Wrap buttons) */
     .header-content {
         flex-wrap: wrap; /* อนุญาตให้ปุ่มขึ้นบรรทัดใหม่ */
@@ -530,6 +496,6 @@ tr.row-stale-case-21.row-status-online td {
         width: 100%;
         gap: 10px;
     }
-    
+
     /* [End] Mobile Layout Fixes --- */
 }
