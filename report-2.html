@@ -46,6 +46,26 @@
         padding-bottom: 5px;
         border-bottom: 1px solid #eee;
     }
+    
+    /* [✅ SENIOR DEV EDIT] เพิ่ม CSS สำหรับ Toolbar ที่คัดลอกมา */
+    .report-toolbar { 
+      background: #fff; 
+      padding: 15px 20px; 
+      margin: 20px 0; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+      display: flex; 
+      flex-wrap: wrap; 
+      align-items: center; 
+      justify-content: space-between; 
+      gap: 20px; 
+    }
+    .date-filter-group label { font-weight: 600; margin-right: 10px; color: #555; }
+    .date-filter-group .btn-date-filter, .date-filter-group .date-input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+    .date-filter-group .btn-date-filter { background: #f0f0f0; cursor: pointer; }
+    .date-filter-group .btn-date-filter.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+    .btn-apply-filter { background: var(--color-primary); color: white; border: none; padding: 9px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+
   </style>
 </head>
 
@@ -57,10 +77,24 @@
       <a href="./index.html" class="back-link">กลับหน้าหลัก (CRM)</a>
     </div>
 
-    <div class="content-wrapper">
-      <div class="content">
+    <section class="report-toolbar">
+        <div class="date-filter-group">
+            <label>ช่วงเวลา:</label>
+            <button class="btn-date-filter" data-preset="7d">7 วัน</button>
+            <button class="btn-date-filter" data-preset="30d">30 วัน</button>
+            <button class="btn-date-filter active" data-preset="all">ทั้งหมด</button>
+        </div>
+        <div class="date-filter-group">
+            <label>เลือกเอง:</label>
+            <input type="date" id="startDateV2" class="date-input">
+            <span>ถึง</span>
+            <input type="date" id="endDateV2" class="date-input">
+            <button id="applyFilterBtnV2" class="btn-apply-filter">แสดงผล</button>
+        </div>
+    </section>
 
-        <section class="section">
+    <div class="content-wrapper">
+      <div class="content" id="report-content-v2"> <section class="section">
           <h2 class="section-title">2. Funnel Analysis (Overall)</h2>
 
           <div class="stats-grid interactive-funnel funnel-section">
@@ -89,13 +123,16 @@
 
             <div class="stat-card display-card leads-card">
               <div class="stat-label">Qualified Leads (ตัวเลขจริง / เป้าหมาย)</div>
-              <div class="value-comparison">
+              
+              <div class="value-comparison" id="funnel-leads-comparison">
                 <span class="actual-value" id="funnel-leads-actual">0</span>
                 <span class="separator">/</span>
                 <span class="target-value" id="funnel-leads-target">0</span>
               </div>
-              <div class="target-note">(เป้าหมายคำนวณจาก 30% KPI)</div>
+              
+              <div class="target-note" id="funnel-leads-percentage">(เป้าหมายคำนวณจาก 30% KPI)</div>
             </div>
+
 
             <div class="stat-card display-card sales-card">
               <div class="stat-label">Closed Sales (ตัวเลขจริง)</div>
@@ -153,43 +190,20 @@
     </div>
   </div>
 
-  <script>
-    window.myReportData = {
-      core_metrics: {
-        total_customers: 96,   // [FIXED] นี่คือ "Qualified Leads" (ตัวเลขจริง)
-        closed_sales: 20,      // จำนวนดีลที่ปิดจริง
-        total_revenue: 1685000,
-        avg_deal_size: 93611,
-        avg_closing_days: 15.3
-      },
-      // [NEW] Mock data สำหรับ Section "Inbox to Consult"
-      consult_metrics: {
-         consult_2day_actual: 75 // Mockup: 75 จาก 96 (ต้องมาจาก API จริง)
-      },
-      consult_by_sales: [
-        { sales_name: 'เซลล์ A', qualified_leads: 50, consult_2day_actual: 48 }, // 96%
-        { sales_name: 'เซลล์ B', qualified_leads: 30, consult_2day_actual: 25 }, // 83.3%
-        { sales_name: 'เซลล์ C', qualified_leads: 16, consult_2day_actual: 2 }  // 12.5%
-      ]
-    };
-    console.log("HTML: window.myReportData defined (v2.1 - Consult Fixed).");
-  </script>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
   <script src="./config.js"></script>
-
   <script src="./api.js"></script>
-  
   <script>
       (async () => {
-          // รอให้ config.js ทำงานแป๊บนึง
           await new Promise(resolve => setTimeout(resolve, 50)); 
           if (window.supabaseClient) {
               const { data: { session } } = await window.supabaseClient.auth.getSession();
               if (!session) {
-                  // ถ้าไม่ login, เด้งไปหน้า login
                   window.location.replace('./login.html');
+              } else {
+                  // [✅ EDIT] เก็บ user id ไว้ใน state เพื่อให้ report-2.js ใช้
+                  if (!window.reportState) window.reportState = {};
+                  window.reportState.currentUser = session.user;
               }
           } else {
               console.error("Supabase client not initialized for auth check in report-2.html.");
@@ -197,6 +211,7 @@
           }
       })();
   </script>
+  <script src="./api-v2.js"></script>
   <script src="./report-2.js"></script>
 </body>
 </html>
