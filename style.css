@@ -364,25 +364,80 @@ body {
 /* --- 14. Row Highlighting Styles --- */
 .row-deal-closed td,
 .row-deal-closed:hover td {
-    background-color: #9ceb8d !important;
+    background-color: #9ceb8d !important; /* Bright Green for fully closed deals */
     font-weight: bold;
 }
 .row-deal-closed:hover td {
     background-color: #89d87a !important;
 }
+
+/* [✅ NEW] Highlight for '100%' status (softer green) */
+.row-status-100 td {
+    background-color: #c8e6c9 !important; /* Softer Green */
+}
+.row-status-100:hover td {
+    background-color: #b9d9ba !important;
+}
+
+/* [✅ NEW] Highlight for 'ONLINE' status (purple) */
+.row-status-online td {
+    background-color: #e1bee7 !important; /* Light Purple */
+}
+.row-status-online:hover td {
+    background-color: #ce93d8 !important;
+}
+
+/* [✅ NEW] Override: If row is fully closed (row-deal-closed), bright green wins over softer green/purple */
+.row-deal-closed.row-status-100 td,
+.row-deal-closed.row-status-online td {
+    background-color: #9ceb8d !important; /* Bright Green takes precedence */
+}
+.row-deal-closed.row-status-100:hover td,
+.row-deal-closed.row-status-online:hover td {
+    background-color: #89d87a !important;
+}
+
+/* Stale Case Highlighting (Existing) */
 .row-stale-case-15 td {
-    background-color: #FFCCCB !important; 
+    background-color: #FFCCCB !important; /* Light Red */
 }
 .row-stale-case-15:hover td {
     background-color: #ffbaba !important;
 }
 .row-stale-case-21 td {
-    background-color: #f08080 !important;
+    background-color: #f08080 !important; /* Stronger Red */
     color: #000000 !important;
 }
 .row-stale-case-21:hover td {
     background-color: #ea6767 !important;
 }
+
+/* [✅ NEW] Override: If row is stale (red), it wins over status colors (green/purple) */
+/* Increased Specificity */
+tr.row-stale-case-15 td {
+    background-color: #FFCCCB !important;
+}
+tr.row-stale-case-15:hover td {
+    background-color: #ffbaba !important;
+}
+tr.row-stale-case-21 td {
+    background-color: #f08080 !important;
+    color: #000000 !important;
+}
+tr.row-stale-case-21:hover td {
+    background-color: #ea6767 !important;
+}
+
+/* Ensure Stale wins over status colors */
+tr.row-stale-case-15.row-status-100 td,
+tr.row-stale-case-15.row-status-online td,
+tr.row-stale-case-21.row-status-100 td,
+tr.row-stale-case-21.row-status-online td {
+    /* Styles are already defined above with higher specificity */
+}
+/* --- End Row Highlighting --- */
+
+
 
 /* --- [NEW] Mobile-Specific Sticky Column --- */
 @media (max-width: 768px) {
@@ -478,4 +533,3 @@ body {
     
     /* [End] Mobile Layout Fixes --- */
 }
-/* ‼️ REMOVED ‼️: ลบปีกกา '}' ที่เกินมา 1 ตัวจากบรรทัดนี้ */
