@@ -1,6 +1,7 @@
 // ================================================================================
 // BEAUTY CLINIC CRM - UI LAYER (COMPLETE FIXED VERSION 100%)
 // [MODIFIED] Row highlighting logic now includes 'ONLINE' status by Senior Developer
+// [✅ SENIOR DEV EDIT] Added last_status specific row highlighting (100% green, ONLINE purple)
 // ================================================================================
 
 const ui = {};
@@ -240,18 +241,32 @@ function createActionsCell(row, currentUser) {
     return td;
 }
 
-
+/**
+ * [✅ SENIOR DEV EDIT] Updated createRowElement function
+ * Adds CSS classes 'row-status-100' or 'row-status-online' based on last_status.
+ */
 function createRowElement(row, index, page, pageSize) {
     const tr = document.createElement('tr');
     tr.dataset.id = row.id;
 
-    // [MODIFIED] Add 'row-deal-closed' class if conditions are met (100% OR ONLINE)
+    // --- Original Highlighting ---
+    // 1. Highlight fully closed deals (bright green) - KEEP
     if (row.status_1 === 'ปิดการขาย' && (row.last_status === '100%' || row.last_status === 'ONLINE') && row.closed_amount) {
         tr.classList.add('row-deal-closed');
     }
 
-    // --- Timezone bug fix for stale case highlighting ---
-    if (row.date && !tr.classList.contains('row-deal-closed')) {
+    // --- [✅ NEW] Add highlighting based ONLY on last_status ---
+    // Apply these classes regardless of closed status for general indication
+    if (row.last_status === '100%') {
+        tr.classList.add('row-status-100'); // Class for 100% (softer green)
+    } else if (row.last_status === 'ONLINE') {
+        tr.classList.add('row-status-online'); // Class for ONLINE (purple)
+    }
+    // --- [✅ END NEW] ---
+
+    // --- Stale Case Highlighting (existing logic) ---
+    // This will apply red highlights. CSS rules will determine precedence if combined with status highlights.
+    if (row.date && !tr.classList.contains('row-deal-closed')) { // Still conditioned on NOT being fully closed
         const todayUTC = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()));
         const caseDateUTC = parseDateString(row.date);
 
@@ -280,7 +295,7 @@ function createRowElement(row, index, page, pageSize) {
         if (header === 'จัดการ') {
             tr.appendChild(createActionsCell(row, window.state?.currentUser));
         } else if (config.field) {
-            tr.appendChild(createCell(row, config.field)); // <-- ส่วนนี้จะสร้าง Cell ของ Status Sale และ เหตุผล
+            tr.appendChild(createCell(row, config.field));
         }
     });
     return tr;
